@@ -1,0 +1,63 @@
+name: "📋 Tarea — MedBook"
+description: Plantilla para cada paso del desarrollo de MedBook
+title: "[Semana X] — Título descriptivo"
+labels: ["task"]
+assignees: []
+body:
+  - type: markdown
+    attributes:
+      value: |
+        ## 🎯 Tarea
+
+  - type: input
+    id: step
+    attributes:
+      label: "Paso / Semana"
+      description: "¿Qué paso de qué semana del PRD cubre esta tarea?"
+      placeholder: "Semana 1, Paso 3 — Custom User Model"
+    validations:
+      required: true
+
+  - type: textarea
+    id: description
+    attributes:
+      label: "Descripción"
+      description: "¿Qué hay que implementar?"
+      placeholder: "Crear el modelo User personalizado con AbstractBaseUser..."
+    validations:
+      required: true
+
+  - type: textarea
+    id: acceptance
+    attributes:
+      label: "Criterios de aceptación"
+      description: "¿Cómo sabemos que está completo?"
+      placeholder: |
+        - [ ] `makemigrations` funciona
+        - [ ] Tests unitarios pasan
+        - [ ] ...
+    validations:
+      required: true
+
+  - type: textarea
+    id: notes
+    attributes:
+      label: "Notas técnicas"
+      description: "Archivos a modificar, decisiones de diseño, referencias"
+      placeholder: "apps/users/models.py, apps/users/managers.py..."
+    validations:
+      required: false
+
+  - type: checkboxes
+    id: checklist
+    attributes:
+      label: "Checklist previo al PR"
+      options:
+        - label: "Tests escritos (TDD: test → código)"
+          required: true
+        - label: "Tests pasan localmente"
+          required: true
+        - label: "Sin lógica de negocio en views/serializers"
+          required: false
+        - label: "Commit con conventional commits"
+          required: true

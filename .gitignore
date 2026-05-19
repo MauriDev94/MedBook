@@ -1,0 +1,40 @@
+# Agent / Skills
+.agent/
+AGENT.md
+PRD.md
+
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+*.egg
+dist/
+build/
+
+# Virtualenv
+.venv/
+venv/
+
+# Environment
+.env
+.env.local
+
+# IDE
+.vscode/
+.idea/
+
+# Coverage
+.coverage
+.coverage.*
+htmlcov/
+coverage/
+
+# Django
+*.mo
+db.sqlite3
+media/
+staticfiles/
+
+# OS
+.DS_Store
+Thumbs.db
