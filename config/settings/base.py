@@ -48,8 +48,9 @@ LOCAL_APPS = [
 INSTALLED_APPS = DJANGO_APPS + THIRD_PARTY_APPS + LOCAL_APPS
 
 # ---------------------------------------------------------------------------
-# Auth (AUTH_USER_MODEL = "users.User" se agrega en Semana 1, Issue #2)
+# Auth
 # ---------------------------------------------------------------------------
+AUTH_USER_MODEL = "users.User"
 
 # ---------------------------------------------------------------------------
 # Middleware
