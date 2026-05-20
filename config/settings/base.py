@@ -156,7 +156,7 @@ SIMPLE_JWT = {
     "BLACKLIST_AFTER_ROTATION": True,
     "AUTH_HEADER_TYPES": ("Bearer",),
     "AUTH_TOKEN_CLASSES": ("access_token",),
-    # TOKEN_OBTAIN_SERIALIZER se agrega en Semana 1, Issue #3
+    "TOKEN_OBTAIN_SERIALIZER": "apps.users.serializers.CustomTokenObtainPairSerializer",
 }
 
 # ---------------------------------------------------------------------------
