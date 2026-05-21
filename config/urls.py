@@ -11,4 +11,7 @@ urlpatterns = [
     path("api/docs/", SpectacularSwaggerView.as_view(url_name="schema"), name="docs"),
 ]
 
-# User / Auth endpoints (se agregan en Semana 1, Issue #3)
+# User / Auth endpoints
+urlpatterns += [
+    path("api/", include("apps.users.urls")),
+]
