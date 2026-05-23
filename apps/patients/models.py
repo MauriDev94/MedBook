@@ -20,6 +20,7 @@ class Patient(models.Model):
     class Meta:
         verbose_name = "Patient"
         verbose_name_plural = "Patients"
+        ordering = ["user__last_name", "user__first_name"]
 
     def __str__(self) -> str:
         return self.user.full_name or self.user.email

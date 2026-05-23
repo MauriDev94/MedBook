@@ -69,7 +69,7 @@ class Schedule(models.Model):
     doctor = models.ForeignKey(
         Doctor, on_delete=models.CASCADE, related_name="schedules"
     )
-    day_of_week = models.IntegerField(choices=DayOfWeek.choices)
+    day_of_week = models.IntegerField(choices=DayOfWeek.choices, db_index=True)
     start_time = models.TimeField()
     end_time = models.TimeField()
     is_active = models.BooleanField(default=True)
@@ -78,6 +78,12 @@ class Schedule(models.Model):
         verbose_name = "Schedule"
         verbose_name_plural = "Schedules"
         ordering = ["doctor", "day_of_week", "start_time"]
+        constraints = [
+            models.UniqueConstraint(
+                fields=["doctor", "day_of_week", "start_time"],
+                name="unique_schedule_per_doctor_day_time",
+            )
+        ]
 
     def __str__(self) -> str:
         return f"{self.doctor} - {self.get_day_of_week_display()} ({self.start_time}-{self.end_time})"
