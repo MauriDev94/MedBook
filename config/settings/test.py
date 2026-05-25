@@ -1,7 +1,14 @@
 """Test settings for MedBook.
 
-Extends base.py with SQLite in-memory, no migrations, and fast password hashing.
+Extends base.py with configurable database and fast password hashing.
+- Local: SQLite in-memory + DisableMigrations (fast)
+- CI: PostgreSQL via DATABASE_URL env var (production-faithful)
 """
+
+import os
+
+import dj_database_url
+
 from .base import *  # noqa: F403, F401
 
 # ---------------------------------------------------------------------------
@@ -10,29 +17,33 @@ from .base import *  # noqa: F403, F401
 DEBUG = True
 
 # ---------------------------------------------------------------------------
-# Database — SQLite in-memory for test speed
+# Database — configurable via DATABASE_URL env var
 # ---------------------------------------------------------------------------
+# Local: SQLite in-memory. CI: PostgreSQL (set DATABASE_URL in workflow).
 DATABASES = {
-    "default": {
-        "ENGINE": "django.db.backends.sqlite3",
-        "NAME": ":memory:",
-    }
+    "default": dj_database_url.config(
+        default="sqlite:///:memory:",
+        conn_max_age=600,
+    )
 }
 
 # ---------------------------------------------------------------------------
-# Disable migrations for speed
+# Disable migrations — only with SQLite (local speed optimization)
 # ---------------------------------------------------------------------------
-class DisableMigrations:
-    """Mocks the migration module to prevent Django from running migrations."""
+# En CI con PostgreSQL queremos que las migraciones corran realmente.
+_engine = DATABASES["default"]["ENGINE"]
+if "sqlite" in os.path.basename(_engine):
 
-    def __contains__(self, item: str) -> bool:
-        return True
+    class DisableMigrations:
+        """Mocks the migration module to prevent Django from running migrations."""
 
-    def __getitem__(self, item: str) -> None:
-        return None
+        def __contains__(self, item: str) -> bool:
+            return True
 
+        def __getitem__(self, item: str) -> None:
+            return None
 
-MIGRATION_MODULES = DisableMigrations()
+    MIGRATION_MODULES = DisableMigrations()
 
 # ---------------------------------------------------------------------------
 # Faster password hashing

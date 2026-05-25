@@ -1,0 +1,75 @@
+name: CI
+
+on:
+  push:
+    branches: [master]
+  pull_request:
+    branches: [master]
+
+jobs:
+  lint:
+    name: Lint & Format
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: read
+
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ./.github/actions/setup-django
+
+      - name: Ruff lint
+        run: ruff check .
+
+      - name: Ruff format check
+        run: ruff format --check .
+
+  test:
+    name: Tests (PostgreSQL)
+    runs-on: ubuntu-24.04
+    needs: [lint]
+    permissions:
+      contents: read
+
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_DB: medbook_test
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: ${{ secrets.POSTGRES_CI_PASSWORD }}
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    env:
+      DJANGO_SETTINGS_MODULE: config.settings.test
+      SECRET_KEY: ci-secret-key-not-for-production
+      DATABASE_URL: postgres://postgres:${{ secrets.POSTGRES_CI_PASSWORD }}@localhost:5432/medbook_test
+
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ./.github/actions/setup-django
+
+      - name: Check pending migrations
+        run: python manage.py makemigrations --check --dry-run
+
+      - name: Run tests with coverage
+        run: |
+          pytest \
+            --cov=apps \
+            --cov-report=xml \
+            --cov-report=term-missing \
+            -o "addopts=" \
+            --tb=short \
+            -q
+
+      - name: Upload coverage to Codecov
+        uses: codecov/codecov-action@v4
+        if: github.ref == 'refs/heads/master'
+        with:
+          file: ./coverage.xml
+          fail_ci_if_error: false

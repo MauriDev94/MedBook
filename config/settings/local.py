@@ -2,6 +2,7 @@
 
 Extends base.py with PostgreSQL via DATABASE_URL and debug-friendly config.
 """
+
 import dj_database_url
 from decouple import config
 

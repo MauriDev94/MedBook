@@ -1,0 +1,23 @@
+name: Setup Django
+description: Python + pip dependencies (with cache) — requires actions/checkout before
+
+inputs:
+  python-version:
+    description: Versión de Python
+    default: '3.12'
+    required: false
+
+runs:
+  using: composite
+  steps:
+    - uses: actions/setup-python@v5
+      with:
+        python-version: ${{ inputs.python-version }}
+        cache: pip
+        cache-dependency-path: requirements/local.txt
+
+    - name: Instalar dependencias
+      shell: bash
+      run: |
+        pip install --upgrade pip
+        pip install -r requirements/local.txt

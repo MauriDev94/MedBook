@@ -1,0 +1,15 @@
+# Ruff configuration for MedBook
+# Exclude auto-generated Django files and migrations
+exclude = [
+    "**/migrations/",
+    "manage.py",
+    "config/asgi.py",
+    "config/wsgi.py",
+]
+
+target-version = "py312"
+line-length = 88
+
+[format]
+# Use Django-compatible formatting
+quote-style = "double"
