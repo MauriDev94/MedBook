@@ -27,9 +27,10 @@ class SpecialtyFactory(factory.django.DjangoModelFactory):
 
     class Meta:
         model = Specialty
+        django_get_or_create = ("slug",)
 
-    name = factory.Faker("word")
-    slug = factory.LazyAttribute(lambda obj: obj.name.lower())
+    name = factory.Sequence(lambda n: f"Specialty {n}")
+    slug = factory.Sequence(lambda n: f"specialty-{n}")
 
 
 class DoctorFactory(factory.django.DjangoModelFactory):
@@ -60,4 +61,4 @@ class PatientFactory(factory.django.DjangoModelFactory):
 
     user = factory.SubFactory(UserFactory, role=Role.PATIENT)
     date_of_birth = factory.Faker("date_of_birth")
-    phone = factory.Faker("phone_number")
+    phone = factory.Sequence(lambda n: f"+5691{n:07d}")

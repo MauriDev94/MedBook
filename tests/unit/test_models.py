@@ -1,8 +1,7 @@
 import pytest
 from django.contrib.auth import get_user_model
 
-from apps.doctors.models import Doctor, Specialty
-from apps.patients.models import Patient
+from apps.doctors.models import Specialty
 from apps.users.models import Role
 from tests.factories import (
     DoctorFactory,
@@ -107,17 +106,17 @@ class TestSpecialtyModel:
 
     def test_create_specialty(self, db):
         """Test creating a specialty."""
-        specialty = SpecialtyFactory(name="Cardiology", slug="cardiology")
-        assert specialty.name == "Cardiology"
-        assert specialty.slug == "cardiology"
+        specialty = SpecialtyFactory(name="Test Specialty", slug="test-specialty")
+        assert specialty.name == "Test Specialty"
+        assert specialty.slug == "test-specialty"
 
     def test_specialty_str(self, db):
         """Test __str__ returns name."""
-        specialty = SpecialtyFactory(name="Dermatology")
-        assert str(specialty) == "Dermatology"
+        specialty = SpecialtyFactory()
+        assert str(specialty) == specialty.name
 
     def test_specialty_slug_unique(self, db):
-        """Test slug must be unique."""
+        """Test slug must be unique at DB level."""
         SpecialtyFactory(slug="unique-slug")
         with pytest.raises(Exception):
-            SpecialtyFactory(slug="unique-slug")
+            Specialty.objects.create(name="Duplicate", slug="unique-slug")

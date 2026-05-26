@@ -1,6 +1,4 @@
 import jwt
-import pytest
-from django.conf import settings
 from rest_framework import status
 
 from tests.factories import UserFactory

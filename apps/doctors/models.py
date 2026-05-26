@@ -37,9 +37,7 @@ class Doctor(models.Model):
     consultation_duration = models.IntegerField(
         help_text="Duration in minutes", default=30
     )
-    specialties = models.ManyToManyField(
-        Specialty, related_name="doctors", blank=True
-    )
+    specialties = models.ManyToManyField(Specialty, related_name="doctors", blank=True)
 
     class Meta:
         verbose_name = "Doctor"
