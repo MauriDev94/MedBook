@@ -9,9 +9,7 @@ class TestAuthAPI:
 
     def test_token_obtain_success(self, api_client, db):
         """Test POST /api/token/ returns 200 with access and refresh tokens."""
-        user = UserFactory(email="test@example.com", password="testpass123")
-        user.set_password("testpass123")
-        user.save()
+        UserFactory(email="test@example.com", password="testpass123")
 
         response = api_client.post(
             "/api/token/",
@@ -25,15 +23,13 @@ class TestAuthAPI:
 
     def test_token_contains_custom_claims(self, api_client, db):
         """Test the decoded token contains role, email and full_name."""
-        user = UserFactory(
+        UserFactory(
             email="doctor@example.com",
             password="testpass123",
             role="doctor",
             first_name="Jane",
             last_name="Smith",
         )
-        user.set_password("testpass123")
-        user.save()
 
         response = api_client.post(
             "/api/token/",
@@ -62,9 +58,7 @@ class TestAuthAPI:
 
     def test_token_refresh(self, api_client, db):
         """Test POST /api/token/refresh/ returns a new access token."""
-        user = UserFactory(email="test@example.com", password="testpass123")
-        user.set_password("testpass123")
-        user.save()
+        UserFactory(email="test@example.com", password="testpass123")
 
         token_response = api_client.post(
             "/api/token/",
