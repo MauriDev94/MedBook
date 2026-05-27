@@ -73,6 +73,15 @@ class TestDoctorModel:
         expected = f"Dr. {user.full_name}"
         assert str(doctor) == expected
 
+    def test_doctor_str_falls_back_to_email(self, db):
+        """Test __str__ falls back to email when doctor has no full name."""
+        doctor = DoctorFactory(
+            user__first_name="",
+            user__last_name="",
+        )
+        expected = f"Dr. {doctor.user.email}"
+        assert str(doctor) == expected
+
     def test_doctor_with_specialties(self, db):
         """Test doctor can have multiple specialties."""
         specialties = SpecialtyFactory.create_batch(3)
