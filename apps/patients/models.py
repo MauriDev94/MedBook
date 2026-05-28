@@ -1,13 +1,12 @@
-import uuid
-
 from django.conf import settings
 from django.db import models
 
+from apps.core.models import BaseModel
 
-class Patient(models.Model):
+
+class Patient(BaseModel):
     """Patient linked to a User with role='patient'."""
 
-    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     user = models.OneToOneField(
         settings.AUTH_USER_MODEL,
         on_delete=models.CASCADE,

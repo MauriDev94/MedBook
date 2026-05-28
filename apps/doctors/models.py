@@ -1,16 +1,15 @@
-import uuid
-
 from django.conf import settings
 from django.db import models
 
+from apps.core.models import BaseModel
 
-class Specialty(models.Model):
+
+class Specialty(BaseModel):
     """Medical specialty (e.g. Cardiology, Dermatology).
 
     Read-only via API. Created via data migration.
     """
 
-    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     name = models.CharField(max_length=100)
     slug = models.SlugField(unique=True)
 
@@ -23,10 +22,9 @@ class Specialty(models.Model):
         return self.name
 
 
-class Doctor(models.Model):
+class Doctor(BaseModel):
     """Medical doctor linked to a User with role='doctor'."""
 
-    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     user = models.OneToOneField(
         settings.AUTH_USER_MODEL,
         on_delete=models.CASCADE,
@@ -47,7 +45,7 @@ class Doctor(models.Model):
         return f"Dr. {self.user.full_name or self.user.email}"
 
 
-class Schedule(models.Model):
+class Schedule(BaseModel):
     """Recurring weekly availability for a doctor.
 
     A Schedule defines the hours a doctor is available on a given day of the week.
@@ -63,7 +61,6 @@ class Schedule(models.Model):
         SATURDAY = 5, "Saturday"
         SUNDAY = 6, "Sunday"
 
-    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     doctor = models.ForeignKey(
         Doctor, on_delete=models.CASCADE, related_name="schedules"
     )
