@@ -72,7 +72,9 @@ class TestUserModel:
 
     def test_manager_create_superuser(self, db):
         """Test UserManager.create_superuser sets staff and superuser flags."""
-        admin = User.objects.create_superuser(email="admin@example.com", password="pass1234")
+        admin = User.objects.create_superuser(
+            email="admin@example.com", password="pass1234"
+        )
         assert admin.is_staff
         assert admin.is_superuser
         assert admin.role == Role.ADMIN
@@ -300,6 +302,7 @@ class TestMedicalNoteModel:
     def test_create_medical_note(self, db):
         """Test creating a medical note with factory."""
         from tests.factories import MedicalNoteFactory
+
         note = MedicalNoteFactory()
         assert note.id is not None
         assert note.content != ""
@@ -307,5 +310,6 @@ class TestMedicalNoteModel:
     def test_medical_note_str(self, db):
         """Test __str__ includes appointment reference."""
         from tests.factories import MedicalNoteFactory
+
         note = MedicalNoteFactory()
         assert str(note) != ""

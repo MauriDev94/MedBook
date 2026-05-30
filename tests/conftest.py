@@ -6,6 +6,7 @@ from rest_framework.test import APIClient
 
 from tests.factories import DoctorFactory, PatientFactory, UserFactory
 
+
 # ---------------------------------------------------------------------------
 # Load .env.test BEFORE Django settings are evaluated.
 # pytest_configure runs earlier than module-level code in conftest.py,

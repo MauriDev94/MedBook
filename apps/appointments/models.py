@@ -113,18 +113,14 @@ class Appointment(BaseModel):
     def confirm(self) -> None:
         """pending → confirmed. Raises ValueError if transition is invalid."""
         if not self.can_be_confirmed():
-            raise ValueError(
-                f"Cannot confirm appointment with status '{self.status}'."
-            )
+            raise ValueError(f"Cannot confirm appointment with status '{self.status}'.")
         self.status = self.Status.CONFIRMED
         self.save(update_fields=["status", "updated_at"])
 
     def cancel(self) -> None:
         """pending|confirmed → cancelled. Raises ValueError if transition is invalid."""
         if not self.can_be_cancelled():
-            raise ValueError(
-                f"Cannot cancel appointment with status '{self.status}'."
-            )
+            raise ValueError(f"Cannot cancel appointment with status '{self.status}'.")
         self.status = self.Status.CANCELLED
         self.save(update_fields=["status", "updated_at"])
 
