@@ -22,7 +22,7 @@ DEBUG = True
 # Override DATABASE_URL when your local credentials differ.
 DATABASES = {
     "default": dj_database_url.config(
-        default="postgres://postgres:postgres@localhost:5436/medbook_test",
+        default="postgres://postgres@localhost:5436/medbook_test",
         conn_max_age=600,
     )
 }

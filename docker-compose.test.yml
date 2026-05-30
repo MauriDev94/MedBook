@@ -9,7 +9,7 @@ services:
     environment:
       POSTGRES_DB: ${POSTGRES_TEST_DB:-medbook_test}
       POSTGRES_USER: ${POSTGRES_TEST_USER:-postgres}
-      POSTGRES_PASSWORD: ${POSTGRES_TEST_PASSWORD:-postgres}
+      POSTGRES_PASSWORD: ${POSTGRES_TEST_PASSWORD}
     volumes:
       - medbook_test_pgdata:/var/lib/postgresql/data
     healthcheck:
