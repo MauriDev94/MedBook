@@ -15,7 +15,7 @@ _Qué hace este PR, en 2-3 líneas._
 ## ✅ Checklist
 
 - [ ] Tests pasan: `pytest`
-- [ ] Cobertura ≥ 85% en apps modificadas
+- [ ] Cobertura: models+services ≥ 90% · views+serializers ≥ 80% · permissions = 100%
 - [ ] Sin lógica de negocio en views/serializers (regla de 15 líneas)
 - [ ] Conventional commits
 - [ ] Sin migraciones huérfanas
