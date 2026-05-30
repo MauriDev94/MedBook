@@ -106,8 +106,10 @@ class TimeSlotFactory(factory.django.DjangoModelFactory):
 
     schedule = factory.SubFactory(ScheduleFactory)
     start_datetime = factory.LazyFunction(
-        lambda: timezone.now().replace(minute=0, second=0, microsecond=0)
-        + timezone.timedelta(days=1)
+        lambda: (
+            timezone.now().replace(minute=0, second=0, microsecond=0)
+            + timezone.timedelta(days=1)
+        )
     )
     end_datetime = factory.LazyAttribute(
         lambda o: o.start_datetime + timezone.timedelta(minutes=30)
