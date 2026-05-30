@@ -1,7 +1,5 @@
 import pytest
 from django.contrib.auth import get_user_model
-from django.utils import timezone
-
 from apps.appointments.models import Appointment, TimeSlot
 from apps.doctors.models import Specialty
 from apps.users.models import Role
@@ -9,7 +7,6 @@ from tests.factories import (
     AppointmentFactory,
     DoctorFactory,
     PatientFactory,
-    ScheduleFactory,
     SpecialtyFactory,
     TimeSlotFactory,
     UserFactory,
