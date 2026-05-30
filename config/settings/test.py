@@ -1,11 +1,10 @@
 """Test settings for MedBook.
 
-Extends base.py with configurable database and fast password hashing.
-- Local: SQLite in-memory + DisableMigrations (fast)
-- CI: PostgreSQL via DATABASE_URL env var (production-faithful)
-"""
+Extends base.py with production-faithful PostgreSQL testing.
 
-import os
+Official test runs MUST use PostgreSQL, locally and in CI. Do not fall back to
+SQLite here: SQLite can hide migration/schema issues that PostgreSQL catches.
+"""
 
 import dj_database_url
 
@@ -17,33 +16,16 @@ from .base import *  # noqa: F403, F401
 DEBUG = True
 
 # ---------------------------------------------------------------------------
-# Database — configurable via DATABASE_URL env var
+# Database — PostgreSQL by default
 # ---------------------------------------------------------------------------
-# Local: SQLite in-memory. CI: PostgreSQL (set DATABASE_URL in workflow).
+# Local and CI should use the same database engine to avoid false-green tests.
+# Override DATABASE_URL when your local credentials differ.
 DATABASES = {
     "default": dj_database_url.config(
-        default="sqlite:///:memory:",
+        default="postgres://postgres:postgres@localhost:5436/medbook_test",
         conn_max_age=600,
     )
 }
-
-# ---------------------------------------------------------------------------
-# Disable migrations — only with SQLite (local speed optimization)
-# ---------------------------------------------------------------------------
-# En CI con PostgreSQL queremos que las migraciones corran realmente.
-_engine = DATABASES["default"]["ENGINE"]
-if "sqlite" in os.path.basename(_engine):
-
-    class DisableMigrations:
-        """Mocks the migration module to prevent Django from running migrations."""
-
-        def __contains__(self, item: str) -> bool:
-            return True
-
-        def __getitem__(self, item: str) -> None:
-            return None
-
-    MIGRATION_MODULES = DisableMigrations()
 
 # ---------------------------------------------------------------------------
 # Faster password hashing

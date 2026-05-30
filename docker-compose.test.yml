@@ -1,0 +1,24 @@
+version: "3.9"
+
+services:
+  test_db:
+    image: postgres:16-alpine
+    container_name: medbook_test
+    ports:
+      - "5436:5432"
+    environment:
+      POSTGRES_DB: ${POSTGRES_TEST_DB:-medbook_test}
+      POSTGRES_USER: ${POSTGRES_TEST_USER:-postgres}
+      POSTGRES_PASSWORD: ${POSTGRES_TEST_PASSWORD:-postgres}
+    volumes:
+      - medbook_test_pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_TEST_USER:-postgres} -d $${POSTGRES_TEST_DB:-medbook_test}"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+volumes:
+  medbook_test_pgdata:
+    name: medbook_test_pgdata
+    external: true
