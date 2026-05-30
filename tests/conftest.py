@@ -1,7 +1,32 @@
+import os
+from pathlib import Path
+
 import pytest
 from rest_framework.test import APIClient
 
 from tests.factories import DoctorFactory, PatientFactory, UserFactory
+
+
+# ---------------------------------------------------------------------------
+# Load .env.test BEFORE Django settings are evaluated.
+# pytest_configure runs earlier than module-level code in conftest.py,
+# so DATABASE_URL is available when dj_database_url.config() is called.
+# ---------------------------------------------------------------------------
+def _load_env_file(path: Path) -> None:
+    """Parse a .env file and set variables via os.environ.setdefault."""
+    if not path.exists():
+        return
+    for line in path.read_text().splitlines():
+        line = line.strip()
+        if not line or line.startswith("#") or "=" not in line:
+            continue
+        key, _, value = line.partition("=")
+        os.environ.setdefault(key.strip(), value.strip())
+
+
+def pytest_configure(config):
+    """Load .env.test before Django initialises its settings."""
+    _load_env_file(Path(__file__).resolve().parent.parent / ".env.test")
 
 
 @pytest.fixture(autouse=True)

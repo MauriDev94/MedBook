@@ -1,12 +1,14 @@
 import pytest
 from django.contrib.auth import get_user_model
-
+from apps.appointments.models import Appointment, TimeSlot
 from apps.doctors.models import Specialty
 from apps.users.models import Role
 from tests.factories import (
+    AppointmentFactory,
     DoctorFactory,
     PatientFactory,
     SpecialtyFactory,
+    TimeSlotFactory,
     UserFactory,
 )
 
@@ -54,6 +56,42 @@ class TestUserModel:
         assert admin.is_staff
         assert admin.is_superuser
         assert admin.role == Role.ADMIN
+
+    def test_manager_create_user(self, db):
+        """Test UserManager.create_user sets email and password correctly."""
+        user = User.objects.create_user(email="mgr@example.com", password="pass1234")
+        assert user.email == "mgr@example.com"
+        assert user.check_password("pass1234")
+        assert not user.is_staff
+        assert not user.is_superuser
+
+    def test_manager_create_user_requires_email(self, db):
+        """Test UserManager.create_user raises ValueError when email is empty."""
+        with pytest.raises(ValueError, match="Email field must be set"):
+            User.objects.create_user(email="", password="pass1234")
+
+    def test_manager_create_superuser(self, db):
+        """Test UserManager.create_superuser sets staff and superuser flags."""
+        admin = User.objects.create_superuser(
+            email="admin@example.com", password="pass1234"
+        )
+        assert admin.is_staff
+        assert admin.is_superuser
+        assert admin.role == Role.ADMIN
+
+    def test_manager_create_superuser_requires_is_staff(self, db):
+        """Test UserManager.create_superuser raises if is_staff=False."""
+        with pytest.raises(ValueError, match="is_staff=True"):
+            User.objects.create_superuser(
+                email="bad@example.com", password="pass1234", is_staff=False
+            )
+
+    def test_manager_create_superuser_requires_is_superuser(self, db):
+        """Test UserManager.create_superuser raises if is_superuser=False."""
+        with pytest.raises(ValueError, match="is_superuser=True"):
+            User.objects.create_superuser(
+                email="bad@example.com", password="pass1234", is_superuser=False
+            )
 
 
 class TestDoctorModel:
@@ -129,3 +167,149 @@ class TestSpecialtyModel:
         SpecialtyFactory(slug="unique-slug")
         with pytest.raises(Exception):
             Specialty.objects.create(name="Duplicate", slug="unique-slug")
+
+
+class TestTimeSlotModel:
+    """Test TimeSlot model."""
+
+    def test_create_timeslot(self, db):
+        """Test creating a timeslot with factory."""
+        slot = TimeSlotFactory()
+        assert slot.id is not None
+        assert slot.status == TimeSlot.Status.AVAILABLE
+
+    def test_timeslot_str(self, db):
+        """Test __str__ includes datetime and status."""
+        slot = TimeSlotFactory()
+        assert str(slot.start_datetime.date()) in str(slot)
+
+    def test_timeslot_unique_constraint(self, db):
+        """Test (schedule, start_datetime) is unique at DB level."""
+        slot = TimeSlotFactory()
+        with pytest.raises(Exception):
+            TimeSlot.objects.create(
+                schedule=slot.schedule,
+                start_datetime=slot.start_datetime,
+                end_datetime=slot.end_datetime,
+                status=TimeSlot.Status.AVAILABLE,
+            )
+
+
+class TestAppointmentModel:
+    """Test Appointment model and state machine."""
+
+    def test_create_appointment(self, db):
+        """Test creating an appointment with factory."""
+        appt = AppointmentFactory()
+        assert appt.id is not None
+        assert appt.status == Appointment.Status.PENDING
+
+    def test_appointment_str(self, db):
+        """Test __str__ includes patient and doctor."""
+        appt = AppointmentFactory()
+        result = str(appt)
+        assert str(appt.patient) in result or str(appt.doctor) in result
+
+    # --- can_be_* guards ---
+
+    def test_can_be_confirmed_when_pending(self, db):
+        appt = AppointmentFactory(status=Appointment.Status.PENDING)
+        assert appt.can_be_confirmed() is True
+
+    def test_cannot_be_confirmed_when_confirmed(self, db):
+        appt = AppointmentFactory(status=Appointment.Status.CONFIRMED)
+        assert appt.can_be_confirmed() is False
+
+    def test_can_be_cancelled_when_pending(self, db):
+        appt = AppointmentFactory(status=Appointment.Status.PENDING)
+        assert appt.can_be_cancelled() is True
+
+    def test_can_be_cancelled_when_confirmed(self, db):
+        appt = AppointmentFactory(status=Appointment.Status.CONFIRMED)
+        assert appt.can_be_cancelled() is True
+
+    def test_cannot_be_cancelled_when_completed(self, db):
+        appt = AppointmentFactory(status=Appointment.Status.COMPLETED)
+        assert appt.can_be_cancelled() is False
+
+    def test_can_be_completed_when_confirmed(self, db):
+        appt = AppointmentFactory(status=Appointment.Status.CONFIRMED)
+        assert appt.can_be_completed() is True
+
+    def test_cannot_be_completed_when_pending(self, db):
+        appt = AppointmentFactory(status=Appointment.Status.PENDING)
+        assert appt.can_be_completed() is False
+
+    def test_can_be_marked_no_show_when_confirmed(self, db):
+        appt = AppointmentFactory(status=Appointment.Status.CONFIRMED)
+        assert appt.can_be_marked_no_show() is True
+
+    def test_cannot_be_marked_no_show_when_pending(self, db):
+        appt = AppointmentFactory(status=Appointment.Status.PENDING)
+        assert appt.can_be_marked_no_show() is False
+
+    # --- transitions ---
+
+    def test_confirm_pending_appointment(self, db):
+        appt = AppointmentFactory(status=Appointment.Status.PENDING)
+        appt.confirm()
+        assert appt.status == Appointment.Status.CONFIRMED
+
+    def test_confirm_raises_if_not_pending(self, db):
+        appt = AppointmentFactory(status=Appointment.Status.CANCELLED)
+        with pytest.raises(ValueError):
+            appt.confirm()
+
+    def test_cancel_pending_appointment(self, db):
+        appt = AppointmentFactory(status=Appointment.Status.PENDING)
+        appt.cancel()
+        assert appt.status == Appointment.Status.CANCELLED
+
+    def test_cancel_confirmed_appointment(self, db):
+        appt = AppointmentFactory(status=Appointment.Status.CONFIRMED)
+        appt.cancel()
+        assert appt.status == Appointment.Status.CANCELLED
+
+    def test_cancel_raises_if_completed(self, db):
+        appt = AppointmentFactory(status=Appointment.Status.COMPLETED)
+        with pytest.raises(ValueError):
+            appt.cancel()
+
+    def test_complete_confirmed_appointment(self, db):
+        appt = AppointmentFactory(status=Appointment.Status.CONFIRMED)
+        appt.complete()
+        assert appt.status == Appointment.Status.COMPLETED
+
+    def test_complete_raises_if_not_confirmed(self, db):
+        appt = AppointmentFactory(status=Appointment.Status.PENDING)
+        with pytest.raises(ValueError):
+            appt.complete()
+
+    def test_mark_no_show_confirmed_appointment(self, db):
+        appt = AppointmentFactory(status=Appointment.Status.CONFIRMED)
+        appt.mark_no_show()
+        assert appt.status == Appointment.Status.NO_SHOW
+
+    def test_mark_no_show_raises_if_not_confirmed(self, db):
+        appt = AppointmentFactory(status=Appointment.Status.PENDING)
+        with pytest.raises(ValueError):
+            appt.mark_no_show()
+
+
+class TestMedicalNoteModel:
+    """Test MedicalNote model."""
+
+    def test_create_medical_note(self, db):
+        """Test creating a medical note with factory."""
+        from tests.factories import MedicalNoteFactory
+
+        note = MedicalNoteFactory()
+        assert note.id is not None
+        assert note.content != ""
+
+    def test_medical_note_str(self, db):
+        """Test __str__ includes appointment reference."""
+        from tests.factories import MedicalNoteFactory
+
+        note = MedicalNoteFactory()
+        assert str(note) != ""
