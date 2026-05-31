@@ -1,3 +1,4 @@
+import datetime
 import factory
 from django.contrib.auth import get_user_model
 from django.utils import timezone
@@ -88,13 +89,11 @@ class ScheduleFactory(factory.django.DjangoModelFactory):
 
     doctor = factory.SubFactory(DoctorFactory)
     day_of_week = Schedule.DayOfWeek.MONDAY
-    start_time = factory.Faker("time_object")
-    end_time = factory.LazyAttribute(
-        lambda o: (
-            timezone.datetime.combine(timezone.datetime.today(), o.start_time)
-            + timezone.timedelta(hours=8)
-        ).time()
-    )
+    # Fixed times avoid wrap-around: Faker("time_object") can produce e.g.
+    # 23:00 → 23:00+8h = 07:00 (next day), making end_time < start_time
+    # and causing generate_slots_for_schedule to produce 0 slots.
+    start_time = datetime.time(9, 0)
+    end_time = datetime.time(17, 0)
     is_active = True
 
 
