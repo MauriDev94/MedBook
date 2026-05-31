@@ -10,13 +10,17 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 
 from apps.appointments.serializers import TimeSlotSerializer
-from apps.doctors.models import Doctor, Specialty
+from apps.core.permissions import IsDoctor
+from apps.doctors.models import Doctor, Schedule, Specialty
 from apps.doctors.serializers import (
     DoctorDetailSerializer,
     DoctorListSerializer,
+    ScheduleCreateSerializer,
+    ScheduleSerializer,
     SpecialtySerializer,
 )
 from apps.doctors.services import get_available_slots
+from apps.users.models import Role
 
 
 class DoctorViewSet(viewsets.ReadOnlyModelViewSet):
@@ -49,6 +53,47 @@ class DoctorViewSet(viewsets.ReadOnlyModelViewSet):
         days_ahead = int(request.query_params.get("days", 7))
         slots = get_available_slots(doctor, days_ahead=days_ahead)
         return Response(TimeSlotSerializer(slots, many=True).data)
+
+
+class ScheduleViewSet(viewsets.ModelViewSet):
+    """CRUD for doctor schedules.
+
+    Doctors manage their own schedules only. Admins can manage all.
+    Patients see an empty queryset (404 on any access attempt).
+
+    DELETE performs a soft delete (is_active=False) — schedules are
+    never physically removed so slot history is preserved.
+    """
+
+    permission_classes = [IsAuthenticated]
+
+    def get_queryset(self):
+        user = self.request.user
+        qs = Schedule.objects.select_related("doctor__user").order_by(
+            "doctor", "day_of_week", "start_time"
+        )
+        if user.role == Role.ADMIN:
+            return qs
+        if user.role == Role.DOCTOR:
+            return qs.filter(doctor__user=user)
+        return qs.none()
+
+    def get_permissions(self):
+        if self.action == "create":
+            return [IsAuthenticated(), IsDoctor()]
+        return [IsAuthenticated()]
+
+    def get_serializer_class(self):
+        if self.action in ("create", "update", "partial_update"):
+            return ScheduleCreateSerializer
+        return ScheduleSerializer
+
+    def perform_create(self, serializer):
+        serializer.save(doctor=self.request.user.doctor_profile)
+
+    def perform_destroy(self, instance):
+        instance.is_active = False
+        instance.save(update_fields=["is_active", "updated_at"])
 
 
 class SpecialtyViewSet(viewsets.ReadOnlyModelViewSet):
