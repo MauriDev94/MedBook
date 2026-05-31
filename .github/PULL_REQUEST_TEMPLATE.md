@@ -15,17 +15,19 @@ _Qué hace este PR, en 2-3 líneas._
 ## ✅ Checklist
 
 - [ ] Lint pasa: `ruff check . && ruff format --check .`
-- [ ] Tests pasan: `pytest`
-- [ ] Cobertura: models+services ≥ 90% · views+serializers ≥ 80% · permissions = 100%
+- [ ] Tests pasan: `pytest` → N passed, 0 failed
 - [ ] Sin lógica de negocio en views/serializers (regla de 15 líneas)
+- [ ] Sin imports de ORM en views (DIP)
 - [ ] Conventional commits
 - [ ] Sin migraciones huérfanas: `python manage.py makemigrations --check --dry-run`
-- [ ] Sin imports de ORM en views (DIP)
 
 ## 🧪 Cómo probar
 
 ```bash
 ruff check . && ruff format --check .
 pytest -q
-python manage.py makemigrations --check --dry-run
 ```
+
+## 📝 Notas técnicas
+
+<!-- Opcional — gotchas, decisiones de diseño no obvias, bugs encontrados -->
