@@ -4,6 +4,8 @@ HTTP layer only: auth, permissions, serializer selection, response codes.
 All business logic is delegated to apps.appointments.services.
 """
 
+from functools import wraps
+
 from rest_framework import status, viewsets
 from rest_framework.decorators import action
 from rest_framework.permissions import IsAuthenticated
@@ -26,6 +28,19 @@ from apps.core.permissions import (
 from apps.users.models import Role
 
 
+def _handle_transition_error(fn):
+    """Decorator: catch ValueError from state transitions and return 400."""
+
+    @wraps(fn)
+    def wrapper(self, request, *args, **kwargs):
+        try:
+            return fn(self, request, *args, **kwargs)
+        except ValueError as exc:
+            return Response({"detail": str(exc)}, status=status.HTTP_400_BAD_REQUEST)
+
+    return wrapper
+
+
 class AppointmentViewSet(viewsets.ModelViewSet):
     """Full CRUD for appointments, with role-based filtering and state actions."""
 
@@ -43,7 +58,6 @@ class AppointmentViewSet(viewsets.ModelViewSet):
             return qs.filter(patient__user=user)
         if user.role == Role.DOCTOR:
             return qs.filter(doctor__user=user)
-        # Admin sees all
         return qs
 
     def get_serializer_class(self):
@@ -57,13 +71,10 @@ class AppointmentViewSet(viewsets.ModelViewSet):
 
     def get_permissions(self):
         if self.action == "create":
-            # Only patients book appointments
             return [IsAuthenticated(), IsPatient()]
         if self.action in ["confirm", "complete", "no_show"]:
-            # Only the assigned doctor can confirm/complete/mark no-show
             return [IsAuthenticated(), IsDoctorOfAppointment()]
         if self.action == "cancel":
-            # Patient or doctor of THIS appointment can cancel
             return [IsAuthenticated(), IsPatientOrDoctor()]
         if self.action == "destroy":
             return [IsAuthenticated(), IsAdminRole()]
@@ -72,41 +83,33 @@ class AppointmentViewSet(viewsets.ModelViewSet):
     # --- State transition actions ---
 
     @action(detail=True, methods=["post"])
+    @_handle_transition_error
     def confirm(self, request, pk=None):
         """Transition PENDING → CONFIRMED (doctor only)."""
         appointment = self.get_object()
-        try:
-            services.confirm_appointment(appointment, confirmed_by=request.user)
-        except ValueError as exc:
-            return Response({"detail": str(exc)}, status=status.HTTP_400_BAD_REQUEST)
+        services.confirm_appointment(appointment, confirmed_by=request.user)
         return Response(AppointmentDetailSerializer(appointment).data)
 
     @action(detail=True, methods=["post"])
+    @_handle_transition_error
     def cancel(self, request, pk=None):
         """Transition PENDING|CONFIRMED → CANCELLED (patient or doctor)."""
         appointment = self.get_object()
-        try:
-            services.cancel_appointment(appointment, cancelled_by=request.user)
-        except ValueError as exc:
-            return Response({"detail": str(exc)}, status=status.HTTP_400_BAD_REQUEST)
+        services.cancel_appointment(appointment, cancelled_by=request.user)
         return Response(AppointmentDetailSerializer(appointment).data)
 
     @action(detail=True, methods=["post"])
+    @_handle_transition_error
     def complete(self, request, pk=None):
         """Transition CONFIRMED → COMPLETED (doctor only)."""
         appointment = self.get_object()
-        try:
-            services.complete_appointment(appointment)
-        except ValueError as exc:
-            return Response({"detail": str(exc)}, status=status.HTTP_400_BAD_REQUEST)
+        services.complete_appointment(appointment)
         return Response(AppointmentDetailSerializer(appointment).data)
 
     @action(detail=True, methods=["post"], url_path="no-show")
+    @_handle_transition_error
     def no_show(self, request, pk=None):
         """Transition CONFIRMED → NO_SHOW (doctor only)."""
         appointment = self.get_object()
-        try:
-            services.mark_no_show(appointment)
-        except ValueError as exc:
-            return Response({"detail": str(exc)}, status=status.HTTP_400_BAD_REQUEST)
+        services.mark_no_show(appointment)
         return Response(AppointmentDetailSerializer(appointment).data)

@@ -96,6 +96,36 @@ class TestValidateAppointmentBooking:
         # Should NOT raise — cancelled doesn't block
         services.validate_appointment_booking(patient, new_slot)
 
+    def test_completed_appointment_does_not_block_rebooking(self, db):
+        """Completed appointment at same time should NOT block a new booking."""
+        patient = PatientFactory()
+        completed = AppointmentFactory(
+            patient=patient,
+            status=Appointment.Status.COMPLETED,
+        )
+        new_slot = TimeSlotFactory(
+            start_datetime=completed.slot.start_datetime,
+            end_datetime=completed.slot.end_datetime,
+            status=TimeSlot.Status.AVAILABLE,
+        )
+        # COMPLETED is not PENDING/CONFIRMED → should not block
+        services.validate_appointment_booking(patient, new_slot)
+
+    def test_no_show_appointment_does_not_block_rebooking(self, db):
+        """NO_SHOW appointment at same time should NOT block a new booking."""
+        patient = PatientFactory()
+        no_show = AppointmentFactory(
+            patient=patient,
+            status=Appointment.Status.NO_SHOW,
+        )
+        new_slot = TimeSlotFactory(
+            start_datetime=no_show.slot.start_datetime,
+            end_datetime=no_show.slot.end_datetime,
+            status=TimeSlot.Status.AVAILABLE,
+        )
+        # NO_SHOW is not PENDING/CONFIRMED → should not block
+        services.validate_appointment_booking(patient, new_slot)
+
 
 # ---------------------------------------------------------------------------
 # confirm_appointment
@@ -322,3 +352,61 @@ class TestGenerateSlotsForSchedule:
         schedule = ScheduleFactory()
         slots = services.generate_slots_for_schedule(schedule, days_ahead=0)
         assert slots == []
+
+    def test_days_ahead_1_with_wrong_weekday_returns_empty(self, db):
+        """days_ahead=1 when today+1 doesn't match schedule day → empty list."""
+        import datetime
+        from unittest.mock import patch
+
+        from apps.doctors.models import Schedule
+
+        # Schedule is Monday; patch today so tomorrow is Tuesday (no match)
+        # weekday 0=Mon,1=Tue — if today is Monday (0), tomorrow is Tuesday (1)
+        # We need today to NOT be Sunday (so tomorrow is Monday)
+        # Use a known Monday as "today" → tomorrow is Tuesday → no Monday in 1 day
+        monday = datetime.date(2026, 6, 1)  # This is a Monday
+        schedule = ScheduleFactory(day_of_week=Schedule.DayOfWeek.MONDAY)
+
+        with patch("apps.appointments.services.timezone") as mock_tz:
+            mock_tz.localdate.return_value = monday
+            # days_ahead=1 → only checks 2026-06-01 (Monday itself)
+            # BUT: range(1) = [0], candidate = monday+0 = Monday → DOES match
+            # So use days_ahead=1 starting from Tuesday
+            tuesday = datetime.date(2026, 6, 2)
+            mock_tz.localdate.return_value = tuesday
+            slots = services.generate_slots_for_schedule(schedule, days_ahead=1)
+
+        assert slots == []  # Tuesday doesn't match MONDAY schedule
+
+
+# ---------------------------------------------------------------------------
+# create_appointment
+# ---------------------------------------------------------------------------
+
+
+class TestCreateAppointment:
+    """Atomically creates an appointment and reserves the slot."""
+
+    def test_creates_appointment_and_reserves_slot(self, db):
+        """Happy path: appointment created, slot becomes RESERVED."""
+        patient = PatientFactory()
+        appt = AppointmentFactory(status=Appointment.Status.PENDING)
+        slot = TimeSlotFactory(status=TimeSlot.Status.AVAILABLE)
+        doctor = appt.doctor
+
+        result = services.create_appointment(patient, doctor, slot, reason="Test")
+        slot.refresh_from_db()
+        assert result.patient == patient
+        assert result.doctor == doctor
+        assert slot.status == TimeSlot.Status.RESERVED
+
+    def test_raises_if_slot_already_reserved(self, db):
+        """If slot becomes reserved between validation and creation → ValidationError."""
+        patient = PatientFactory()
+        appt = AppointmentFactory()
+        slot = TimeSlotFactory(status=TimeSlot.Status.RESERVED)
+
+        from django.core.exceptions import ValidationError as DjangoValidationError
+
+        with pytest.raises(DjangoValidationError):
+            services.create_appointment(patient, appt.doctor, slot)

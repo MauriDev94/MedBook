@@ -1,12 +1,13 @@
 """Serializers for the appointments app.
 
 One serializer per action — shapes diverge between create, list, and detail.
-Business validation is delegated to services.py, not duplicated here.
+Business validation is fully delegated to services.py — not duplicated here.
 """
 
 from rest_framework import serializers
 
 from apps.appointments.models import Appointment, TimeSlot
+from apps.core.utils import get_display_name
 
 
 class TimeSlotSerializer(serializers.ModelSerializer):
@@ -28,22 +29,18 @@ class TimeSlotSerializer(serializers.ModelSerializer):
 class AppointmentCreateSerializer(serializers.ModelSerializer):
     """Write serializer for booking a new appointment.
 
-    Validates slot availability and patient conflict via the service layer.
-    Sets patient and doctor automatically from context — never from request body.
+    All business validation (slot availability, overlap check) is delegated
+    to services.validate_appointment_booking() — no duplication here.
+    The actual creation (including atomic slot reservation) is handled by
+    services.create_appointment().
     """
 
     class Meta:
         model = Appointment
         fields = ["slot", "reason"]
 
-    def validate_slot(self, slot: TimeSlot) -> TimeSlot:
-        """Field-level: slot must be AVAILABLE."""
-        if slot.status != TimeSlot.Status.AVAILABLE:
-            raise serializers.ValidationError("This time slot is no longer available.")
-        return slot
-
     def validate(self, data: dict) -> dict:
-        """Cross-field: check patient has no overlapping appointment."""
+        """Delegate all cross-field validation to the service layer."""
         from apps.appointments.services import validate_appointment_booking
 
         request = self.context["request"]
@@ -52,20 +49,18 @@ class AppointmentCreateSerializer(serializers.ModelSerializer):
         return data
 
     def create(self, validated_data: dict) -> Appointment:
+        """Delegate atomic creation (appointment + slot reservation) to service."""
+        from apps.appointments.services import create_appointment
+
         request = self.context["request"]
         patient = request.user.patient_profile
         doctor = validated_data["slot"].schedule.doctor
-
-        appointment = Appointment.objects.create(
+        return create_appointment(
             patient=patient,
             doctor=doctor,
             slot=validated_data["slot"],
             reason=validated_data.get("reason", ""),
         )
-        # Reserve the slot atomically with the appointment creation
-        appointment.slot.status = TimeSlot.Status.RESERVED
-        appointment.slot.save(update_fields=["status", "updated_at"])
-        return appointment
 
 
 class AppointmentListSerializer(serializers.ModelSerializer):
@@ -86,10 +81,10 @@ class AppointmentListSerializer(serializers.ModelSerializer):
         ]
 
     def get_patient_name(self, obj) -> str:
-        return obj.patient.user.full_name or obj.patient.user.email
+        return get_display_name(obj.patient.user)
 
     def get_doctor_name(self, obj) -> str:
-        return obj.doctor.user.full_name or obj.doctor.user.email
+        return get_display_name(obj.doctor.user)
 
 
 class AppointmentDetailSerializer(serializers.ModelSerializer):
@@ -115,10 +110,10 @@ class AppointmentDetailSerializer(serializers.ModelSerializer):
         ]
 
     def get_patient_name(self, obj) -> str:
-        return obj.patient.user.full_name or obj.patient.user.email
+        return get_display_name(obj.patient.user)
 
     def get_doctor_name(self, obj) -> str:
-        return obj.doctor.user.full_name or obj.doctor.user.email
+        return get_display_name(obj.doctor.user)
 
     def get_can_cancel(self, obj) -> bool:
         return obj.can_be_cancelled()

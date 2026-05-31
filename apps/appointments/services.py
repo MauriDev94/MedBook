@@ -17,6 +17,44 @@ from django.utils import timezone
 from apps.appointments.models import Appointment, TimeSlot
 
 
+@transaction.atomic
+def create_appointment(
+    patient, doctor, slot: TimeSlot, reason: str = ""
+) -> Appointment:
+    """Create an appointment and atomically reserve the slot.
+
+    Uses an atomic UPDATE on the slot to prevent race conditions: if two
+    requests try to book the same slot simultaneously, only one UPDATE
+    will match (status=AVAILABLE), and the other will raise ValidationError.
+
+    Args:
+        patient: Patient instance (from request.user.patient_profile).
+        doctor: Doctor instance (inferred from slot.schedule.doctor).
+        slot: TimeSlot to reserve.
+        reason: Optional reason for the appointment.
+
+    Returns:
+        The created Appointment instance.
+
+    Raises:
+        ValidationError: if the slot was taken between validation and creation.
+    """
+    updated = TimeSlot.objects.filter(
+        id=slot.id, status=TimeSlot.Status.AVAILABLE
+    ).update(status=TimeSlot.Status.RESERVED, updated_at=timezone.now())
+
+    if not updated:
+        raise ValidationError("This time slot is no longer available.")
+
+    slot.refresh_from_db()
+    return Appointment.objects.create(
+        patient=patient,
+        doctor=doctor,
+        slot=slot,
+        reason=reason,
+    )
+
+
 def validate_appointment_booking(patient, slot: TimeSlot) -> None:
     """Validate business rules before creating an appointment.
 

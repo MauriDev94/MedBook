@@ -295,6 +295,52 @@ class TestAppointmentModel:
         with pytest.raises(ValueError):
             appt.mark_no_show()
 
+    # --- COMPLETED is a terminal state ---
+
+    def test_confirm_raises_if_completed(self, db):
+        """COMPLETED appointment cannot be confirmed."""
+        appt = AppointmentFactory(status=Appointment.Status.COMPLETED)
+        with pytest.raises(ValueError):
+            appt.confirm()
+
+    def test_complete_raises_if_completed(self, db):
+        """COMPLETED appointment cannot be completed again."""
+        appt = AppointmentFactory(status=Appointment.Status.COMPLETED)
+        with pytest.raises(ValueError):
+            appt.complete()
+
+    def test_mark_no_show_raises_if_completed(self, db):
+        """COMPLETED appointment cannot be marked no-show."""
+        appt = AppointmentFactory(status=Appointment.Status.COMPLETED)
+        with pytest.raises(ValueError):
+            appt.mark_no_show()
+
+    # --- NO_SHOW is a terminal state ---
+
+    def test_confirm_raises_if_no_show(self, db):
+        """NO_SHOW appointment cannot be confirmed."""
+        appt = AppointmentFactory(status=Appointment.Status.NO_SHOW)
+        with pytest.raises(ValueError):
+            appt.confirm()
+
+    def test_cancel_raises_if_no_show(self, db):
+        """NO_SHOW appointment cannot be cancelled."""
+        appt = AppointmentFactory(status=Appointment.Status.NO_SHOW)
+        with pytest.raises(ValueError):
+            appt.cancel()
+
+    def test_complete_raises_if_no_show(self, db):
+        """NO_SHOW appointment cannot be completed."""
+        appt = AppointmentFactory(status=Appointment.Status.NO_SHOW)
+        with pytest.raises(ValueError):
+            appt.complete()
+
+    def test_mark_no_show_raises_if_already_no_show(self, db):
+        """NO_SHOW appointment cannot be marked no-show again."""
+        appt = AppointmentFactory(status=Appointment.Status.NO_SHOW)
+        with pytest.raises(ValueError):
+            appt.mark_no_show()
+
 
 class TestMedicalNoteModel:
     """Test MedicalNote model."""

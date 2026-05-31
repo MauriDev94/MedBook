@@ -292,3 +292,9 @@ class TestReadOnly:
         user = UserFactory()
         request = make_request(method="DELETE", user=user)
         assert self.perm.has_permission(request, None) is False
+
+    def test_patch_is_denied(self, db):
+        """PATCH (partial update) is rejected — it's a write method."""
+        user = UserFactory()
+        request = make_request(method="PATCH", user=user)
+        assert self.perm.has_permission(request, None) is False

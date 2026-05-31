@@ -2,6 +2,7 @@ from django.conf import settings
 from django.db import models
 
 from apps.core.models import BaseModel
+from apps.core.utils import get_display_name
 
 
 class Patient(BaseModel):
@@ -22,4 +23,4 @@ class Patient(BaseModel):
         ordering = ["user__last_name", "user__first_name"]
 
     def __str__(self) -> str:
-        return self.user.full_name or self.user.email
+        return get_display_name(self.user)

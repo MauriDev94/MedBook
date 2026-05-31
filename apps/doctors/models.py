@@ -2,6 +2,7 @@ from django.conf import settings
 from django.db import models
 
 from apps.core.models import BaseModel
+from apps.core.utils import get_display_name
 
 
 class Specialty(BaseModel):
@@ -42,7 +43,7 @@ class Doctor(BaseModel):
         verbose_name_plural = "Doctors"
 
     def __str__(self) -> str:
-        return f"Dr. {self.user.full_name or self.user.email}"
+        return f"Dr. {get_display_name(self.user)}"
 
 
 class Schedule(BaseModel):

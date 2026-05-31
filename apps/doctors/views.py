@@ -4,14 +4,11 @@ Each ViewSet handles HTTP concerns only: auth, permissions, serialization,
 and response codes. No ORM calls or business logic lives here.
 """
 
-import datetime
-
 from rest_framework import filters, viewsets
 from rest_framework.decorators import action
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 
-from apps.appointments.models import TimeSlot
 from apps.appointments.serializers import TimeSlotSerializer
 from apps.doctors.models import Doctor, Specialty
 from apps.doctors.serializers import (
@@ -19,6 +16,7 @@ from apps.doctors.serializers import (
     DoctorListSerializer,
     SpecialtySerializer,
 )
+from apps.doctors.services import get_available_slots
 
 
 class DoctorViewSet(viewsets.ReadOnlyModelViewSet):
@@ -45,22 +43,12 @@ class DoctorViewSet(viewsets.ReadOnlyModelViewSet):
         """Return available time slots for this doctor.
 
         Query params:
-            days (int): days ahead to look, default 7
+            days (int): days ahead to look (1–365, default 7)
         """
         doctor = self.get_object()
         days_ahead = int(request.query_params.get("days", 7))
-        today = datetime.date.today()
-        end_date = today + datetime.timedelta(days=days_ahead)
-
-        slots = TimeSlot.objects.filter(
-            schedule__doctor=doctor,
-            status=TimeSlot.Status.AVAILABLE,
-            start_datetime__date__gte=today,
-            start_datetime__date__lte=end_date,
-        ).order_by("start_datetime")
-
-        serializer = TimeSlotSerializer(slots, many=True)
-        return Response(serializer.data)
+        slots = get_available_slots(doctor, days_ahead=days_ahead)
+        return Response(TimeSlotSerializer(slots, many=True).data)
 
 
 class SpecialtyViewSet(viewsets.ReadOnlyModelViewSet):
