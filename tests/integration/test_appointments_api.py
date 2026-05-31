@@ -158,25 +158,34 @@ class TestAppointmentCreate:
     def test_overlapping_appointment_returns_400(
         self, auth_client_patient, patient, available_slot
     ):
-        """Patient with existing appointment at same time → 400."""
-        # Create a pending appointment at the same time
+        """Patient with existing appointment at same time → 400.
+
+        Creates a second slot at the SAME datetime on a DIFFERENT schedule to
+        avoid UniqueViolation on (schedule, start_datetime). The overlap check
+        is on datetime range, not on schedule.
+        """
+        # Create a pending appointment occupying available_slot
         AppointmentFactory(
             patient=patient,
             status=Appointment.Status.PENDING,
             slot=available_slot,
         )
-        # The signal already created slots for any new schedule at the same times.
-        # Use a different schedule and find the slot the signal already created
-        # at the same datetime — avoids UniqueViolation on (schedule, start_datetime).
+        # Build a second slot at the same datetime on a fresh schedule
         other_schedule = ScheduleFactory()
+        # Use any signal-generated slot that matches the datetime, or create directly
         overlapping = TimeSlot.objects.filter(
             schedule=other_schedule,
             start_datetime=available_slot.start_datetime,
             status=TimeSlot.Status.AVAILABLE,
         ).first()
         if overlapping is None:
-            # Fallback: signal didn't generate for this date (e.g. not a Monday)
-            pytest.skip("No overlapping slot available for this weekday")
+            # Signal didn't generate for this weekday — create directly
+            overlapping = TimeSlotFactory(
+                schedule=other_schedule,
+                start_datetime=available_slot.start_datetime,
+                end_datetime=available_slot.end_datetime,
+                status=TimeSlot.Status.AVAILABLE,
+            )
         response = auth_client_patient.post(
             self.url,
             {"slot": str(overlapping.id)},
@@ -433,3 +442,147 @@ class TestDoctorList:
         assert "full_name" in first
         assert "consultation_duration" in first
         assert "specialties_count" in first
+
+
+# ---------------------------------------------------------------------------
+# TestAppointmentRetrieve (GET /api/appointments/{id}/)
+# ---------------------------------------------------------------------------
+
+
+class TestAppointmentRetrieve:
+    """GET /api/appointments/{id}/ — retrieve single appointment."""
+
+    def test_patient_can_retrieve_own_appointment(
+        self, db, auth_client_patient, patient, doctor
+    ):
+        """Patient retrieves their own appointment → 200 with full detail."""
+        appt = AppointmentFactory(patient=patient, doctor=doctor)
+        response = auth_client_patient.get(f"/api/appointments/{appt.id}/")
+        assert response.status_code == status.HTTP_200_OK
+        assert response.data["id"] == str(appt.id)
+        assert "can_cancel" in response.data
+        assert "slot" in response.data
+
+    def test_patient_cannot_retrieve_other_patients_appointment(
+        self, db, auth_client_patient, doctor
+    ):
+        """Patient cannot retrieve another patient's appointment → 404."""
+        other_patient = PatientFactory()
+        appt = AppointmentFactory(patient=other_patient, doctor=doctor)
+        response = auth_client_patient.get(f"/api/appointments/{appt.id}/")
+        assert response.status_code == status.HTTP_404_NOT_FOUND
+
+    def test_nonexistent_id_returns_404(self, db, auth_client_patient):
+        """Non-existent appointment ID returns 404."""
+        import uuid
+
+        response = auth_client_patient.get(f"/api/appointments/{uuid.uuid4()}/")
+        assert response.status_code == status.HTTP_404_NOT_FOUND
+
+    def test_unauthenticated_returns_401(self, db, patient, doctor):
+        """Unauthenticated request → 401."""
+        appt = AppointmentFactory(patient=patient, doctor=doctor)
+        client = APIClient()
+        response = client.get(f"/api/appointments/{appt.id}/")
+        assert response.status_code == status.HTTP_401_UNAUTHORIZED
+
+
+# ---------------------------------------------------------------------------
+# TestAppointmentUpdate (PATCH /api/appointments/{id}/)
+# ---------------------------------------------------------------------------
+
+
+class TestAppointmentUpdate:
+    """PATCH /api/appointments/{id}/ — update reason."""
+
+    def test_patient_can_update_reason(self, db, auth_client_patient, patient, doctor):
+        """Patient updates the reason of their appointment → 200."""
+        appt = AppointmentFactory(patient=patient, doctor=doctor, reason="Old reason")
+        response = auth_client_patient.patch(
+            f"/api/appointments/{appt.id}/",
+            {"reason": "New reason"},
+            format="json",
+        )
+        assert response.status_code == status.HTTP_200_OK
+        appt.refresh_from_db()
+        assert appt.reason == "New reason"
+
+    def test_unauthenticated_returns_401(self, db, patient, doctor):
+        """Unauthenticated PATCH → 401."""
+        appt = AppointmentFactory(patient=patient, doctor=doctor)
+        client = APIClient()
+        response = client.patch(
+            f"/api/appointments/{appt.id}/",
+            {"reason": "X"},
+            format="json",
+        )
+        assert response.status_code == status.HTTP_401_UNAUTHORIZED
+
+
+# ---------------------------------------------------------------------------
+# TestAppointmentDelete (DELETE /api/appointments/{id}/)
+# ---------------------------------------------------------------------------
+
+
+class TestAppointmentDelete:
+    """DELETE /api/appointments/{id}/ — admin only hard delete."""
+
+    def test_admin_can_delete_appointment(self, db, auth_client_admin, patient, doctor):
+        """Admin deletes an appointment → 204."""
+        appt = AppointmentFactory(patient=patient, doctor=doctor)
+        response = auth_client_admin.delete(f"/api/appointments/{appt.id}/")
+        assert response.status_code == status.HTTP_204_NO_CONTENT
+        from apps.appointments.models import Appointment as Appt
+
+        assert not Appt.objects.filter(pk=appt.pk).exists()
+
+    def test_patient_cannot_delete_appointment(
+        self, db, auth_client_patient, patient, doctor
+    ):
+        """Patient cannot delete → 403."""
+        appt = AppointmentFactory(patient=patient, doctor=doctor)
+        response = auth_client_patient.delete(f"/api/appointments/{appt.id}/")
+        assert response.status_code == status.HTTP_403_FORBIDDEN
+
+    def test_doctor_cannot_delete_appointment(
+        self, db, auth_client_doctor, patient, doctor
+    ):
+        """Doctor cannot delete → 403 (or 404 — not in their queryset)."""
+        other_patient = PatientFactory()
+        appt = AppointmentFactory(patient=other_patient, doctor=doctor)
+        response = auth_client_doctor.delete(f"/api/appointments/{appt.id}/")
+        # Doctor can see this appointment (it's theirs), but destroy requires IsAdminRole
+        assert response.status_code == status.HTTP_403_FORBIDDEN
+
+
+# ---------------------------------------------------------------------------
+# TestDoctorDetail (GET /api/doctors/{id}/)
+# ---------------------------------------------------------------------------
+
+
+class TestDoctorDetail:
+    """GET /api/doctors/{id}/ — retrieve doctor with full detail."""
+
+    def test_returns_doctor_detail_with_specialties(
+        self, db, auth_client_patient, doctor
+    ):
+        """Detail response includes specialties, email, bio fields."""
+        response = auth_client_patient.get(f"/api/doctors/{doctor.id}/")
+        assert response.status_code == status.HTTP_200_OK
+        assert response.data["id"] == str(doctor.id)
+        assert "specialties" in response.data
+        assert "email" in response.data
+        assert "license_number" in response.data
+
+    def test_nonexistent_doctor_returns_404(self, db, auth_client_patient):
+        """Non-existent doctor ID → 404."""
+        import uuid
+
+        response = auth_client_patient.get(f"/api/doctors/{uuid.uuid4()}/")
+        assert response.status_code == status.HTTP_404_NOT_FOUND
+
+    def test_unauthenticated_returns_401(self, db, doctor):
+        """Unauthenticated request → 401."""
+        client = APIClient()
+        response = client.get(f"/api/doctors/{doctor.id}/")
+        assert response.status_code == status.HTTP_401_UNAUTHORIZED

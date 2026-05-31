@@ -54,10 +54,14 @@ class TestSchedulePostSaveSignal:
 
         assert slots_a > 0
         assert slots_b > 0
-        # No slots cross-contamination
-        assert not TimeSlot.objects.filter(
-            schedule=schedule_a, schedule__in=[schedule_b]
-        ).exists()
+        # No slots are shared between schedules — each slot belongs to exactly one
+        slots_a_ids = set(
+            TimeSlot.objects.filter(schedule=schedule_a).values_list("id", flat=True)
+        )
+        slots_b_ids = set(
+            TimeSlot.objects.filter(schedule=schedule_b).values_list("id", flat=True)
+        )
+        assert slots_a_ids.isdisjoint(slots_b_ids)
 
     def test_signal_does_not_raise_on_generation_failure(self, db):
         """If generate_slots_for_schedule raises, the Schedule save still succeeds."""

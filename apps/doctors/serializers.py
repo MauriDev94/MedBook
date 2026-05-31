@@ -2,6 +2,7 @@
 
 from rest_framework import serializers
 
+from apps.core.utils import get_display_name
 from apps.doctors.models import Doctor, Specialty
 
 
@@ -22,7 +23,7 @@ class DoctorListSerializer(serializers.ModelSerializer):
         fields = ["id", "full_name", "consultation_duration", "specialties_count"]
 
     def get_full_name(self, obj) -> str:
-        return obj.user.full_name or obj.user.email
+        return get_display_name(obj.user)
 
     def get_specialties_count(self, obj) -> int:
         # Uses prefetch_related cache when available — no extra query
@@ -50,4 +51,4 @@ class DoctorDetailSerializer(serializers.ModelSerializer):
         ]
 
     def get_full_name(self, obj) -> str:
-        return obj.user.full_name or obj.user.email
+        return get_display_name(obj.user)
