@@ -4,6 +4,7 @@ Each ViewSet handles HTTP concerns only: auth, permissions, serialization,
 and response codes. No ORM calls or business logic lives here.
 """
 
+from django_filters.rest_framework import DjangoFilterBackend
 from rest_framework import filters, viewsets
 from rest_framework.decorators import action
 from rest_framework.permissions import IsAuthenticated
@@ -11,6 +12,7 @@ from rest_framework.response import Response
 
 from apps.appointments.serializers import TimeSlotSerializer
 from apps.core.permissions import IsDoctor
+from apps.doctors.filters import DoctorFilter, ScheduleFilter
 from apps.doctors.models import Doctor, Schedule, Specialty
 from apps.doctors.serializers import (
     DoctorDetailSerializer,
@@ -32,7 +34,12 @@ class DoctorViewSet(viewsets.ReadOnlyModelViewSet):
 
     queryset = Doctor.objects.select_related("user").prefetch_related("specialties")
     permission_classes = [IsAuthenticated]
-    filter_backends = [filters.SearchFilter, filters.OrderingFilter]
+    filter_backends = [
+        DjangoFilterBackend,
+        filters.SearchFilter,
+        filters.OrderingFilter,
+    ]
+    filterset_class = DoctorFilter
     search_fields = ["user__first_name", "user__last_name", "user__email"]
     ordering_fields = ["user__last_name", "consultation_duration"]
     ordering = ["user__last_name"]
@@ -66,6 +73,7 @@ class ScheduleViewSet(viewsets.ModelViewSet):
     """
 
     permission_classes = [IsAuthenticated]
+    filterset_class = ScheduleFilter
 
     def get_queryset(self):
         user = self.request.user
