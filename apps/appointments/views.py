@@ -6,18 +6,21 @@ All business logic is delegated to apps.appointments.services.
 
 from functools import wraps
 
-from rest_framework import status, viewsets
+from rest_framework import mixins, status, viewsets
 from rest_framework.decorators import action
+from rest_framework.exceptions import PermissionDenied
+from rest_framework.generics import get_object_or_404
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 
 from apps.appointments import services
-from apps.appointments.models import Appointment
+from apps.appointments.models import Appointment, MedicalNote
 from apps.appointments.serializers import (
     AppointmentCreateSerializer,
     AppointmentDetailSerializer,
     AppointmentListSerializer,
     AppointmentUpdateSerializer,
+    MedicalNoteSerializer,
 )
 from apps.core.permissions import (
     IsAdminRole,
@@ -113,3 +116,44 @@ class AppointmentViewSet(viewsets.ModelViewSet):
         appointment = self.get_object()
         services.mark_no_show(appointment)
         return Response(AppointmentDetailSerializer(appointment).data)
+
+
+class MedicalNoteViewSet(
+    mixins.ListModelMixin,
+    mixins.CreateModelMixin,
+    mixins.RetrieveModelMixin,
+    viewsets.GenericViewSet,
+):
+    """Read-only notes nested under /api/appointments/{appointment_pk}/notes/.
+
+    Only the doctor assigned to the appointment and admins can access notes.
+    Patients are explicitly blocked — medical notes are sensitive clinical data.
+    Notes are immutable after creation (no update, no delete).
+    """
+
+    serializer_class = MedicalNoteSerializer
+    permission_classes = [IsAuthenticated]
+
+    def _get_appointment(self):
+        """Resolve appointment from URL, enforcing role-based access."""
+        appointment_pk = self.kwargs["appointment_pk"]
+        user = self.request.user
+        qs = Appointment.objects.select_related("doctor__user")
+
+        if user.role == Role.ADMIN:
+            return get_object_or_404(qs, pk=appointment_pk)
+
+        if user.role == Role.DOCTOR:
+            return get_object_or_404(qs, pk=appointment_pk, doctor__user=user)
+
+        raise PermissionDenied("Only doctors and admins can access medical notes.")
+
+    def get_queryset(self):
+        appointment = self._get_appointment()
+        return MedicalNote.objects.filter(appointment=appointment).select_related(
+            "author"
+        )
+
+    def perform_create(self, serializer):
+        appointment = self._get_appointment()
+        serializer.save(appointment=appointment, author=self.request.user)

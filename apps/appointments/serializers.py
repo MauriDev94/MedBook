@@ -6,7 +6,7 @@ Business validation is fully delegated to services.py — not duplicated here.
 
 from rest_framework import serializers
 
-from apps.appointments.models import Appointment, TimeSlot
+from apps.appointments.models import Appointment, MedicalNote, TimeSlot
 from apps.core.utils import get_display_name
 
 
@@ -125,3 +125,21 @@ class AppointmentUpdateSerializer(serializers.ModelSerializer):
     class Meta:
         model = Appointment
         fields = ["reason"]
+
+
+class MedicalNoteSerializer(serializers.ModelSerializer):
+    """Read/write serializer for medical notes.
+
+    author and appointment are excluded from the writable fields —
+    both are injected in perform_create() from the URL and request context.
+    """
+
+    author_name = serializers.SerializerMethodField()
+
+    class Meta:
+        model = MedicalNote
+        fields = ["id", "content", "author_name", "created_at"]
+        read_only_fields = ["id", "author_name", "created_at"]
+
+    def get_author_name(self, obj) -> str:
+        return get_display_name(obj.author)

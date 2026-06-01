@@ -5,7 +5,7 @@ from django.urls import include, path
 from drf_spectacular.views import SpectacularAPIView, SpectacularSwaggerView
 from rest_framework.routers import DefaultRouter
 
-from apps.appointments.views import AppointmentViewSet
+from apps.appointments.views import AppointmentViewSet, MedicalNoteViewSet
 from apps.doctors.views import DoctorViewSet, ScheduleViewSet, SpecialtyViewSet
 from apps.users.views import UserViewSet
 
@@ -16,14 +16,29 @@ router.register("doctors", DoctorViewSet, basename="doctor")
 router.register("schedules", ScheduleViewSet, basename="schedule")
 router.register("specialties", SpecialtyViewSet, basename="specialty")
 
+# Nested routes — medical notes live under their appointment
+notes_list = MedicalNoteViewSet.as_view({"get": "list", "post": "create"})
+notes_detail = MedicalNoteViewSet.as_view({"get": "retrieve"})
+
 urlpatterns = [
     # Admin
     path("admin/", admin.site.urls),
     # OpenAPI
     path("api/schema/", SpectacularAPIView.as_view(), name="schema"),
     path("api/docs/", SpectacularSwaggerView.as_view(url_name="schema"), name="docs"),
-    # API router — appointments, doctors, specialties
+    # API router — appointments, doctors, schedules, specialties, users
     path("api/", include(router.urls)),
+    # Nested: /api/appointments/{appointment_pk}/notes/
+    path(
+        "api/appointments/<appointment_pk>/notes/",
+        notes_list,
+        name="appointment-notes-list",
+    ),
+    path(
+        "api/appointments/<appointment_pk>/notes/<pk>/",
+        notes_detail,
+        name="appointment-notes-detail",
+    ),
     # User / Auth endpoints
     path("api/", include("apps.users.urls")),
 ]
