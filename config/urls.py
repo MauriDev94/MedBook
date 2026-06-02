@@ -30,12 +30,12 @@ urlpatterns = [
     path("api/", include(router.urls)),
     # Nested: /api/appointments/{appointment_pk}/notes/
     path(
-        "api/appointments/<appointment_pk>/notes/",
+        "api/appointments/<uuid:appointment_pk>/notes/",
         notes_list,
         name="appointment-notes-list",
     ),
     path(
-        "api/appointments/<appointment_pk>/notes/<pk>/",
+        "api/appointments/<uuid:appointment_pk>/notes/<uuid:pk>/",
         notes_detail,
         name="appointment-notes-detail",
     ),

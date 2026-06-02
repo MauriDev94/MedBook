@@ -7,6 +7,7 @@ All business logic is delegated to apps.appointments.services.
 from functools import wraps
 
 from django_filters.rest_framework import DjangoFilterBackend
+from drf_spectacular.utils import OpenApiResponse, extend_schema
 from rest_framework import mixins, status, viewsets
 from rest_framework.decorators import action
 from rest_framework.exceptions import PermissionDenied
@@ -55,6 +56,8 @@ class AppointmentViewSet(viewsets.ModelViewSet):
 
     def get_queryset(self):
         """Filter appointments by role — patients see only theirs, doctors see theirs."""
+        if getattr(self, "swagger_fake_view", False):
+            return Appointment.objects.none()
         user = self.request.user
         qs = Appointment.objects.select_related(
             "patient__user",
@@ -89,6 +92,15 @@ class AppointmentViewSet(viewsets.ModelViewSet):
 
     # --- State transition actions ---
 
+    @extend_schema(
+        request=None,
+        responses={
+            200: AppointmentDetailSerializer,
+            400: OpenApiResponse(description="Invalid transition"),
+        },
+        summary="Confirm appointment (doctor only)",
+        tags=["appointments"],
+    )
     @action(detail=True, methods=["post"])
     @_handle_transition_error
     def confirm(self, request, pk=None):
@@ -97,6 +109,15 @@ class AppointmentViewSet(viewsets.ModelViewSet):
         services.confirm_appointment(appointment, confirmed_by=request.user)
         return Response(AppointmentDetailSerializer(appointment).data)
 
+    @extend_schema(
+        request=None,
+        responses={
+            200: AppointmentDetailSerializer,
+            400: OpenApiResponse(description="Invalid transition"),
+        },
+        summary="Cancel appointment (patient or doctor)",
+        tags=["appointments"],
+    )
     @action(detail=True, methods=["post"])
     @_handle_transition_error
     def cancel(self, request, pk=None):
@@ -105,6 +126,15 @@ class AppointmentViewSet(viewsets.ModelViewSet):
         services.cancel_appointment(appointment, cancelled_by=request.user)
         return Response(AppointmentDetailSerializer(appointment).data)
 
+    @extend_schema(
+        request=None,
+        responses={
+            200: AppointmentDetailSerializer,
+            400: OpenApiResponse(description="Invalid transition"),
+        },
+        summary="Complete appointment (doctor only)",
+        tags=["appointments"],
+    )
     @action(detail=True, methods=["post"])
     @_handle_transition_error
     def complete(self, request, pk=None):
@@ -113,6 +143,15 @@ class AppointmentViewSet(viewsets.ModelViewSet):
         services.complete_appointment(appointment)
         return Response(AppointmentDetailSerializer(appointment).data)
 
+    @extend_schema(
+        request=None,
+        responses={
+            200: AppointmentDetailSerializer,
+            400: OpenApiResponse(description="Invalid transition"),
+        },
+        summary="Mark appointment as no-show (doctor only)",
+        tags=["appointments"],
+    )
     @action(detail=True, methods=["post"], url_path="no-show")
     @_handle_transition_error
     def no_show(self, request, pk=None):
@@ -122,13 +161,14 @@ class AppointmentViewSet(viewsets.ModelViewSet):
         return Response(AppointmentDetailSerializer(appointment).data)
 
 
+@extend_schema(tags=["notes"])
 class MedicalNoteViewSet(
     mixins.ListModelMixin,
     mixins.CreateModelMixin,
     mixins.RetrieveModelMixin,
     viewsets.GenericViewSet,
 ):
-    """Read-only notes nested under /api/appointments/{appointment_pk}/notes/.
+    """Medical notes nested under /api/appointments/{appointment_pk}/notes/.
 
     Only the doctor assigned to the appointment and admins can access notes.
     Patients are explicitly blocked — medical notes are sensitive clinical data.
@@ -153,6 +193,8 @@ class MedicalNoteViewSet(
         raise PermissionDenied("Only doctors and admins can access medical notes.")
 
     def get_queryset(self):
+        if getattr(self, "swagger_fake_view", False):
+            return MedicalNote.objects.none()
         appointment = self._get_appointment()
         return MedicalNote.objects.filter(appointment=appointment).select_related(
             "author"
