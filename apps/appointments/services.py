@@ -27,6 +27,8 @@ def create_appointment(
     requests try to book the same slot simultaneously, only one UPDATE
     will match (status=AVAILABLE), and the other will raise ValidationError.
 
+    Sends a booking-received email to the patient after persisting.
+
     Args:
         patient: Patient instance (from request.user.patient_profile).
         doctor: Doctor instance (inferred from slot.schedule.doctor).
@@ -47,12 +49,17 @@ def create_appointment(
         raise ValidationError("This time slot is no longer available.")
 
     slot.refresh_from_db()
-    return Appointment.objects.create(
+    appointment = Appointment.objects.create(
         patient=patient,
         doctor=doctor,
         slot=slot,
         reason=reason,
     )
+
+    from apps.notifications.services import send_appointment_created
+
+    send_appointment_created(appointment)
+    return appointment
 
 
 def validate_appointment_booking(patient, slot: TimeSlot) -> None:
@@ -82,6 +89,8 @@ def validate_appointment_booking(patient, slot: TimeSlot) -> None:
 def confirm_appointment(appointment: Appointment, confirmed_by) -> Appointment:
     """Transition a PENDING appointment to CONFIRMED.
 
+    Sends a confirmation email to the patient after persisting.
+
     Args:
         appointment: The Appointment instance to confirm.
         confirmed_by: User performing the action (for audit trail).
@@ -93,6 +102,10 @@ def confirm_appointment(appointment: Appointment, confirmed_by) -> Appointment:
         ValueError: if the appointment is not in PENDING status.
     """
     appointment.confirm()  # raises ValueError if invalid transition
+
+    from apps.notifications.services import send_appointment_confirmed
+
+    send_appointment_confirmed(appointment)
     return appointment
 
 
@@ -102,6 +115,7 @@ def cancel_appointment(appointment: Appointment, cancelled_by) -> Appointment:
 
     Cancellation is allowed from PENDING or CONFIRMED status.
     The slot is returned to AVAILABLE so it can be booked again.
+    Sends a cancellation email to the patient after persisting.
 
     Args:
         appointment: The Appointment instance to cancel.
@@ -118,6 +132,9 @@ def cancel_appointment(appointment: Appointment, cancelled_by) -> Appointment:
     appointment.slot.status = TimeSlot.Status.AVAILABLE
     appointment.slot.save(update_fields=["status", "updated_at"])
 
+    from apps.notifications.services import send_appointment_cancelled
+
+    send_appointment_cancelled(appointment)
     return appointment
 
 
