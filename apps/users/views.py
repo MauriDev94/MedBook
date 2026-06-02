@@ -1,3 +1,4 @@
+from drf_spectacular.utils import extend_schema
 from rest_framework import status, viewsets
 from rest_framework.decorators import action
 from rest_framework.permissions import IsAuthenticated
@@ -30,6 +31,10 @@ class UserViewSet(viewsets.GenericViewSet):
             return UserUpdateSerializer
         return UserSerializer
 
+    @extend_schema(
+        summary="Get or update authenticated user profile",
+        tags=["users"],
+    )
     @action(detail=False, methods=["get", "patch"], url_path="me")
     def me(self, request):
         """GET → returns profile. PATCH → updates first_name / last_name."""

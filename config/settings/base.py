@@ -163,8 +163,32 @@ SIMPLE_JWT = {
 # ---------------------------------------------------------------------------
 SPECTACULAR_SETTINGS = {
     "TITLE": "MedBook API",
-    "DESCRIPTION": "REST API for medical appointment booking",
+    "DESCRIPTION": (
+        "REST API for medical appointment booking.\n\n"
+        "Supports three roles: **admin**, **doctor** and **patient**.\n"
+        "All endpoints require JWT authentication (`Bearer <token>`)."
+    ),
     "VERSION": "1.0.0",
+    "SCHEMA_PATH_PREFIX": "/api/",
+    "SERVE_INCLUDE_SCHEMA": False,
+    # Resolve status enum collision between Appointment and TimeSlot
+    "ENUM_NAME_OVERRIDES": {
+        "AppointmentStatusEnum": "apps.appointments.models.Appointment.Status",
+        "TimeSlotStatusEnum": "apps.appointments.models.TimeSlot.Status",
+    },
+    "TAGS": [
+        {"name": "auth", "description": "JWT login, refresh and logout"},
+        {"name": "users", "description": "Authenticated user profile"},
+        {"name": "doctors", "description": "Doctor profiles and available slots"},
+        {"name": "schedules", "description": "Doctor weekly schedules"},
+        {"name": "specialties", "description": "Medical specialties (read-only)"},
+        {
+            "name": "appointments",
+            "description": "Appointment booking and state transitions",
+        },
+        {"name": "notes", "description": "Medical notes nested under appointments"},
+    ],
+    "COMPONENT_SPLIT_REQUEST": True,
 }
 
 # ---------------------------------------------------------------------------

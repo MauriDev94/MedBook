@@ -5,6 +5,7 @@ and response codes. No ORM calls or business logic lives here.
 """
 
 from django_filters.rest_framework import DjangoFilterBackend
+from drf_spectacular.utils import OpenApiParameter, extend_schema
 from rest_framework import filters, viewsets
 from rest_framework.decorators import action
 from rest_framework.permissions import IsAuthenticated
@@ -49,6 +50,16 @@ class DoctorViewSet(viewsets.ReadOnlyModelViewSet):
             return DoctorListSerializer
         return DoctorDetailSerializer
 
+    @extend_schema(
+        summary="List available time slots for a doctor",
+        parameters=[
+            OpenApiParameter(
+                "days", int, description="Days ahead to look (1–365, default 7)"
+            )
+        ],
+        responses=TimeSlotSerializer(many=True),
+        tags=["doctors"],
+    )
     @action(detail=True, methods=["get"], url_path="available-slots")
     def available_slots(self, request, pk=None):
         """Return available time slots for this doctor.
@@ -76,6 +87,8 @@ class ScheduleViewSet(viewsets.ModelViewSet):
     filterset_class = ScheduleFilter
 
     def get_queryset(self):
+        if getattr(self, "swagger_fake_view", False):
+            return Schedule.objects.none()
         user = self.request.user
         qs = Schedule.objects.select_related("doctor__user").order_by(
             "doctor", "day_of_week", "start_time"
