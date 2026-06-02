@@ -6,6 +6,7 @@ All business logic is delegated to apps.appointments.services.
 
 from functools import wraps
 
+from django_filters.rest_framework import DjangoFilterBackend
 from rest_framework import mixins, status, viewsets
 from rest_framework.decorators import action
 from rest_framework.exceptions import PermissionDenied
@@ -14,6 +15,7 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 
 from apps.appointments import services
+from apps.appointments.filters import AppointmentFilter
 from apps.appointments.models import Appointment, MedicalNote
 from apps.appointments.serializers import (
     AppointmentCreateSerializer,
@@ -48,6 +50,8 @@ class AppointmentViewSet(viewsets.ModelViewSet):
     """Full CRUD for appointments, with role-based filtering and state actions."""
 
     http_method_names = ["get", "post", "patch", "delete", "head", "options"]
+    filter_backends = [DjangoFilterBackend]
+    filterset_class = AppointmentFilter
 
     def get_queryset(self):
         """Filter appointments by role — patients see only theirs, doctors see theirs."""
