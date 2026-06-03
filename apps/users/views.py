@@ -5,6 +5,7 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework_simplejwt.views import TokenObtainPairView
 
+from apps.core.throttling import LoginRateThrottle
 from apps.users.serializers import (
     CustomTokenObtainPairSerializer,
     UserSerializer,
@@ -13,9 +14,13 @@ from apps.users.serializers import (
 
 
 class CustomTokenObtainPairView(TokenObtainPairView):
-    """JWT login endpoint. Returns access + refresh tokens with custom claims."""
+    """JWT login endpoint. Returns access + refresh tokens with custom claims.
+
+    Rate limited to 5 requests/minute per IP to prevent brute-force attacks.
+    """
 
     serializer_class = CustomTokenObtainPairSerializer
+    throttle_classes = [LoginRateThrottle]
 
 
 class UserViewSet(viewsets.GenericViewSet):
