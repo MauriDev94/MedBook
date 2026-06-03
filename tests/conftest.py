@@ -2,6 +2,7 @@ import os
 from pathlib import Path
 
 import pytest
+from django.core import mail
 from rest_framework.test import APIClient
 
 from tests.factories import DoctorFactory, PatientFactory, UserFactory
@@ -33,6 +34,17 @@ def pytest_configure(config):
 def timezone_settings(settings):
     """Ensure consistent timezone across all tests."""
     settings.TIME_ZONE = "UTC"
+
+
+@pytest.fixture(autouse=True)
+def clear_mail_outbox():
+    """Reset mail.outbox before every test.
+
+    The locmem email backend accumulates messages across the test session.
+    Without this fixture, a test that expects 1 email could see 3 from
+    previous tests, making assertions fragile.
+    """
+    mail.outbox = []
 
 
 @pytest.fixture
