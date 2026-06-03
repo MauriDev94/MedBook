@@ -30,6 +30,7 @@ DJANGO_APPS = [
 ]
 
 THIRD_PARTY_APPS = [
+    "corsheaders",
     "rest_framework",
     "rest_framework_simplejwt",
     "rest_framework_simplejwt.token_blacklist",
@@ -59,6 +60,7 @@ AUTH_USER_MODEL = "users.User"
 # ---------------------------------------------------------------------------
 MIDDLEWARE = [
     "django.middleware.security.SecurityMiddleware",
+    "corsheaders.middleware.CorsMiddleware",  # must be before CommonMiddleware
     "django.contrib.sessions.middleware.SessionMiddleware",
     "django.middleware.common.CommonMiddleware",
     "django.middleware.csrf.CsrfViewMiddleware",
@@ -144,6 +146,10 @@ REST_FRAMEWORK = {
         "rest_framework.filters.OrderingFilter",
     ],
     "EXCEPTION_HANDLER": "apps.core.exceptions.custom_exception_handler",
+    # Rate limiting — LoginRateThrottle applies only to /api/token/
+    "DEFAULT_THROTTLE_RATES": {
+        "login": "5/minute",
+    },
 }
 
 # ---------------------------------------------------------------------------
@@ -191,6 +197,17 @@ SPECTACULAR_SETTINGS = {
     ],
     "COMPONENT_SPLIT_REQUEST": True,
 }
+
+# ---------------------------------------------------------------------------
+# CORS (django-cors-headers)
+# ---------------------------------------------------------------------------
+# Comma-separated list of allowed origins. Override in production via env var.
+# Example: CORS_ALLOWED_ORIGINS=https://app.medbook.com,https://www.medbook.com
+CORS_ALLOWED_ORIGINS = config(
+    "CORS_ALLOWED_ORIGINS",
+    default="http://localhost:3000,http://localhost:5173",
+    cast=Csv(),
+)
 
 # ---------------------------------------------------------------------------
 # AnyMail / Resend
