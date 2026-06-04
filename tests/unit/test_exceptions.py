@@ -87,6 +87,16 @@ class TestExceptionHandlerShape:
         assert response.data["code"] == "validation_error"
         assert "detail" in response.data
 
+    def test_validation_error_with_single_detail_key(self):
+        """A ValidationError carrying a lone {'detail': ...} → detail passthrough."""
+        exc = ValidationError({"detail": "Single detail message."})
+        response = call_handler(exc)
+
+        assert response.status_code == status.HTTP_400_BAD_REQUEST
+        assert response.data["code"] == "validation_error"
+        assert response.data["detail"] == "Single detail message."
+        assert "field_errors" not in response.data
+
     def test_non_drf_exception_returns_none(self):
         response = call_handler(ValueError("something broke"))
 

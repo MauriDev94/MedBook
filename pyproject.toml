@@ -1,0 +1,24 @@
+[tool.coverage.run]
+# Branch coverage is the honest standard — it measures if/else paths,
+# not just whether a line was hit.
+branch = true
+source = ["apps"]
+omit = [
+    "*/migrations/*",
+    "*/apps.py",
+    "*/__init__.py",
+    "config/*",
+    "manage.py",
+]
+
+[tool.coverage.report]
+show_missing = true
+skip_covered = false
+# Fail the build if real branch coverage drops below the PRD target.
+fail_under = 85
+exclude_lines = [
+    "pragma: no cover",
+    "def __str__",
+    "if TYPE_CHECKING:",
+    "raise NotImplementedError",
+]
