@@ -416,6 +416,14 @@ class TestDoctorAvailableSlots:
         response = client.get(f"/api/doctors/{doctor.id}/available-slots/")
         assert response.status_code == status.HTTP_401_UNAUTHORIZED
 
+    def test_non_integer_days_returns_400(self, db, auth_client_patient, doctor):
+        """A non-integer ?days= value must return 400, not crash with 500."""
+        response = auth_client_patient.get(
+            f"/api/doctors/{doctor.id}/available-slots/?days=abc"
+        )
+        assert response.status_code == status.HTTP_400_BAD_REQUEST
+        assert response.data["code"] == "validation_error"
+
 
 # ---------------------------------------------------------------------------
 # TestDoctorList
@@ -442,6 +450,37 @@ class TestDoctorList:
         assert "full_name" in first
         assert "consultation_duration" in first
         assert "specialties_count" in first
+
+    def test_specialties_count_has_no_n_plus_1(self, db, auth_client_patient):
+        """specialties_count must NOT add one query per doctor (N+1 guard).
+
+        Honest measurement: count the real queries when listing 2 doctors,
+        then 4 doctors. If specialties_count uses .count() it fires one extra
+        COUNT per doctor → query total grows with N → assertion fails.
+        With len(prefetch_cache) the total is constant.
+        """
+        from django.db import connection
+        from django.test.utils import CaptureQueriesContext
+
+        from tests.factories import DoctorFactory, SpecialtyFactory
+
+        specialties = [SpecialtyFactory() for _ in range(3)]
+
+        DoctorFactory(specialties=specialties)
+        DoctorFactory(specialties=specialties)
+        with CaptureQueriesContext(connection) as ctx_two:
+            auth_client_patient.get(f"{self.url}?page_size=50")
+
+        DoctorFactory(specialties=specialties)
+        DoctorFactory(specialties=specialties)
+        with CaptureQueriesContext(connection) as ctx_four:
+            auth_client_patient.get(f"{self.url}?page_size=50")
+
+        # Query count must be independent of the number of doctors listed.
+        assert len(ctx_two.captured_queries) == len(ctx_four.captured_queries), (
+            f"N+1 detected: 2 doctors → {len(ctx_two.captured_queries)} queries, "
+            f"4 doctors → {len(ctx_four.captured_queries)} queries"
+        )
 
 
 # ---------------------------------------------------------------------------

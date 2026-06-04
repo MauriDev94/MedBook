@@ -8,6 +8,7 @@ from django_filters.rest_framework import DjangoFilterBackend
 from drf_spectacular.utils import OpenApiParameter, extend_schema
 from rest_framework import filters, viewsets
 from rest_framework.decorators import action
+from rest_framework.exceptions import ValidationError
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 
@@ -68,9 +69,21 @@ class DoctorViewSet(viewsets.ReadOnlyModelViewSet):
             days (int): days ahead to look (1–365, default 7)
         """
         doctor = self.get_object()
-        days_ahead = int(request.query_params.get("days", 7))
+        days_ahead = self._parse_days(request.query_params.get("days", 7))
         slots = get_available_slots(doctor, days_ahead=days_ahead)
         return Response(TimeSlotSerializer(slots, many=True).data)
+
+    @staticmethod
+    def _parse_days(raw) -> int:
+        """Parse the ?days= query param, returning 400 on non-integer input.
+
+        Range clamping (1–365) is handled by the service; this only guards
+        the int() conversion so bad input returns 400 instead of crashing 500.
+        """
+        try:
+            return int(raw)
+        except (TypeError, ValueError):
+            raise ValidationError({"days": "Must be an integer."})
 
 
 class ScheduleViewSet(viewsets.ModelViewSet):
