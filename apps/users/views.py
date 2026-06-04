@@ -50,4 +50,6 @@ class UserViewSet(viewsets.GenericViewSet):
         serializer = self.get_serializer(request.user, data=request.data, partial=True)
         serializer.is_valid(raise_exception=True)
         serializer.save()
-        return Response(serializer.data, status=status.HTTP_200_OK)
+        # Re-serialize with the read serializer so the response carries the
+        # full profile (id, email, role, …), not just the edited fields.
+        return Response(UserSerializer(request.user).data, status=status.HTTP_200_OK)

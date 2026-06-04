@@ -129,6 +129,30 @@ class TestUserMePatchEndpoint:
         assert response.data["first_name"] == "María"
         assert response.data["last_name"] == "García"
 
+    def test_patch_response_returns_full_profile(self, api_client):
+        """PATCH must echo the FULL profile, not just the edited fields.
+
+        Pins the behaviour after the DRY refactor: the write serializer only
+        accepts first_name/last_name, but the view re-serializes with the read
+        serializer so the response still carries id, email, role, created_at.
+        """
+        user = UserFactory(
+            email="full@example.com", role="patient", first_name="A", last_name="B"
+        )
+        api_client.force_authenticate(user=user)
+
+        response = api_client.patch(
+            "/api/users/me/",
+            {"first_name": "Updated"},
+            format="json",
+        )
+
+        assert response.status_code == status.HTTP_200_OK
+        for field in ["id", "email", "role", "full_name", "created_at"]:
+            assert field in response.data, f"Missing field in PATCH response: {field}"
+        assert response.data["email"] == "full@example.com"
+        assert response.data["full_name"] == "Updated B"
+
     def test_patch_unauthenticated_returns_401(self, api_client):
         response = api_client.patch(
             "/api/users/me/",

@@ -41,24 +41,12 @@ class UserSerializer(serializers.ModelSerializer):
 class UserUpdateSerializer(serializers.ModelSerializer):
     """Write serializer — used for PATCH /api/users/me/.
 
-    Only first_name and last_name are editable. Email and role are
-    intentionally excluded to prevent privilege escalation.
+    Exposes ONLY the editable fields. Email and role are not even part of the
+    schema, so privilege escalation is structurally impossible. The view
+    re-serializes the saved instance with UserSerializer to return the full
+    profile in the response.
     """
-
-    full_name = serializers.SerializerMethodField()
 
     class Meta:
         model = User
-        fields = [
-            "id",
-            "email",
-            "role",
-            "full_name",
-            "first_name",
-            "last_name",
-            "created_at",
-        ]
-        read_only_fields = ["id", "email", "role", "created_at"]
-
-    def get_full_name(self, obj) -> str:
-        return obj.full_name
+        fields = ["first_name", "last_name"]
