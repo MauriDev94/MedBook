@@ -172,16 +172,22 @@ GET /api/schedules/?day_of_week=0&is_active=true
 
 ## RBAC — Permission matrix
 
-| Permission class | Rule |
-|---|---|
-| `IsDoctor` | `user.role == 'doctor'` |
-| `IsPatient` | `user.role == 'patient'` |
-| `IsAdminRole` | `user.role == 'admin'` |
-| `IsOwnerOrAdmin` | `obj.user == request.user` or admin |
-| `IsDoctorOfAppointment` | `appointment.doctor == user.doctor_profile` |
-| `IsPatientOfAppointment` | `appointment.patient == user.patient_profile` |
-| `IsPatientOrDoctor` | role in ('patient', 'doctor') |
-| `ReadOnly` | `request.method in SAFE_METHODS` |
+**Wired to endpoints:**
+
+| Permission class | Rule | Used by |
+|---|---|---|
+| `IsDoctor` | `user.role == 'doctor'` | Schedule create |
+| `IsPatient` | `user.role == 'patient'` | Appointment create |
+| `IsAdminRole` | `user.role == 'admin'` | Appointment delete |
+| `IsDoctorOfAppointment` | `appointment.doctor == user.doctor_profile` | confirm / complete / no_show / cancel |
+| `IsPatientOfAppointment` | `appointment.patient == user.patient_profile` | cancel |
+
+**Reusable toolkit** (defined + tested, not wired — kept for future endpoints):
+
+| Permission class | Rule | Pattern demonstrated |
+|---|---|---|
+| `IsOwnerOrAdmin` | `obj.user == request.user` or admin | Dual-shape ownership |
+| `ReadOnly` | `request.method in SAFE_METHODS` | Composable read-only (`ReadOnly \| IsAdminRole`) |
 
 ---
 

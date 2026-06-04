@@ -315,6 +315,40 @@ class TestAppointmentActions:
         slot.refresh_from_db()
         assert slot.status == TimeSlot.Status.AVAILABLE
 
+    def test_cancel_enforces_object_ownership_not_just_queryset(
+        self, db, auth_client_admin, patient, doctor
+    ):
+        """Ownership on cancel is enforced at the object level, not only via queryset.
+
+        Admin's get_queryset returns ALL appointments, so get_object() succeeds.
+        But admin is neither the patient nor the doctor of the appointment, so the
+        object-level permission (IsPatientOfAppointment | IsDoctorOfAppointment)
+        must deny → 403. This proves the permission does work the queryset can't.
+        """
+        appt = AppointmentFactory(
+            patient=patient,
+            doctor=doctor,
+            status=Appointment.Status.PENDING,
+        )
+        response = auth_client_admin.post(f"/api/appointments/{appt.id}/cancel/")
+        assert response.status_code == status.HTTP_403_FORBIDDEN
+        appt.refresh_from_db()
+        assert appt.status == Appointment.Status.PENDING  # unchanged
+
+    def test_doctor_can_cancel_own_appointment(
+        self, db, auth_client_doctor, patient, doctor
+    ):
+        """The assigned doctor can also cancel the appointment → 200."""
+        appt = AppointmentFactory(
+            patient=patient,
+            doctor=doctor,
+            status=Appointment.Status.CONFIRMED,
+        )
+        response = auth_client_doctor.post(f"/api/appointments/{appt.id}/cancel/")
+        assert response.status_code == status.HTTP_200_OK
+        appt.refresh_from_db()
+        assert appt.status == Appointment.Status.CANCELLED
+
     def test_doctor_can_complete_confirmed_appointment(
         self, db, auth_client_doctor, patient, doctor
     ):
