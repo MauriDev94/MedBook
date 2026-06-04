@@ -2,3 +2,4 @@
 
 # Production
 gunicorn>=22,<23
+whitenoise[brotli]>=6.8,<7

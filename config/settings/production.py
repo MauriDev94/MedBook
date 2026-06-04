@@ -41,7 +41,28 @@ DATABASES = {
 }
 
 # ---------------------------------------------------------------------------
-# Static files
+# Static files — WhiteNoise serves them directly from Gunicorn
 # ---------------------------------------------------------------------------
+MIDDLEWARE = [  # noqa: F405
+    "django.middleware.security.SecurityMiddleware",
+    "whitenoise.middleware.WhiteNoiseMiddleware",  # right after SecurityMiddleware
+    "corsheaders.middleware.CorsMiddleware",
+    "django.contrib.sessions.middleware.SessionMiddleware",
+    "django.middleware.common.CommonMiddleware",
+    "django.middleware.csrf.CsrfViewMiddleware",
+    "django.contrib.auth.middleware.AuthenticationMiddleware",
+    "django.contrib.messages.middleware.MessageMiddleware",
+    "django.middleware.clickjacking.XFrameOptionsMiddleware",
+]
+
 STATIC_ROOT = BASE_DIR / "staticfiles"  # noqa: F405
 STATIC_URL = "/static/"
+
+STORAGES = {  # noqa: F405
+    "default": {
+        "BACKEND": "django.core.files.storage.FileSystemStorage",
+    },
+    "staticfiles": {
+        "BACKEND": "whitenoise.storage.CompressedManifestStaticFilesStorage",
+    },
+}
