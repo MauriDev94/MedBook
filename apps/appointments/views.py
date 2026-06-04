@@ -29,7 +29,7 @@ from apps.core.permissions import (
     IsAdminRole,
     IsDoctorOfAppointment,
     IsPatient,
-    IsPatientOrDoctor,
+    IsPatientOfAppointment,
 )
 from apps.users.models import Role
 
@@ -85,7 +85,12 @@ class AppointmentViewSet(viewsets.ModelViewSet):
         if self.action in ["confirm", "complete", "no_show"]:
             return [IsAuthenticated(), IsDoctorOfAppointment()]
         if self.action == "cancel":
-            return [IsAuthenticated(), IsPatientOrDoctor()]
+            # Ownership enforced at the object level (defense-in-depth):
+            # either the patient who booked it or the assigned doctor.
+            return [
+                IsAuthenticated(),
+                (IsPatientOfAppointment | IsDoctorOfAppointment)(),
+            ]
         if self.action == "destroy":
             return [IsAuthenticated(), IsAdminRole()]
         return [IsAuthenticated()]

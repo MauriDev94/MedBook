@@ -16,7 +16,6 @@ from apps.core.permissions import (
     IsOwnerOrAdmin,
     IsPatient,
     IsPatientOfAppointment,
-    IsPatientOrDoctor,
     ReadOnly,
 )
 from tests.factories import (
@@ -215,38 +214,6 @@ class TestIsPatientOfAppointment:
         doctor_user = appt.doctor.user
         request = make_request(user=doctor_user)
         assert self.perm.has_object_permission(request, None, appt) is False
-
-
-# ---------------------------------------------------------------------------
-# IsPatientOrDoctor
-# ---------------------------------------------------------------------------
-
-
-class TestIsPatientOrDoctor:
-    perm = IsPatientOrDoctor()
-
-    def test_patient_is_allowed(self, db):
-        """Patient role passes."""
-        user = UserFactory(role=Role.PATIENT)
-        request = make_request(user=user)
-        assert self.perm.has_permission(request, None) is True
-
-    def test_doctor_is_allowed(self, db):
-        """Doctor role passes."""
-        user = UserFactory(role=Role.DOCTOR)
-        request = make_request(user=user)
-        assert self.perm.has_permission(request, None) is True
-
-    def test_admin_is_denied(self, db):
-        """Admin role is rejected — not patient or doctor."""
-        user = UserFactory(role=Role.ADMIN, is_staff=True)
-        request = make_request(user=user)
-        assert self.perm.has_permission(request, None) is False
-
-    def test_unauthenticated_is_denied(self):
-        """Anonymous request is rejected."""
-        request = make_request(user=AnonymousUser())
-        assert self.perm.has_permission(request, None) is False
 
 
 # ---------------------------------------------------------------------------

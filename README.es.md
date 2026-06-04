@@ -174,14 +174,22 @@ GET /api/schedules/?day_of_week=0&is_active=true
 
 | Clase de permiso | Regla |
 |---|---|
-| `IsDoctor` | `user.role == 'doctor'` |
-| `IsPatient` | `user.role == 'patient'` |
-| `IsAdminRole` | `user.role == 'admin'` |
-| `IsOwnerOrAdmin` | `obj.user == request.user` o es admin |
-| `IsDoctorOfAppointment` | `appointment.doctor == user.doctor_profile` |
-| `IsPatientOfAppointment` | `appointment.patient == user.patient_profile` |
-| `IsPatientOrDoctor` | role in ('patient', 'doctor') |
-| `ReadOnly` | `request.method in SAFE_METHODS` |
+**Cableadas a endpoints:**
+
+| Clase de permiso | Regla | Usada por |
+|---|---|---|
+| `IsDoctor` | `user.role == 'doctor'` | Crear schedule |
+| `IsPatient` | `user.role == 'patient'` | Crear cita |
+| `IsAdminRole` | `user.role == 'admin'` | Eliminar cita |
+| `IsDoctorOfAppointment` | `appointment.doctor == user.doctor_profile` | confirm / complete / no_show / cancel |
+| `IsPatientOfAppointment` | `appointment.patient == user.patient_profile` | cancel |
+
+**Toolkit reutilizable** (definidas + testeadas, no cableadas — reservadas para endpoints futuros):
+
+| Clase de permiso | Regla | Patrón que demuestra |
+|---|---|---|
+| `IsOwnerOrAdmin` | `obj.user == request.user` o es admin | Ownership dual-shape |
+| `ReadOnly` | `request.method in SAFE_METHODS` | Read-only componible (`ReadOnly \| IsAdminRole`) |
 
 ---
 

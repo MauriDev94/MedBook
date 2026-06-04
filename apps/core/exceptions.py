@@ -11,7 +11,10 @@ All API errors are normalised to a single shape:
 This makes frontend error handling trivial — one shape, always.
 """
 
+from django.core.exceptions import ValidationError as DjangoValidationError
+from rest_framework import status
 from rest_framework.exceptions import ValidationError
+from rest_framework.response import Response
 from rest_framework.views import exception_handler
 
 
@@ -20,7 +23,13 @@ def custom_exception_handler(exc, context):
     response = exception_handler(exc, context)
 
     if response is None:
-        # Non-DRF exception (e.g. ValueError) — let Django handle it
+        # DRF doesn't handle Django's ValidationError. Services raise it
+        # (e.g. when losing the atomic slot-reservation race inside
+        # serializer.create()), where it escapes run_validation and would
+        # otherwise surface as a 500. Map it to a 400 with the standard shape.
+        if isinstance(exc, DjangoValidationError):
+            return _handle_django_validation_error(exc)
+        # Any other non-DRF exception (e.g. ValueError) — let Django handle it
         return None
 
     code = getattr(exc, "default_code", "error")
@@ -36,6 +45,19 @@ def custom_exception_handler(exc, context):
 
     response.data = data
     return response
+
+
+def _handle_django_validation_error(exc):
+    """Map a django.core.exceptions.ValidationError to a 400 Response.
+
+    Mirrors the {detail, code} shape used for DRF validation errors.
+    Django's ValidationError exposes its messages via the `messages` list.
+    """
+    messages = getattr(exc, "messages", None) or [str(exc)]
+    return Response(
+        {"detail": str(messages[0]), "code": "validation_error"},
+        status=status.HTTP_400_BAD_REQUEST,
+    )
 
 
 def _handle_validation_error(exc, response, data):

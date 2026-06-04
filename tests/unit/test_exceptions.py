@@ -87,10 +87,50 @@ class TestExceptionHandlerShape:
         assert response.data["code"] == "validation_error"
         assert "detail" in response.data
 
+    def test_validation_error_with_single_detail_key(self):
+        """A ValidationError carrying a lone {'detail': ...} → detail passthrough."""
+        exc = ValidationError({"detail": "Single detail message."})
+        response = call_handler(exc)
+
+        assert response.status_code == status.HTTP_400_BAD_REQUEST
+        assert response.data["code"] == "validation_error"
+        assert response.data["detail"] == "Single detail message."
+        assert "field_errors" not in response.data
+
     def test_non_drf_exception_returns_none(self):
         response = call_handler(ValueError("something broke"))
 
         assert response is None
+
+    def test_django_validation_error_maps_to_400(self):
+        """Django's ValidationError (raised by services) → 400, not a 500.
+
+        Services raise django.core.exceptions.ValidationError. When this
+        escapes outside DRF's run_validation (e.g. from a service called in
+        serializer.create()), DRF's default handler returns None → Django 500.
+        The custom handler must catch it and normalise it to a 400.
+        """
+        from django.core.exceptions import ValidationError as DjangoValidationError
+
+        exc = DjangoValidationError("This time slot is no longer available.")
+        response = call_handler(exc)
+
+        assert response is not None
+        assert response.status_code == status.HTTP_400_BAD_REQUEST
+        assert response.data["code"] == "validation_error"
+        assert response.data["detail"] == "This time slot is no longer available."
+
+    def test_django_validation_error_with_message_list(self):
+        """Django ValidationError carrying multiple messages → first as detail."""
+        from django.core.exceptions import ValidationError as DjangoValidationError
+
+        exc = DjangoValidationError(["First problem.", "Second problem."])
+        response = call_handler(exc)
+
+        assert response is not None
+        assert response.status_code == status.HTTP_400_BAD_REQUEST
+        assert response.data["code"] == "validation_error"
+        assert response.data["detail"] == "First problem."
 
 
 @pytest.mark.django_db

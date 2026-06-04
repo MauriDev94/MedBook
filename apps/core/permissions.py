@@ -55,6 +55,11 @@ class IsAdminRole(BasePermission):
 class IsOwnerOrAdmin(BasePermission):
     """Allow object access to the owner or to admin users.
 
+    Reusable RBAC building block — NOT currently wired to a ViewSet. Kept as
+    part of the permission toolkit because it demonstrates the dual-shape
+    ownership pattern (obj is the user, or obj has a .user FK). Reserve for a
+    future Patient/Doctor profile detail endpoint.
+
     Supports two object shapes:
     - obj IS the user (e.g. accessing User directly)
     - obj has a .user FK (e.g. Patient, Doctor profiles)
@@ -93,21 +98,14 @@ class IsPatientOfAppointment(BasePermission):
         )
 
 
-class IsPatientOrDoctor(BasePermission):
-    """Allow access to patients or doctors — not admin or anonymous."""
-
-    message = "Only patients or doctors can perform this action."
-
-    def has_permission(self, request, view):
-        return bool(
-            request.user
-            and request.user.is_authenticated
-            and request.user.role in (Role.PATIENT, Role.DOCTOR)
-        )
-
-
 class ReadOnly(BasePermission):
-    """Allow GET, HEAD, OPTIONS. Block all write methods."""
+    """Allow GET, HEAD, OPTIONS. Block all write methods.
+
+    Reusable RBAC building block — NOT currently wired to a ViewSet (the
+    read-only ViewSets use DRF's ReadOnlyModelViewSet instead). Kept as part
+    of the permission toolkit because it composes cleanly via OR, e.g.
+    `(ReadOnly | IsAdminRole)` = "everyone reads, only admin writes".
+    """
 
     def has_permission(self, request, view):
         return request.method in ("GET", "HEAD", "OPTIONS")
