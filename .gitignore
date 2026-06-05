@@ -2,6 +2,7 @@
 .agent/
 AGENT.md
 PRD.md
+docs/interview-prep.md
 
 # Python
 __pycache__/
