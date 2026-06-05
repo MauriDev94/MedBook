@@ -255,6 +255,31 @@ DOCTOR_ID="uuid-del-doctor-aqui"
 curl -s "http://localhost:8000/api/doctors/$DOCTOR_ID/available-slots/" \
   -H "Authorization: Bearer $TOKEN" \
   | python -m json.tool
+
+# Especificar ventana de días (default: 7)
+curl -s "http://localhost:8000/api/doctors/$DOCTOR_ID/available-slots/?days=14" \
+  -H "Authorization: Bearer $TOKEN" \
+  | python -m json.tool
+```
+
+### 2.5 Verificar validación de ?days=
+
+```bash
+# ?days= con valor no numérico debe devolver 400
+curl -s "http://localhost:8000/api/doctors/$DOCTOR_ID/available-slots/?days=abc" \
+  -H "Authorization: Bearer $TOKEN" \
+  | python -m json.tool
+```
+
+**Esperado:**
+```json
+{
+  "detail": "Invalid input.",
+  "code": "validation_error",
+  "field_errors": {
+    "days": ["Must be an integer."]
+  }
+}
 ```
 
 **Respuesta esperada:**
@@ -612,6 +637,27 @@ curl -s "http://localhost:8000/api/doctors/?specialty=cardiology" \
   -H "Authorization: Bearer $PATIENT_TOKEN" \
   | python -m json.tool
 ```
+
+### 8.5 Ordenar citas (ordering)
+
+```bash
+# Citas ordenadas por fecha de creación (más nuevas primero)
+curl -s "http://localhost:8000/api/appointments/?ordering=-created_at" \
+  -H "Authorization: Bearer $DOCTOR_TOKEN" \
+  | python -m json.tool
+
+# Citas ordenadas por fecha del slot (más próximas primero)
+curl -s "http://localhost:8000/api/appointments/?ordering=slot__start_datetime" \
+  -H "Authorization: Bearer $DOCTOR_TOKEN" \
+  | python -m json.tool
+
+# Combinar filtro + ordering
+curl -s "http://localhost:8000/api/appointments/?status=pending&ordering=slot__start_datetime" \
+  -H "Authorization: Bearer $DOCTOR_TOKEN" \
+  | python -m json.tool
+```
+
+El prefijo `-` invierte el orden (descendente). Campos disponibles: `created_at`, `slot__start_datetime`.
 
 ---
 

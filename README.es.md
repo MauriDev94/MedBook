@@ -3,8 +3,8 @@
 > API REST para reservas médicas — Django 5.1 + DRF 3.15  
 > Proyecto de portafolio que demuestra patrones Django de nivel producción.
 
-[![Tests](https://img.shields.io/badge/tests-270%20passing-brightgreen)](./tests)
-[![Coverage](https://img.shields.io/badge/coverage-99%25-brightgreen)](./tests)
+[![Tests](https://img.shields.io/badge/tests-274%20passing-brightgreen)](./tests)
+[![Coverage](https://img.shields.io/badge/branch%20coverage-98.7%25-brightgreen)](./tests)
 [![Python](https://img.shields.io/badge/python-3.12-blue)](https://python.org)
 [![Django](https://img.shields.io/badge/django-5.1-green)](https://djangoproject.com)
 
@@ -32,6 +32,7 @@ El objetivo es demostrar competencia real con Django: queries ORM complejas, per
 | Docs API | drf-spectacular (OpenAPI 3) | 0.27.2 |
 | Email | django-anymail (Resend) | 10.3 |
 | CORS | django-cors-headers | 4.9.0 |
+| Static files | whitenoise[brotli] | 6.8 |
 | Base de datos | PostgreSQL 16 | — |
 | Tests | pytest-django + factory-boy | — |
 | Lint | ruff | — |
@@ -257,7 +258,7 @@ Abrir **http://localhost:8000/api/docs/** para el Swagger interactivo.
 
 ## Correr los tests
 
-Los tests corren contra PostgreSQL real (igual que producción).
+Los tests corren contra PostgreSQL real (igual que producción) usando **branch coverage** como estándar — no solo cobertura de líneas. Branch coverage detecta caminos `if/else` sin testear que el coverage de líneas oculta.
 
 ```bash
 # Suite completa con cobertura
@@ -276,7 +277,7 @@ pytest -v
 pytest -x
 ```
 
-Estado actual: **270 tests · 99% cobertura · 0 fallos**
+Estado actual: **274 tests · 98.7% branch coverage · 0 fallos**
 
 ---
 
@@ -294,6 +295,7 @@ Resumen rápido:
 - **factory_boy** para todos los datos de test — cero fixtures JSON/YAML
 - **Backend locmem de email** en tests — assertions con `mail.outbox`, sin SMTP real
 - **`AnonRateThrottle`** en login — protección brute-force sin throttlear toda la API
+- **WhiteNoise** para static files en producción — sirve CSS/JS desde Gunicorn sin Nginx, con compresión Brotli y cache-busting automático
 
 ---
 

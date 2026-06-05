@@ -419,6 +419,84 @@ Without it, `AnonymousUser` has no `.role` attribute and spectacular crashes.
 
 ---
 
+## 15. Static files in production — WhiteNoise
+
+### Decision
+Use `whitenoise[brotli]` to serve static files directly from the Gunicorn process, without Nginx or a CDN.
+
+### Why
+Django's development server (`runserver`) serves static files automatically. Gunicorn does not — it is a pure WSGI server that only runs Python. Without a static file solution, the Django admin and Swagger UI ship to production with broken CSS/JS (404 on every asset).
+
+Three options:
+- **Nginx as reverse proxy** — the "production" answer for large deployments, but requires a separate process and configuration.
+- **CDN (S3 + CloudFront)** — correct for high-traffic apps; overkill for a portfolio project.
+- **WhiteNoise** — a middleware that intercepts static file requests before they reach Django's URL router. Zero extra infrastructure.
+
+```python
+# config/settings/production.py
+MIDDLEWARE = [
+    "django.middleware.security.SecurityMiddleware",
+    "whitenoise.middleware.WhiteNoiseMiddleware",  # right after SecurityMiddleware
+    ...
+]
+
+STORAGES = {
+    "staticfiles": {
+        "BACKEND": "whitenoise.storage.CompressedManifestStaticFilesStorage",
+    },
+}
+```
+
+`CompressedManifestStaticFilesStorage` adds a content hash to every filename (`base.abc123.css`). This enables `Cache-Control: max-age=31536000` — browsers cache the file for a year, and when the file changes its hash changes, forcing a fresh download. This is the standard cache-busting pattern.
+
+### Tradeoff
+WhiteNoise adds a small overhead per request compared to Nginx (which can serve files from kernel buffers). For a portfolio project serving a handful of users, this is irrelevant. For a high-traffic production app, Nginx or a CDN is the right call.
+
+---
+
+## 16. Branch coverage as the honest metric
+
+### Decision
+Use `--cov-branch` (branch coverage) instead of line coverage. Enforce a minimum of 85% via `--cov-fail-under=85` in both `pytest.ini` and CI.
+
+### Why line coverage lies
+
+```python
+def can_be_confirmed(self) -> bool:
+    return self.status == self.Status.PENDING
+```
+
+Line coverage says this is 100% covered if the function is called once — even if it always returns `True` and the `False` branch is never exercised. Branch coverage requires both `True` and `False` paths to be tested.
+
+More critically, for conditionals like:
+
+```python
+if not updated:  # race condition path
+    raise ValidationError("This time slot is no longer available.")
+```
+
+Line coverage counts this as covered the moment the `if` is executed. Branch coverage requires both paths: the normal path (updated > 0) AND the race condition path (updated = 0). If you never test the race, line coverage silently inflates to 99%.
+
+### Why 85%, not 100%?
+
+100% branch coverage is theoretically achievable but practically forces you to test `if getattr(self, "swagger_fake_view", False)` guards, `except Exception` handlers in signals, and other defensive code that is unreachable in normal flows. The effort spent writing those tests yields diminishing returns.
+
+85% enforced in CI is a real gate — it means meaningful coverage exists, not just the happy path. The number will drop when new code is added; CI will catch it and force the developer to write the missing tests.
+
+### The `pytest.ini` is the single source of truth
+
+```ini
+addopts =
+    --cov=apps
+    --cov-branch
+    --cov-report=term-missing
+    --cov-fail-under=85
+```
+
+CI adds only `--cov-report=xml` (needed by Codecov). It never overrides `addopts` — that would silently disable the gate.
+
+---
+
 ## Summary — Interview-ready decisions
 
 | Question | Answer |
@@ -433,3 +511,5 @@ Without it, `AnonymousUser` has no `.role` attribute and spectacular crashes.
 | "How does the state machine work?" | Methods on the model with explicit ValueError guards |
 | "Why factory_boy?" | Fixtures break when models change; factories stay decoupled |
 | "How is error format standardized?" | custom_exception_handler normalizes to {detail, code, field_errors?} |
+| "How do you serve static files in production?" | WhiteNoise middleware — serves from Gunicorn, no Nginx needed, with Brotli compression + cache-busting hashes |
+| "Why branch coverage instead of line coverage?" | Line coverage hides untested if/else branches; branch requires both paths; 85% enforced in CI as a real gate |

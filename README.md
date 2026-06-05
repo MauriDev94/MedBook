@@ -3,8 +3,8 @@
 > REST API for medical appointment booking — Django 5.1 + DRF 3.15  
 > Portfolio project demonstrating production-grade Django patterns.
 
-[![Tests](https://img.shields.io/badge/tests-270%20passing-brightgreen)](./tests)
-[![Coverage](https://img.shields.io/badge/coverage-99%25-brightgreen)](./tests)
+[![Tests](https://img.shields.io/badge/tests-274%20passing-brightgreen)](./tests)
+[![Coverage](https://img.shields.io/badge/branch%20coverage-98.7%25-brightgreen)](./tests)
 [![Python](https://img.shields.io/badge/python-3.12-blue)](https://python.org)
 [![Django](https://img.shields.io/badge/django-5.1-green)](https://djangoproject.com)
 
@@ -32,6 +32,7 @@ The goal is to demonstrate real-world Django competency: complex ORM queries, RB
 | API docs | drf-spectacular (OpenAPI 3) | 0.27.2 |
 | Email | django-anymail (Resend) | 10.3 |
 | CORS | django-cors-headers | 4.9.0 |
+| Static files | whitenoise[brotli] | 6.8 |
 | Database | PostgreSQL 16 | — |
 | Tests | pytest-django + factory-boy | — |
 | Lint | ruff | — |
@@ -257,6 +258,8 @@ Open **http://localhost:8000/api/docs/** for the interactive Swagger UI.
 
 Tests run against a real PostgreSQL database (same as production).
 
+Tests run with **branch coverage** as the honest standard — not just line coverage. A branch miss means an `if/else` path was never exercised, which line coverage hides.
+
 ```bash
 # Full suite with coverage
 pytest
@@ -284,7 +287,7 @@ createdb medbook_test          # or via Docker on port 5436
 # See .env.test.example for configuration
 ```
 
-Current stats: **270 tests · 99% coverage · 0 failures**
+Current stats: **274 tests · 98.7% branch coverage · 0 failures**
 
 ---
 
@@ -302,6 +305,7 @@ Quick summary:
 - **factory_boy** for all test data — zero JSON/YAML fixtures
 - **locmem email backend** in tests — `mail.outbox` assertions, no real SMTP needed
 - **`AnonRateThrottle`** on login endpoint — brute-force protection without throttling the entire API
+- **WhiteNoise** for production static files — serves CSS/JS from Gunicorn without Nginx, with Brotli compression and cache-busting hashes
 
 ---
 
