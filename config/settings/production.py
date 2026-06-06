@@ -58,6 +58,11 @@ MIDDLEWARE = [  # noqa: F405
 STATIC_ROOT = BASE_DIR / "staticfiles"  # noqa: F405
 STATIC_URL = "/static/"
 
+# ---------------------------------------------------------------------------
+# CORS — portfolio API, no frontend to restrict
+# ---------------------------------------------------------------------------
+CORS_ALLOW_ALL_ORIGINS = True
+
 STORAGES = {  # noqa: F405
     "default": {
         "BACKEND": "django.core.files.storage.FileSystemStorage",
