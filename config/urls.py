@@ -6,6 +6,7 @@ from drf_spectacular.views import SpectacularAPIView, SpectacularSwaggerView
 from rest_framework.routers import DefaultRouter
 
 from apps.appointments.views import AppointmentViewSet, MedicalNoteViewSet
+from apps.core.views import health_check
 from apps.doctors.views import DoctorViewSet, ScheduleViewSet, SpecialtyViewSet
 from apps.users.views import UserViewSet
 
@@ -21,6 +22,8 @@ notes_list = MedicalNoteViewSet.as_view({"get": "list", "post": "create"})
 notes_detail = MedicalNoteViewSet.as_view({"get": "retrieve"})
 
 urlpatterns = [
+    # Infrastructure
+    path("health/", health_check, name="health-check"),
     # Admin
     path("admin/", admin.site.urls),
     # OpenAPI
