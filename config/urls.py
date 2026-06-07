@@ -2,6 +2,7 @@
 
 from django.contrib import admin
 from django.urls import include, path
+from django.views.generic.base import RedirectView
 from drf_spectacular.views import SpectacularAPIView, SpectacularSwaggerView
 from rest_framework.routers import DefaultRouter
 
@@ -22,6 +23,8 @@ notes_list = MedicalNoteViewSet.as_view({"get": "list", "post": "create"})
 notes_detail = MedicalNoteViewSet.as_view({"get": "retrieve"})
 
 urlpatterns = [
+    # Root → Swagger docs (public deployment URL lands on interactive docs, not 404)
+    path("", RedirectView.as_view(url="/api/docs/", permanent=False), name="root"),
     # Infrastructure
     path("health/", health_check, name="health-check"),
     # Admin
