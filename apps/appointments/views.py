@@ -4,13 +4,10 @@ HTTP layer only: auth, permissions, serializer selection, response codes.
 All business logic is delegated to apps.appointments.services.
 """
 
-from functools import wraps
-
 from django_filters.rest_framework import DjangoFilterBackend
 from drf_spectacular.utils import OpenApiResponse, extend_schema
 from rest_framework import mixins, status, viewsets
 from rest_framework.decorators import action
-from rest_framework.exceptions import PermissionDenied
 from rest_framework.generics import get_object_or_404
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
@@ -28,23 +25,11 @@ from apps.appointments.serializers import (
 from apps.core.permissions import (
     IsAdminRole,
     IsDoctorOfAppointment,
+    IsDoctorOrAdminForNote,
     IsPatient,
     IsPatientOfAppointment,
 )
 from apps.users.models import Role
-
-
-def _handle_transition_error(fn):
-    """Decorator: catch ValueError from state transitions and return 400."""
-
-    @wraps(fn)
-    def wrapper(self, request, *args, **kwargs):
-        try:
-            return fn(self, request, *args, **kwargs)
-        except ValueError as exc:
-            return Response({"detail": str(exc)}, status=status.HTTP_400_BAD_REQUEST)
-
-    return wrapper
 
 
 class AppointmentViewSet(viewsets.ModelViewSet):
@@ -95,6 +80,22 @@ class AppointmentViewSet(viewsets.ModelViewSet):
             return [IsAuthenticated(), IsAdminRole()]
         return [IsAuthenticated()]
 
+    def create(self, request, *args, **kwargs):
+        """Book an appointment, returning the full detail representation.
+
+        The write serializer only accepts {slot, reason}; the response uses
+        AppointmentDetailSerializer so clients get back the complete created
+        resource (status, can_cancel, nested slot, etc.) without a follow-up
+        GET.
+        """
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        appointment = serializer.save()
+        detail = AppointmentDetailSerializer(
+            appointment, context=self.get_serializer_context()
+        )
+        return Response(detail.data, status=status.HTTP_201_CREATED)
+
     # --- State transition actions ---
 
     @extend_schema(
@@ -107,7 +108,6 @@ class AppointmentViewSet(viewsets.ModelViewSet):
         tags=["appointments"],
     )
     @action(detail=True, methods=["post"])
-    @_handle_transition_error
     def confirm(self, request, pk=None):
         """Transition PENDING → CONFIRMED (doctor only)."""
         appointment = self.get_object()
@@ -124,7 +124,6 @@ class AppointmentViewSet(viewsets.ModelViewSet):
         tags=["appointments"],
     )
     @action(detail=True, methods=["post"])
-    @_handle_transition_error
     def cancel(self, request, pk=None):
         """Transition PENDING|CONFIRMED → CANCELLED (patient or doctor)."""
         appointment = self.get_object()
@@ -141,7 +140,6 @@ class AppointmentViewSet(viewsets.ModelViewSet):
         tags=["appointments"],
     )
     @action(detail=True, methods=["post"])
-    @_handle_transition_error
     def complete(self, request, pk=None):
         """Transition CONFIRMED → COMPLETED (doctor only)."""
         appointment = self.get_object()
@@ -158,7 +156,6 @@ class AppointmentViewSet(viewsets.ModelViewSet):
         tags=["appointments"],
     )
     @action(detail=True, methods=["post"], url_path="no-show")
-    @_handle_transition_error
     def no_show(self, request, pk=None):
         """Transition CONFIRMED → NO_SHOW (doctor only)."""
         appointment = self.get_object()
@@ -181,10 +178,17 @@ class MedicalNoteViewSet(
     """
 
     serializer_class = MedicalNoteSerializer
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated, IsDoctorOrAdminForNote]
 
     def _get_appointment(self):
-        """Resolve appointment from URL, enforcing role-based access."""
+        """Resolve the appointment from the URL, scoped by role.
+
+        Role + doctor-ownership are already enforced by
+        IsDoctorOrAdminForNote.has_permission() before this runs. This only
+        re-derives the same scoping to fetch the object for queryset
+        filtering and note creation — admins see any appointment, doctors
+        only their own.
+        """
         appointment_pk = self.kwargs["appointment_pk"]
         user = self.request.user
         qs = Appointment.objects.select_related("doctor__user")
@@ -192,10 +196,7 @@ class MedicalNoteViewSet(
         if user.role == Role.ADMIN:
             return get_object_or_404(qs, pk=appointment_pk)
 
-        if user.role == Role.DOCTOR:
-            return get_object_or_404(qs, pk=appointment_pk, doctor__user=user)
-
-        raise PermissionDenied("Only doctors and admins can access medical notes.")
+        return get_object_or_404(qs, pk=appointment_pk, doctor__user=user)
 
     def get_queryset(self):
         if getattr(self, "swagger_fake_view", False):

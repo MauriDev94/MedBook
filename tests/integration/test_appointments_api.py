@@ -103,7 +103,7 @@ class TestAppointmentCreate:
     def test_patient_can_book_available_slot(
         self, auth_client_patient, available_slot, patient
     ):
-        """Happy path: patient books an available slot → 201."""
+        """Happy path: patient books an available slot → 201 with full detail."""
         response = auth_client_patient.post(
             self.url,
             {"slot": str(available_slot.id), "reason": "Annual checkup"},
@@ -111,6 +111,16 @@ class TestAppointmentCreate:
         )
         assert response.status_code == status.HTTP_201_CREATED
         assert Appointment.objects.filter(patient=patient).exists()
+
+        appt = Appointment.objects.get(patient=patient)
+        assert response.data["id"] == str(appt.id)
+        assert response.data["status"] == Appointment.Status.PENDING
+        assert response.data["reason"] == "Annual checkup"
+        assert "can_cancel" in response.data
+        assert response.data["can_cancel"] is True
+        assert isinstance(response.data["slot"], dict)
+        assert response.data["slot"]["id"] == str(available_slot.id)
+        assert "start_datetime" in response.data["slot"]
 
     def test_booking_reserves_the_slot(
         self, auth_client_patient, available_slot, patient
@@ -154,6 +164,37 @@ class TestAppointmentCreate:
             format="json",
         )
         assert response.status_code == status.HTTP_400_BAD_REQUEST
+
+    def test_real_slot_race_returns_409(
+        self, auth_client_patient, available_slot, monkeypatch
+    ):
+        """The atomic-UPDATE race losing inside create_appointment() → 409.
+
+        Distinct from test_reserved_slot_returns_400: that case is caught by
+        the serializer's pre-check (validate_appointment_booking, still 400).
+        This test simulates a slot taken by someone else *after* the
+        serializer's pre-check passes but *before* the service's atomic
+        UPDATE runs — the real concurrency window — by monkeypatching the
+        pre-check to a no-op while the slot is already RESERVED, so the
+        request reaches create_appointment()'s atomic UPDATE and loses it
+        for real.
+        """
+        from apps.appointments import services
+
+        available_slot.status = TimeSlot.Status.RESERVED
+        available_slot.save(update_fields=["status", "updated_at"])
+
+        monkeypatch.setattr(
+            services, "validate_appointment_booking", lambda **kwargs: None
+        )
+
+        response = auth_client_patient.post(
+            self.url,
+            {"slot": str(available_slot.id)},
+            format="json",
+        )
+        assert response.status_code == status.HTTP_409_CONFLICT
+        assert response.data["code"] == "slot_conflict"
 
     def test_overlapping_appointment_returns_400(
         self, auth_client_patient, patient, available_slot

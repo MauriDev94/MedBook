@@ -54,10 +54,8 @@ class AppointmentCreateSerializer(serializers.ModelSerializer):
 
         request = self.context["request"]
         patient = request.user.patient_profile
-        doctor = validated_data["slot"].schedule.doctor
         return create_appointment(
             patient=patient,
-            doctor=doctor,
             slot=validated_data["slot"],
             reason=validated_data.get("reason", ""),
         )

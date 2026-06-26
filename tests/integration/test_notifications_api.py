@@ -172,7 +172,7 @@ class TestEmailDeferredUntilCommit:
         with pytest.raises(_ForcedRollback):
             with transaction.atomic():
                 services.create_appointment(
-                    patient, doctor, available_slot, reason="Will be rolled back"
+                    patient, available_slot, reason="Will be rolled back"
                 )
                 raise _ForcedRollback("simulate failure after create")
 
@@ -192,7 +192,7 @@ class TestEmailDeferredUntilCommit:
         with django_capture_on_commit_callbacks(execute=True):
             with transaction.atomic():
                 services.create_appointment(
-                    patient, doctor, available_slot, reason="Commits fine"
+                    patient, available_slot, reason="Commits fine"
                 )
 
         assert len(mail.outbox) == 1

@@ -6,6 +6,7 @@ Uses APIRequestFactory to build minimal request objects without hitting
 any URL or view logic.
 """
 
+import pytest
 from django.contrib.auth.models import AnonymousUser
 from rest_framework.test import APIRequestFactory
 
@@ -13,6 +14,7 @@ from apps.core.permissions import (
     IsAdminRole,
     IsDoctor,
     IsDoctorOfAppointment,
+    IsDoctorOrAdminForNote,
     IsPatient,
     IsPatientOfAppointment,
 )
@@ -175,3 +177,66 @@ class TestIsPatientOfAppointment:
         doctor_user = appt.doctor.user
         request = make_request(user=doctor_user)
         assert self.perm.has_object_permission(request, None, appt) is False
+
+
+# ---------------------------------------------------------------------------
+# IsDoctorOrAdminForNote
+# ---------------------------------------------------------------------------
+
+
+class FakeNoteView:
+    """Minimal stand-in for MedicalNoteViewSet — only exposes kwargs."""
+
+    def __init__(self, appointment_pk):
+        self.kwargs = {"appointment_pk": appointment_pk}
+
+
+class TestIsDoctorOrAdminForNote:
+    perm = IsDoctorOrAdminForNote()
+
+    def test_admin_is_allowed_for_any_appointment(self, db):
+        """Admin role passes regardless of which appointment is targeted."""
+        appt = AppointmentFactory()
+        admin = UserFactory(role=Role.ADMIN, is_staff=True)
+        request = make_request(user=admin)
+        view = FakeNoteView(appointment_pk=appt.id)
+        assert self.perm.has_permission(request, view) is True
+
+    def test_assigned_doctor_is_allowed(self, db):
+        """Doctor assigned to the targeted appointment passes."""
+        appt = AppointmentFactory()
+        request = make_request(user=appt.doctor.user)
+        view = FakeNoteView(appointment_pk=appt.id)
+        assert self.perm.has_permission(request, view) is True
+
+    def test_other_doctor_is_denied(self, db):
+        """A doctor not assigned to the targeted appointment is rejected.
+
+        Raises Http404 (not a plain False) so that, end-to-end through DRF's
+        view dispatch, the response is 404 — not 403 — preventing object
+        enumeration by unrelated doctors. See test_other_doctor_cannot_create_note
+        and test_doctor_cannot_list_notes_from_other_appointment in
+        tests/integration/test_medical_notes_api.py for the full-stack behavior.
+        """
+        from django.http import Http404
+
+        appt = AppointmentFactory()
+        other_doctor = DoctorFactory()
+        request = make_request(user=other_doctor.user)
+        view = FakeNoteView(appointment_pk=appt.id)
+        with pytest.raises(Http404):
+            self.perm.has_permission(request, view)
+
+    def test_patient_is_denied(self, db):
+        """Patient role is rejected outright."""
+        appt = AppointmentFactory()
+        request = make_request(user=appt.patient.user)
+        view = FakeNoteView(appointment_pk=appt.id)
+        assert self.perm.has_permission(request, view) is False
+
+    def test_unauthenticated_is_denied(self, db):
+        """Anonymous request is rejected."""
+        appt = AppointmentFactory()
+        request = make_request(user=AnonymousUser())
+        view = FakeNoteView(appointment_pk=appt.id)
+        assert self.perm.has_permission(request, view) is False

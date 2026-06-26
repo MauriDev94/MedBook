@@ -13,9 +13,23 @@ This makes frontend error handling trivial — one shape, always.
 
 from django.core.exceptions import ValidationError as DjangoValidationError
 from rest_framework import status
-from rest_framework.exceptions import ValidationError
+from rest_framework.exceptions import APIException, ValidationError
 from rest_framework.response import Response
 from rest_framework.views import exception_handler
+
+
+class SlotConflict(APIException):
+    """Raised when a TimeSlot is taken by a concurrent request (real race).
+
+    Distinct from the pre-check ValidationError raised by
+    validate_appointment_booking() (→ 400): this is the atomic UPDATE
+    losing the race inside create_appointment() — a genuine conflict,
+    so it maps to 409 rather than 400.
+    """
+
+    status_code = status.HTTP_409_CONFLICT
+    default_detail = "This time slot is no longer available."
+    default_code = "slot_conflict"
 
 
 def custom_exception_handler(exc, context):
@@ -28,6 +42,10 @@ def custom_exception_handler(exc, context):
         # serializer.create()), where it escapes run_validation and would
         # otherwise surface as a 500. Map it to a 400 with the standard shape.
         if isinstance(exc, DjangoValidationError):
+            return _handle_django_validation_error(exc)
+        from apps.appointments.models import InvalidTransition
+
+        if isinstance(exc, InvalidTransition):
             return _handle_django_validation_error(exc)
         # Any other non-DRF exception (e.g. ValueError) — let Django handle it
         return None

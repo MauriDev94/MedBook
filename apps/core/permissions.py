@@ -8,6 +8,7 @@ Hierarchy:
   has_object_permission → instance-level check (runs after get_object())
 """
 
+from rest_framework.generics import get_object_or_404
 from rest_framework.permissions import BasePermission
 
 from apps.users.models import Role
@@ -74,3 +75,37 @@ class IsPatientOfAppointment(BasePermission):
             hasattr(request.user, "patient_profile")
             and obj.patient == request.user.patient_profile
         )
+
+
+class IsDoctorOrAdminForNote(BasePermission):
+    """Allow access to medical notes only to admins and the assigned doctor.
+
+    Resolves the appointment from `view.kwargs["appointment_pk"]` (the nested
+    notes route). Admins may access any appointment's notes; a doctor may
+    only access notes for an appointment they are assigned to. Doctors who
+    are not the assigned one get the SAME 404 a nonexistent appointment_pk
+    would produce (via get_object_or_404), so this never leaks whether the
+    appointment exists to an unrelated doctor. Patients are rejected by role
+    alone, before the appointment is even resolved, yielding 403.
+    """
+
+    message = "Only doctors and admins can access medical notes."
+
+    def has_permission(self, request, view):
+        user = request.user
+        if not (user and user.is_authenticated):
+            return False
+        if user.role == Role.ADMIN:
+            return True
+        if user.role != Role.DOCTOR:
+            return False
+
+        from apps.appointments.models import Appointment
+
+        appointment_pk = view.kwargs["appointment_pk"]
+        get_object_or_404(
+            Appointment.objects.select_related("doctor__user"),
+            pk=appointment_pk,
+            doctor__user=user,
+        )
+        return True

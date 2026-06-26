@@ -454,26 +454,24 @@ class TestCreateAppointment:
     def test_creates_appointment_and_reserves_slot(self, db):
         """Happy path: appointment created, slot becomes RESERVED."""
         patient = PatientFactory()
-        appt = AppointmentFactory(status=Appointment.Status.PENDING)
-        slot = TimeSlotFactory(status=TimeSlot.Status.AVAILABLE)
-        doctor = appt.doctor
+        schedule = ScheduleFactory()
+        slot = TimeSlotFactory(schedule=schedule, status=TimeSlot.Status.AVAILABLE)
 
-        result = services.create_appointment(patient, doctor, slot, reason="Test")
+        result = services.create_appointment(patient, slot, reason="Test")
         slot.refresh_from_db()
         assert result.patient == patient
-        assert result.doctor == doctor
+        assert result.doctor == schedule.doctor
         assert slot.status == TimeSlot.Status.RESERVED
 
     def test_raises_if_slot_already_reserved(self, db):
-        """If slot becomes reserved between validation and creation → ValidationError."""
+        """If slot becomes reserved between validation and creation → SlotConflict."""
         patient = PatientFactory()
-        appt = AppointmentFactory()
         slot = TimeSlotFactory(status=TimeSlot.Status.RESERVED)
 
-        from django.core.exceptions import ValidationError as DjangoValidationError
+        from apps.core.exceptions import SlotConflict
 
-        with pytest.raises(DjangoValidationError):
-            services.create_appointment(patient, appt.doctor, slot)
+        with pytest.raises(SlotConflict):
+            services.create_appointment(patient, slot)
 
 
 # ---------------------------------------------------------------------------
@@ -495,9 +493,10 @@ class TestCreateAppointmentConcurrency(TransactionTestCase):
 
     def test_two_concurrent_bookings_only_one_succeeds(self):
         """Two threads racing for the same AVAILABLE slot: exactly one wins."""
+        from apps.core.exceptions import SlotConflict
+
         schedule = ScheduleFactory()
         slot = TimeSlotFactory(schedule=schedule, status=TimeSlot.Status.AVAILABLE)
-        doctor = schedule.doctor
         patient_a = PatientFactory()
         patient_b = PatientFactory()
 
@@ -511,11 +510,11 @@ class TestCreateAppointmentConcurrency(TransactionTestCase):
                 # both UPDATE statements race against each other for real.
                 barrier.wait(timeout=5)
                 appointment = services.create_appointment(
-                    patient, doctor, slot, reason="Concurrency race test"
+                    patient, slot, reason="Concurrency race test"
                 )
                 with results_lock:
                     results.append(("success", appointment))
-            except ValidationError as exc:
+            except SlotConflict as exc:
                 with results_lock:
                     results.append(("error", exc))
             finally:
@@ -540,10 +539,8 @@ class TestCreateAppointmentConcurrency(TransactionTestCase):
         assert (
             len(successes) == 1
         ), f"Expected exactly 1 successful booking, got {len(successes)}"
-        assert (
-            len(errors) == 1
-        ), f"Expected exactly 1 ValidationError, got {len(errors)}"
-        assert isinstance(errors[0][1], ValidationError)
+        assert len(errors) == 1, f"Expected exactly 1 SlotConflict, got {len(errors)}"
+        assert isinstance(errors[0][1], SlotConflict)
 
         slot.refresh_from_db()
         assert slot.status == TimeSlot.Status.RESERVED
