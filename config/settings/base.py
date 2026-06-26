@@ -146,9 +146,17 @@ REST_FRAMEWORK = {
         "rest_framework.filters.OrderingFilter",
     ],
     "EXCEPTION_HANDLER": "apps.core.exceptions.custom_exception_handler",
-    # Rate limiting — LoginRateThrottle applies only to /api/token/
+    # Rate limiting — global defaults apply to every endpoint; "login" and
+    # "refresh" scopes apply additionally to the JWT auth endpoints.
+    "DEFAULT_THROTTLE_CLASSES": (
+        "rest_framework.throttling.AnonRateThrottle",
+        "rest_framework.throttling.UserRateThrottle",
+    ),
     "DEFAULT_THROTTLE_RATES": {
+        "anon": "30/minute",
+        "user": "120/minute",
         "login": "5/minute",
+        "refresh": "10/minute",
     },
 }
 
@@ -158,7 +166,7 @@ REST_FRAMEWORK = {
 SIMPLE_JWT = {
     "ACCESS_TOKEN_LIFETIME": timedelta(minutes=15),
     "REFRESH_TOKEN_LIFETIME": timedelta(days=1),
-    "ROTATE_REFRESH_TOKENS": False,
+    "ROTATE_REFRESH_TOKENS": True,
     "BLACKLIST_AFTER_ROTATION": True,
     "AUTH_HEADER_TYPES": ("Bearer",),
     "AUTH_TOKEN_CLASSES": ("rest_framework_simplejwt.tokens.AccessToken",),
