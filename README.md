@@ -183,13 +183,6 @@ GET /api/schedules/?day_of_week=0&is_active=true
 | `IsDoctorOfAppointment` | `appointment.doctor == user.doctor_profile` | confirm / complete / no_show / cancel |
 | `IsPatientOfAppointment` | `appointment.patient == user.patient_profile` | cancel |
 
-**Reusable toolkit** (defined + tested, not wired — kept for future endpoints):
-
-| Permission class | Rule | Pattern demonstrated |
-|---|---|---|
-| `IsOwnerOrAdmin` | `obj.user == request.user` or admin | Dual-shape ownership |
-| `ReadOnly` | `request.method in SAFE_METHODS` | Composable read-only (`ReadOnly \| IsAdminRole`) |
-
 ---
 
 ## Local setup

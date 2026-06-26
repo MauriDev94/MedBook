@@ -13,10 +13,8 @@ from apps.core.permissions import (
     IsAdminRole,
     IsDoctor,
     IsDoctorOfAppointment,
-    IsOwnerOrAdmin,
     IsPatient,
     IsPatientOfAppointment,
-    ReadOnly,
 )
 from tests.factories import (
     AppointmentFactory,
@@ -120,43 +118,6 @@ class TestIsAdminRole:
 
 
 # ---------------------------------------------------------------------------
-# IsOwnerOrAdmin
-# ---------------------------------------------------------------------------
-
-
-class TestIsOwnerOrAdmin:
-    perm = IsOwnerOrAdmin()
-
-    def test_owner_can_access_own_object(self, db):
-        """User accessing their own object passes has_object_permission."""
-        user = UserFactory()
-        request = make_request(user=user)
-        # obj IS the user directly
-        assert self.perm.has_object_permission(request, None, user) is True
-
-    def test_admin_can_access_any_object(self, db):
-        """Admin user can access any object."""
-        admin = UserFactory(role=Role.ADMIN, is_staff=True)
-        other_user = UserFactory()
-        request = make_request(user=admin)
-        assert self.perm.has_object_permission(request, None, other_user) is True
-
-    def test_non_owner_is_denied(self, db):
-        """User accessing another user's object is rejected."""
-        user = UserFactory()
-        other_user = UserFactory()
-        request = make_request(user=user)
-        assert self.perm.has_object_permission(request, None, other_user) is False
-
-    def test_owner_via_user_fk(self, db):
-        """Object with .user FK — owner access passes."""
-        patient = PatientFactory()
-        request = make_request(user=patient.user)
-        # obj has a .user attribute pointing to patient.user
-        assert self.perm.has_object_permission(request, None, patient) is True
-
-
-# ---------------------------------------------------------------------------
 # IsDoctorOfAppointment
 # ---------------------------------------------------------------------------
 
@@ -214,54 +175,3 @@ class TestIsPatientOfAppointment:
         doctor_user = appt.doctor.user
         request = make_request(user=doctor_user)
         assert self.perm.has_object_permission(request, None, appt) is False
-
-
-# ---------------------------------------------------------------------------
-# ReadOnly
-# ---------------------------------------------------------------------------
-
-
-class TestReadOnly:
-    perm = ReadOnly()
-
-    def test_get_is_allowed(self, db):
-        """GET method passes."""
-        user = UserFactory()
-        request = make_request(method="GET", user=user)
-        assert self.perm.has_permission(request, None) is True
-
-    def test_head_is_allowed(self, db):
-        """HEAD method passes."""
-        user = UserFactory()
-        request = make_request(method="HEAD", user=user)
-        assert self.perm.has_permission(request, None) is True
-
-    def test_options_is_allowed(self, db):
-        """OPTIONS method passes."""
-        user = UserFactory()
-        request = make_request(method="OPTIONS", user=user)
-        assert self.perm.has_permission(request, None) is True
-
-    def test_post_is_denied(self, db):
-        """POST method is rejected."""
-        user = UserFactory()
-        request = make_request(method="POST", user=user)
-        assert self.perm.has_permission(request, None) is False
-
-    def test_put_is_denied(self, db):
-        """PUT method is rejected."""
-        user = UserFactory()
-        request = make_request(method="PUT", user=user)
-        assert self.perm.has_permission(request, None) is False
-
-    def test_delete_is_denied(self, db):
-        """DELETE method is rejected."""
-        user = UserFactory()
-        request = make_request(method="DELETE", user=user)
-        assert self.perm.has_permission(request, None) is False
-
-    def test_patch_is_denied(self, db):
-        """PATCH (partial update) is rejected — it's a write method."""
-        user = UserFactory()
-        request = make_request(method="PATCH", user=user)
-        assert self.perm.has_permission(request, None) is False
