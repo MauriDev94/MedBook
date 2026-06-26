@@ -185,13 +185,6 @@ GET /api/schedules/?day_of_week=0&is_active=true
 | `IsDoctorOfAppointment` | `appointment.doctor == user.doctor_profile` | confirm / complete / no_show / cancel |
 | `IsPatientOfAppointment` | `appointment.patient == user.patient_profile` | cancel |
 
-**Toolkit reutilizable** (definidas + testeadas, no cableadas — reservadas para endpoints futuros):
-
-| Clase de permiso | Regla | Patrón que demuestra |
-|---|---|---|
-| `IsOwnerOrAdmin` | `obj.user == request.user` o es admin | Ownership dual-shape |
-| `ReadOnly` | `request.method in SAFE_METHODS` | Read-only componible (`ReadOnly \| IsAdminRole`) |
-
 ---
 
 ## Setup local
