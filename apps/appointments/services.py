@@ -58,7 +58,7 @@ def create_appointment(
 
     from apps.notifications.services import send_appointment_created
 
-    send_appointment_created(appointment)
+    transaction.on_commit(lambda: send_appointment_created(appointment))
     return appointment
 
 
@@ -105,7 +105,7 @@ def confirm_appointment(appointment: Appointment, confirmed_by) -> Appointment:
 
     from apps.notifications.services import send_appointment_confirmed
 
-    send_appointment_confirmed(appointment)
+    transaction.on_commit(lambda: send_appointment_confirmed(appointment))
     return appointment
 
 
@@ -134,7 +134,7 @@ def cancel_appointment(appointment: Appointment, cancelled_by) -> Appointment:
 
     from apps.notifications.services import send_appointment_cancelled
 
-    send_appointment_cancelled(appointment)
+    transaction.on_commit(lambda: send_appointment_cancelled(appointment))
     return appointment
 
 
