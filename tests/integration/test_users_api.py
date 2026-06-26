@@ -26,7 +26,7 @@ class TestUserMeEndpoint:
         )
         api_client.force_authenticate(user=user)
 
-        response = api_client.get("/api/users/me/")
+        response = api_client.get("/api/v1/users/me/")
 
         assert response.status_code == status.HTTP_200_OK
         assert response.data["email"] == "patient@example.com"
@@ -34,7 +34,7 @@ class TestUserMeEndpoint:
         assert response.data["role"] == "patient"
 
     def test_me_unauthenticated_returns_401(self, api_client):
-        response = api_client.get("/api/users/me/")
+        response = api_client.get("/api/v1/users/me/")
 
         assert response.status_code == status.HTTP_401_UNAUTHORIZED
 
@@ -42,7 +42,7 @@ class TestUserMeEndpoint:
         user = UserFactory()
         api_client.force_authenticate(user=user)
 
-        response = api_client.get("/api/users/me/")
+        response = api_client.get("/api/v1/users/me/")
 
         assert response.status_code == status.HTTP_200_OK
         for field in [
@@ -60,7 +60,7 @@ class TestUserMeEndpoint:
         user = UserFactory()
         api_client.force_authenticate(user=user)
 
-        response = api_client.get("/api/users/me/")
+        response = api_client.get("/api/v1/users/me/")
 
         assert "password" not in response.data
 
@@ -74,7 +74,7 @@ class TestUserMePatchEndpoint:
         api_client.force_authenticate(user=user)
 
         response = api_client.patch(
-            "/api/users/me/",
+            "/api/v1/users/me/",
             {"first_name": "New", "last_name": "Name"},
             format="json",
         )
@@ -91,7 +91,7 @@ class TestUserMePatchEndpoint:
         api_client.force_authenticate(user=user)
 
         response = api_client.patch(
-            "/api/users/me/",
+            "/api/v1/users/me/",
             {"email": "hacked@example.com"},
             format="json",
         )
@@ -106,7 +106,7 @@ class TestUserMePatchEndpoint:
         api_client.force_authenticate(user=user)
 
         response = api_client.patch(
-            "/api/users/me/",
+            "/api/v1/users/me/",
             {"role": "admin"},
             format="json",
         )
@@ -120,7 +120,7 @@ class TestUserMePatchEndpoint:
         api_client.force_authenticate(user=user)
 
         response = api_client.patch(
-            "/api/users/me/",
+            "/api/v1/users/me/",
             {"first_name": "María"},
             format="json",
         )
@@ -142,7 +142,7 @@ class TestUserMePatchEndpoint:
         api_client.force_authenticate(user=user)
 
         response = api_client.patch(
-            "/api/users/me/",
+            "/api/v1/users/me/",
             {"first_name": "Updated"},
             format="json",
         )
@@ -155,7 +155,7 @@ class TestUserMePatchEndpoint:
 
     def test_patch_unauthenticated_returns_401(self, api_client):
         response = api_client.patch(
-            "/api/users/me/",
+            "/api/v1/users/me/",
             {"first_name": "Ana"},
             format="json",
         )
@@ -172,7 +172,7 @@ class TestLogoutEndpoint:
         refresh = RefreshToken.for_user(user)
 
         response = api_client.post(
-            "/api/token/blacklist/",
+            "/api/v1/token/blacklist/",
             {"refresh": str(refresh)},
             format="json",
         )
@@ -186,14 +186,14 @@ class TestLogoutEndpoint:
 
         # Blacklist
         api_client.post(
-            "/api/token/blacklist/",
+            "/api/v1/token/blacklist/",
             {"refresh": refresh_str},
             format="json",
         )
 
         # Attempt to use the same refresh token
         response = api_client.post(
-            "/api/token/refresh/",
+            "/api/v1/token/refresh/",
             {"refresh": refresh_str},
             format="json",
         )
@@ -202,7 +202,7 @@ class TestLogoutEndpoint:
 
     def test_logout_missing_refresh_token_returns_400(self, api_client):
         response = api_client.post(
-            "/api/token/blacklist/",
+            "/api/v1/token/blacklist/",
             {},
             format="json",
         )

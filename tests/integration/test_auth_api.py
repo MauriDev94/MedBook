@@ -12,7 +12,7 @@ class TestAuthAPI:
         UserFactory(email="test@example.com", password="testpass123")
 
         response = api_client.post(
-            "/api/token/",
+            "/api/v1/token/",
             {"email": "test@example.com", "password": "testpass123"},
             format="json",
         )
@@ -32,7 +32,7 @@ class TestAuthAPI:
         )
 
         response = api_client.post(
-            "/api/token/",
+            "/api/v1/token/",
             {"email": "doctor@example.com", "password": "testpass123"},
             format="json",
         )
@@ -49,7 +49,7 @@ class TestAuthAPI:
         UserFactory(email="test@example.com")
 
         response = api_client.post(
-            "/api/token/",
+            "/api/v1/token/",
             {"email": "test@example.com", "password": "wrongpassword"},
             format="json",
         )
@@ -61,14 +61,14 @@ class TestAuthAPI:
         UserFactory(email="test@example.com", password="testpass123")
 
         token_response = api_client.post(
-            "/api/token/",
+            "/api/v1/token/",
             {"email": "test@example.com", "password": "testpass123"},
             format="json",
         )
         refresh_token = token_response.data["refresh"]
 
         response = api_client.post(
-            "/api/token/refresh/",
+            "/api/v1/token/refresh/",
             {"refresh": refresh_token},
             format="json",
         )

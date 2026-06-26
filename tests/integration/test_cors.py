@@ -17,7 +17,7 @@ class TestCORSHeaders:
 
         client = APIClient()
         response = client.get(
-            "/api/doctors/",
+            "/api/v1/doctors/",
             HTTP_ORIGIN="http://localhost:5173",
         )
         assert "Access-Control-Allow-Origin" in response
@@ -28,7 +28,7 @@ class TestCORSHeaders:
 
         client = APIClient()
         response = client.get(
-            "/api/doctors/",
+            "/api/v1/doctors/",
             HTTP_ORIGIN="http://evil.com",
         )
         assert "Access-Control-Allow-Origin" not in response
@@ -39,7 +39,7 @@ class TestCORSHeaders:
 
         client = APIClient()
         response = client.options(
-            "/api/doctors/",
+            "/api/v1/doctors/",
             HTTP_ORIGIN="http://localhost:5173",
             HTTP_ACCESS_CONTROL_REQUEST_METHOD="GET",
         )

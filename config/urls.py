@@ -33,18 +33,18 @@ urlpatterns = [
     path("api/schema/", SpectacularAPIView.as_view(), name="schema"),
     path("api/docs/", SpectacularSwaggerView.as_view(url_name="schema"), name="docs"),
     # API router — appointments, doctors, schedules, specialties, users
-    path("api/", include(router.urls)),
-    # Nested: /api/appointments/{appointment_pk}/notes/
+    path("api/v1/", include(router.urls)),
+    # Nested: /api/v1/appointments/{appointment_pk}/notes/
     path(
-        "api/appointments/<uuid:appointment_pk>/notes/",
+        "api/v1/appointments/<uuid:appointment_pk>/notes/",
         notes_list,
         name="appointment-notes-list",
     ),
     path(
-        "api/appointments/<uuid:appointment_pk>/notes/<uuid:pk>/",
+        "api/v1/appointments/<uuid:appointment_pk>/notes/<uuid:pk>/",
         notes_detail,
         name="appointment-notes-detail",
     ),
     # User / Auth endpoints
-    path("api/", include("apps.users.urls")),
+    path("api/v1/", include("apps.users.urls")),
 ]
