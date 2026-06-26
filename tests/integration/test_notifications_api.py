@@ -6,10 +6,18 @@ cancelling an appointment through the HTTP layer.
 Uses locmem email backend (configured in config/settings/test.py).
 mail.outbox is cleared before each test by the autouse clear_mail_outbox
 fixture in conftest.py.
+
+Appointment services defer notification emails with
+transaction.on_commit() (see apps/appointments/services.py) so that an
+email failure can never roll back a critical DB write. Because pytest
+wraps each test in an atomic block that never commits, on_commit
+callbacks don't fire on their own — tests must use the
+django_capture_on_commit_callbacks fixture (execute=True) to run them.
 """
 
 import pytest
 from django.core import mail
+from django.db import transaction
 from rest_framework.test import APIClient
 
 from apps.appointments.models import Appointment
@@ -75,38 +83,51 @@ def auth_client_doctor(doctor_user):
 @pytest.mark.django_db
 class TestAppointmentCreatedEmail:
     def test_creating_appointment_sends_email_to_patient(
-        self, auth_client_patient, patient, doctor, available_slot
+        self,
+        django_capture_on_commit_callbacks,
+        auth_client_patient,
+        patient,
+        doctor,
+        available_slot,
     ):
-        auth_client_patient.post(
-            "/api/appointments/",
-            {"slot": str(available_slot.id), "reason": "Routine checkup"},
-        )
+        with django_capture_on_commit_callbacks(execute=True):
+            auth_client_patient.post(
+                "/api/appointments/",
+                {"slot": str(available_slot.id), "reason": "Routine checkup"},
+            )
         assert len(mail.outbox) == 1
         assert patient.user.email in mail.outbox[0].to
 
     def test_no_email_sent_when_booking_fails(
-        self, auth_client_patient, patient, doctor, available_slot
+        self,
+        django_capture_on_commit_callbacks,
+        auth_client_patient,
+        patient,
+        doctor,
+        available_slot,
     ):
         """If slot is already taken, no email should be sent."""
         available_slot.status = "reserved"
         available_slot.save(update_fields=["status"])
 
-        auth_client_patient.post(
-            "/api/appointments/",
-            {"slot": str(available_slot.id), "reason": "Checkup"},
-        )
+        with django_capture_on_commit_callbacks(execute=True):
+            auth_client_patient.post(
+                "/api/appointments/",
+                {"slot": str(available_slot.id), "reason": "Checkup"},
+            )
         assert len(mail.outbox) == 0
 
 
 @pytest.mark.django_db
 class TestAppointmentConfirmedEmail:
     def test_confirming_appointment_sends_email_to_patient(
-        self, auth_client_doctor, patient, doctor
+        self, django_capture_on_commit_callbacks, auth_client_doctor, patient, doctor
     ):
         appointment = AppointmentFactory(
             patient=patient, doctor=doctor, status=Appointment.Status.PENDING
         )
-        auth_client_doctor.post(f"/api/appointments/{appointment.id}/confirm/")
+        with django_capture_on_commit_callbacks(execute=True):
+            auth_client_doctor.post(f"/api/appointments/{appointment.id}/confirm/")
 
         assert len(mail.outbox) == 1
         assert patient.user.email in mail.outbox[0].to
@@ -116,13 +137,63 @@ class TestAppointmentConfirmedEmail:
 @pytest.mark.django_db
 class TestAppointmentCancelledEmail:
     def test_cancelling_appointment_sends_email_to_patient(
-        self, auth_client_patient, patient, doctor
+        self, django_capture_on_commit_callbacks, auth_client_patient, patient, doctor
     ):
         appointment = AppointmentFactory(
             patient=patient, doctor=doctor, status=Appointment.Status.PENDING
         )
-        auth_client_patient.post(f"/api/appointments/{appointment.id}/cancel/")
+        with django_capture_on_commit_callbacks(execute=True):
+            auth_client_patient.post(f"/api/appointments/{appointment.id}/cancel/")
 
         assert len(mail.outbox) == 1
         assert patient.user.email in mail.outbox[0].to
         assert "cancel" in mail.outbox[0].subject.lower()
+
+
+@pytest.mark.django_db(transaction=True)
+class TestEmailDeferredUntilCommit:
+    """Verifies the transaction.on_commit() deferral (issue #75 / audit A1).
+
+    Emails must NOT be sent if the surrounding transaction rolls back —
+    an email-sending failure must never be able to roll back a critical
+    write either, since the dispatch happens only after a successful
+    commit.
+    """
+
+    def test_no_email_sent_when_transaction_rolls_back(
+        self, auth_client_patient, patient, doctor, available_slot
+    ):
+        from apps.appointments import services
+        from apps.appointments.models import Appointment
+
+        class _ForcedRollback(Exception):
+            pass
+
+        with pytest.raises(_ForcedRollback):
+            with transaction.atomic():
+                services.create_appointment(
+                    patient, doctor, available_slot, reason="Will be rolled back"
+                )
+                raise _ForcedRollback("simulate failure after create")
+
+        assert not Appointment.objects.filter(patient=patient).exists()
+        assert len(mail.outbox) == 0
+
+    def test_email_sent_when_transaction_commits(
+        self,
+        django_capture_on_commit_callbacks,
+        auth_client_patient,
+        patient,
+        doctor,
+        available_slot,
+    ):
+        from apps.appointments import services
+
+        with django_capture_on_commit_callbacks(execute=True):
+            with transaction.atomic():
+                services.create_appointment(
+                    patient, doctor, available_slot, reason="Commits fine"
+                )
+
+        assert len(mail.outbox) == 1
+        assert patient.user.email in mail.outbox[0].to
