@@ -8,8 +8,12 @@ Pattern: each service function gets tests for:
   - side effects (slot status, DB persistence)
 """
 
+import threading
+
 import pytest
 from django.core.exceptions import ValidationError
+from django.db import connection
+from django.test import TransactionTestCase
 
 from apps.appointments import services
 from apps.appointments.models import Appointment, TimeSlot
@@ -470,3 +474,82 @@ class TestCreateAppointment:
 
         with pytest.raises(DjangoValidationError):
             services.create_appointment(patient, appt.doctor, slot)
+
+
+# ---------------------------------------------------------------------------
+# create_appointment — real concurrency (race condition)
+# ---------------------------------------------------------------------------
+
+
+class TestCreateAppointmentConcurrency(TransactionTestCase):
+    """Proves the atomic UPDATE in create_appointment prevents double-booking.
+
+    Requires TransactionTestCase (real commits, no test-wrapping transaction):
+    with the default pytest-django `db` fixture, each test runs inside an
+    outer atomic block that's rolled back at the end and never committed, so
+    a second thread — running in its own DB connection — would never see the
+    first thread's changes. Real concurrency can only be observed when both
+    threads commit against the same physical database state, which is what
+    TransactionTestCase provides.
+    """
+
+    def test_two_concurrent_bookings_only_one_succeeds(self):
+        """Two threads racing for the same AVAILABLE slot: exactly one wins."""
+        schedule = ScheduleFactory()
+        slot = TimeSlotFactory(schedule=schedule, status=TimeSlot.Status.AVAILABLE)
+        doctor = schedule.doctor
+        patient_a = PatientFactory()
+        patient_b = PatientFactory()
+
+        barrier = threading.Barrier(2)
+        results = []
+        results_lock = threading.Lock()
+
+        def attempt_booking(patient):
+            try:
+                # Block until both threads are ready, maximizing the chance
+                # both UPDATE statements race against each other for real.
+                barrier.wait(timeout=5)
+                appointment = services.create_appointment(
+                    patient, doctor, slot, reason="Concurrency race test"
+                )
+                with results_lock:
+                    results.append(("success", appointment))
+            except ValidationError as exc:
+                with results_lock:
+                    results.append(("error", exc))
+            finally:
+                # Each thread opens its own DB connection (Django connections
+                # are thread-local). Close it explicitly or it leaks and can
+                # starve the connection pool / block teardown.
+                connection.close()
+
+        thread_a = threading.Thread(target=attempt_booking, args=(patient_a,))
+        thread_b = threading.Thread(target=attempt_booking, args=(patient_b,))
+
+        thread_a.start()
+        thread_b.start()
+        thread_a.join(timeout=10)
+        thread_b.join(timeout=10)
+
+        assert len(results) == 2
+
+        successes = [r for r in results if r[0] == "success"]
+        errors = [r for r in results if r[0] == "error"]
+
+        assert (
+            len(successes) == 1
+        ), f"Expected exactly 1 successful booking, got {len(successes)}"
+        assert (
+            len(errors) == 1
+        ), f"Expected exactly 1 ValidationError, got {len(errors)}"
+        assert isinstance(errors[0][1], ValidationError)
+
+        slot.refresh_from_db()
+        assert slot.status == TimeSlot.Status.RESERVED
+
+        appointments_for_slot = Appointment.objects.filter(slot=slot)
+        assert appointments_for_slot.count() == 1
+
+        winning_appointment = successes[0][1]
+        assert appointments_for_slot.first().id == winning_appointment.id
