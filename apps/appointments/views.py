@@ -145,7 +145,7 @@ class AppointmentViewSet(viewsets.ModelViewSet):
     def complete(self, request, pk=None):
         """Transition CONFIRMED → COMPLETED (doctor only)."""
         appointment = self.get_object()
-        services.complete_appointment(appointment)
+        services.complete_appointment(appointment, completed_by=request.user)
         return Response(AppointmentDetailSerializer(appointment).data)
 
     @extend_schema(
@@ -162,7 +162,7 @@ class AppointmentViewSet(viewsets.ModelViewSet):
     def no_show(self, request, pk=None):
         """Transition CONFIRMED → NO_SHOW (doctor only)."""
         appointment = self.get_object()
-        services.mark_no_show(appointment)
+        services.mark_no_show(appointment, marked_by=request.user)
         return Response(AppointmentDetailSerializer(appointment).data)
 
 

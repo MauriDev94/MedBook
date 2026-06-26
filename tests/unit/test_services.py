@@ -142,6 +142,21 @@ class TestConfirmAppointment:
         appt.refresh_from_db()
         assert appt.status == Appointment.Status.CONFIRMED
 
+    def test_confirm_logs_audit_trail_with_actor(self, db, caplog):
+        """Confirming an appointment logs action, appointment id and actor."""
+        appt = AppointmentFactory(status=Appointment.Status.PENDING)
+        actor = appt.doctor.user
+        with caplog.at_level("INFO", logger="medbook.audit"):
+            services.confirm_appointment(appt, confirmed_by=actor)
+
+        records = [r for r in caplog.records if r.name == "medbook.audit"]
+        assert len(records) == 1
+        message = records[0].getMessage()
+        assert "confirm_appointment" in message
+        assert str(appt.id) in message
+        assert str(actor.id) in message
+        assert actor.email in message
+
     def test_confirm_persists_to_db(self, db):
         """Status change is saved — not just in-memory."""
         appt = AppointmentFactory(status=Appointment.Status.PENDING)
@@ -214,6 +229,21 @@ class TestCancelAppointment:
         result = services.cancel_appointment(appt, cancelled_by=appt.patient.user)
         assert result == appt
 
+    def test_cancel_logs_audit_trail_with_actor(self, db, caplog):
+        """Cancelling an appointment logs action, appointment id and actor."""
+        appt = AppointmentFactory(status=Appointment.Status.PENDING)
+        actor = appt.patient.user
+        with caplog.at_level("INFO", logger="medbook.audit"):
+            services.cancel_appointment(appt, cancelled_by=actor)
+
+        records = [r for r in caplog.records if r.name == "medbook.audit"]
+        assert len(records) == 1
+        message = records[0].getMessage()
+        assert "cancel_appointment" in message
+        assert str(appt.id) in message
+        assert str(actor.id) in message
+        assert actor.email in message
+
 
 # ---------------------------------------------------------------------------
 # complete_appointment
@@ -226,14 +256,14 @@ class TestCompleteAppointment:
     def test_complete_confirmed_changes_status(self, db):
         """Confirmed appointment becomes completed."""
         appt = AppointmentFactory(status=Appointment.Status.CONFIRMED)
-        services.complete_appointment(appt)
+        services.complete_appointment(appt, completed_by=appt.doctor.user)
         appt.refresh_from_db()
         assert appt.status == Appointment.Status.COMPLETED
 
     def test_complete_persists_to_db(self, db):
         """Status change is saved to the DB."""
         appt = AppointmentFactory(status=Appointment.Status.CONFIRMED)
-        services.complete_appointment(appt)
+        services.complete_appointment(appt, completed_by=appt.doctor.user)
         fresh = Appointment.objects.get(pk=appt.pk)
         assert fresh.status == Appointment.Status.COMPLETED
 
@@ -241,13 +271,28 @@ class TestCompleteAppointment:
         """Cannot complete a pending appointment."""
         appt = AppointmentFactory(status=Appointment.Status.PENDING)
         with pytest.raises(ValueError):
-            services.complete_appointment(appt)
+            services.complete_appointment(appt, completed_by=appt.doctor.user)
 
     def test_complete_returns_appointment(self, db):
         """Service returns the updated appointment."""
         appt = AppointmentFactory(status=Appointment.Status.CONFIRMED)
-        result = services.complete_appointment(appt)
+        result = services.complete_appointment(appt, completed_by=appt.doctor.user)
         assert result == appt
+
+    def test_complete_logs_audit_trail_with_actor(self, db, caplog):
+        """Completing an appointment logs action, appointment id and actor."""
+        appt = AppointmentFactory(status=Appointment.Status.CONFIRMED)
+        actor = appt.doctor.user
+        with caplog.at_level("INFO", logger="medbook.audit"):
+            services.complete_appointment(appt, completed_by=actor)
+
+        records = [r for r in caplog.records if r.name == "medbook.audit"]
+        assert len(records) == 1
+        message = records[0].getMessage()
+        assert "complete_appointment" in message
+        assert str(appt.id) in message
+        assert str(actor.id) in message
+        assert actor.email in message
 
 
 # ---------------------------------------------------------------------------
@@ -261,14 +306,14 @@ class TestMarkNoShow:
     def test_mark_no_show_confirmed_changes_status(self, db):
         """Confirmed appointment becomes no_show."""
         appt = AppointmentFactory(status=Appointment.Status.CONFIRMED)
-        services.mark_no_show(appt)
+        services.mark_no_show(appt, marked_by=appt.doctor.user)
         appt.refresh_from_db()
         assert appt.status == Appointment.Status.NO_SHOW
 
     def test_mark_no_show_persists_to_db(self, db):
         """Status change is saved to the DB."""
         appt = AppointmentFactory(status=Appointment.Status.CONFIRMED)
-        services.mark_no_show(appt)
+        services.mark_no_show(appt, marked_by=appt.doctor.user)
         fresh = Appointment.objects.get(pk=appt.pk)
         assert fresh.status == Appointment.Status.NO_SHOW
 
@@ -276,13 +321,28 @@ class TestMarkNoShow:
         """Cannot mark pending appointment as no_show."""
         appt = AppointmentFactory(status=Appointment.Status.PENDING)
         with pytest.raises(ValueError):
-            services.mark_no_show(appt)
+            services.mark_no_show(appt, marked_by=appt.doctor.user)
 
     def test_mark_no_show_returns_appointment(self, db):
         """Service returns the updated appointment."""
         appt = AppointmentFactory(status=Appointment.Status.CONFIRMED)
-        result = services.mark_no_show(appt)
+        result = services.mark_no_show(appt, marked_by=appt.doctor.user)
         assert result == appt
+
+    def test_mark_no_show_logs_audit_trail_with_actor(self, db, caplog):
+        """Marking no-show logs action, appointment id and actor."""
+        appt = AppointmentFactory(status=Appointment.Status.CONFIRMED)
+        actor = appt.doctor.user
+        with caplog.at_level("INFO", logger="medbook.audit"):
+            services.mark_no_show(appt, marked_by=actor)
+
+        records = [r for r in caplog.records if r.name == "medbook.audit"]
+        assert len(records) == 1
+        message = records[0].getMessage()
+        assert "mark_no_show" in message
+        assert str(appt.id) in message
+        assert str(actor.id) in message
+        assert actor.email in message
 
 
 # ---------------------------------------------------------------------------

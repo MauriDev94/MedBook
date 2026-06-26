@@ -229,3 +229,65 @@ DEFAULT_FROM_EMAIL = config(
 ANYMAIL = {
     "RESEND_API_KEY": config("RESEND_API_KEY", default=""),
 }
+
+# ---------------------------------------------------------------------------
+# Logging
+# ---------------------------------------------------------------------------
+# DEBUG=True (local) gets verbose console output; production stays at
+# WARNING+ for app/django loggers to avoid noisy, costly log volumes.
+# The "medbook.audit" logger is always INFO — clinical state transitions
+# (confirm/cancel/complete/no-show) must be auditable regardless of env.
+# NEVER log sensitive data here (passwords, tokens, Authorization headers).
+_DJANGO_LOG_LEVEL = "INFO" if DEBUG else "WARNING"
+_APP_LOG_LEVEL = "DEBUG" if DEBUG else "INFO"
+
+LOGGING = {
+    "version": 1,
+    "disable_existing_loggers": False,
+    "formatters": {
+        "verbose": {
+            "format": (
+                "%(asctime)s %(levelname)s %(name)s [%(module)s:%(lineno)d] %(message)s"
+            ),
+        },
+        "simple": {
+            "format": "%(levelname)s %(name)s %(message)s",
+        },
+    },
+    "handlers": {
+        "console": {
+            "class": "logging.StreamHandler",
+            "formatter": "verbose" if DEBUG else "simple",
+        },
+    },
+    "root": {
+        "handlers": ["console"],
+        "level": "WARNING",
+    },
+    "loggers": {
+        "django": {
+            "handlers": ["console"],
+            "level": _DJANGO_LOG_LEVEL,
+            "propagate": False,
+        },
+        "django.request": {
+            "handlers": ["console"],
+            "level": "ERROR",
+            "propagate": False,
+        },
+        "django.security": {
+            "handlers": ["console"],
+            "level": "WARNING",
+            "propagate": False,
+        },
+        "apps": {
+            "handlers": ["console"],
+            "level": _APP_LOG_LEVEL,
+            "propagate": False,
+        },
+        "medbook.audit": {
+            "level": "INFO",
+            "propagate": True,
+        },
+    },
+}
