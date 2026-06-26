@@ -98,7 +98,7 @@ def auth_client_admin(admin_user):
 class TestAppointmentCreate:
     """POST /api/appointments/ — booking a new appointment."""
 
-    url = "/api/appointments/"
+    url = "/api/v1/appointments/"
 
     def test_patient_can_book_available_slot(
         self, auth_client_patient, available_slot, patient
@@ -202,7 +202,7 @@ class TestAppointmentCreate:
 class TestAppointmentList:
     """GET /api/appointments/ — listing appointments."""
 
-    url = "/api/appointments/"
+    url = "/api/v1/appointments/"
 
     def test_patient_sees_only_own_appointments(
         self, db, auth_client_patient, patient, doctor
@@ -271,7 +271,7 @@ class TestAppointmentActions:
             doctor=doctor,
             status=Appointment.Status.PENDING,
         )
-        response = auth_client_doctor.post(f"/api/appointments/{appt.id}/confirm/")
+        response = auth_client_doctor.post(f"/api/v1/appointments/{appt.id}/confirm/")
         assert response.status_code == status.HTTP_200_OK
         appt.refresh_from_db()
         assert appt.status == Appointment.Status.CONFIRMED
@@ -285,7 +285,7 @@ class TestAppointmentActions:
             doctor=doctor,
             status=Appointment.Status.PENDING,
         )
-        response = auth_client_patient.post(f"/api/appointments/{appt.id}/confirm/")
+        response = auth_client_patient.post(f"/api/v1/appointments/{appt.id}/confirm/")
         assert response.status_code == status.HTTP_403_FORBIDDEN
 
     def test_patient_can_cancel_own_appointment(
@@ -297,7 +297,7 @@ class TestAppointmentActions:
             doctor=doctor,
             status=Appointment.Status.PENDING,
         )
-        response = auth_client_patient.post(f"/api/appointments/{appt.id}/cancel/")
+        response = auth_client_patient.post(f"/api/v1/appointments/{appt.id}/cancel/")
         assert response.status_code == status.HTTP_200_OK
         appt.refresh_from_db()
         assert appt.status == Appointment.Status.CANCELLED
@@ -311,7 +311,7 @@ class TestAppointmentActions:
             slot=slot,
             status=Appointment.Status.PENDING,
         )
-        auth_client_patient.post(f"/api/appointments/{appt.id}/cancel/")
+        auth_client_patient.post(f"/api/v1/appointments/{appt.id}/cancel/")
         slot.refresh_from_db()
         assert slot.status == TimeSlot.Status.AVAILABLE
 
@@ -330,7 +330,7 @@ class TestAppointmentActions:
             doctor=doctor,
             status=Appointment.Status.PENDING,
         )
-        response = auth_client_admin.post(f"/api/appointments/{appt.id}/cancel/")
+        response = auth_client_admin.post(f"/api/v1/appointments/{appt.id}/cancel/")
         assert response.status_code == status.HTTP_403_FORBIDDEN
         appt.refresh_from_db()
         assert appt.status == Appointment.Status.PENDING  # unchanged
@@ -344,7 +344,7 @@ class TestAppointmentActions:
             doctor=doctor,
             status=Appointment.Status.CONFIRMED,
         )
-        response = auth_client_doctor.post(f"/api/appointments/{appt.id}/cancel/")
+        response = auth_client_doctor.post(f"/api/v1/appointments/{appt.id}/cancel/")
         assert response.status_code == status.HTTP_200_OK
         appt.refresh_from_db()
         assert appt.status == Appointment.Status.CANCELLED
@@ -358,7 +358,7 @@ class TestAppointmentActions:
             doctor=doctor,
             status=Appointment.Status.CONFIRMED,
         )
-        response = auth_client_doctor.post(f"/api/appointments/{appt.id}/complete/")
+        response = auth_client_doctor.post(f"/api/v1/appointments/{appt.id}/complete/")
         assert response.status_code == status.HTTP_200_OK
         appt.refresh_from_db()
         assert appt.status == Appointment.Status.COMPLETED
@@ -372,7 +372,7 @@ class TestAppointmentActions:
             doctor=doctor,
             status=Appointment.Status.PENDING,
         )
-        response = auth_client_doctor.post(f"/api/appointments/{appt.id}/complete/")
+        response = auth_client_doctor.post(f"/api/v1/appointments/{appt.id}/complete/")
         assert response.status_code == status.HTTP_400_BAD_REQUEST
 
     def test_doctor_can_mark_no_show(self, db, auth_client_doctor, patient, doctor):
@@ -382,7 +382,7 @@ class TestAppointmentActions:
             doctor=doctor,
             status=Appointment.Status.CONFIRMED,
         )
-        response = auth_client_doctor.post(f"/api/appointments/{appt.id}/no-show/")
+        response = auth_client_doctor.post(f"/api/v1/appointments/{appt.id}/no-show/")
         assert response.status_code == status.HTTP_200_OK
         appt.refresh_from_db()
         assert appt.status == Appointment.Status.NO_SHOW
@@ -405,7 +405,7 @@ class TestAppointmentActions:
         client = APIClient()
         client.force_authenticate(user=other_doctor.user)
 
-        response = client.post(f"/api/appointments/{appt.id}/confirm/")
+        response = client.post(f"/api/v1/appointments/{appt.id}/confirm/")
         assert response.status_code == status.HTTP_404_NOT_FOUND
 
 
@@ -425,7 +425,9 @@ class TestDoctorAvailableSlots:
             schedule=schedule, status=TimeSlot.Status.AVAILABLE
         ).count()
 
-        response = auth_client_patient.get(f"/api/doctors/{doctor.id}/available-slots/")
+        response = auth_client_patient.get(
+            f"/api/v1/doctors/{doctor.id}/available-slots/"
+        )
         assert response.status_code == status.HTTP_200_OK
         assert len(response.data) == slots_count
 
@@ -439,7 +441,9 @@ class TestDoctorAvailableSlots:
             slot.status = TimeSlot.Status.RESERVED
             slot.save(update_fields=["status", "updated_at"])
 
-        response = auth_client_patient.get(f"/api/doctors/{doctor.id}/available-slots/")
+        response = auth_client_patient.get(
+            f"/api/v1/doctors/{doctor.id}/available-slots/"
+        )
         assert response.status_code == status.HTTP_200_OK
         for item in response.data:
             assert item["status"] == TimeSlot.Status.AVAILABLE
@@ -447,13 +451,13 @@ class TestDoctorAvailableSlots:
     def test_unauthenticated_returns_401(self, db, doctor):
         """Anonymous requests to available-slots → 401."""
         client = APIClient()
-        response = client.get(f"/api/doctors/{doctor.id}/available-slots/")
+        response = client.get(f"/api/v1/doctors/{doctor.id}/available-slots/")
         assert response.status_code == status.HTTP_401_UNAUTHORIZED
 
     def test_non_integer_days_returns_400(self, db, auth_client_patient, doctor):
         """A non-integer ?days= value must return 400, not crash with 500."""
         response = auth_client_patient.get(
-            f"/api/doctors/{doctor.id}/available-slots/?days=abc"
+            f"/api/v1/doctors/{doctor.id}/available-slots/?days=abc"
         )
         assert response.status_code == status.HTTP_400_BAD_REQUEST
         assert response.data["code"] == "validation_error"
@@ -467,7 +471,7 @@ class TestDoctorAvailableSlots:
 class TestDoctorList:
     """GET /api/doctors/ — listing doctors."""
 
-    url = "/api/doctors/"
+    url = "/api/v1/doctors/"
 
     def test_authenticated_user_can_list_doctors(self, db, auth_client_patient, doctor):
         """Any authenticated user can list doctors."""
@@ -530,7 +534,7 @@ class TestAppointmentRetrieve:
     ):
         """Patient retrieves their own appointment → 200 with full detail."""
         appt = AppointmentFactory(patient=patient, doctor=doctor)
-        response = auth_client_patient.get(f"/api/appointments/{appt.id}/")
+        response = auth_client_patient.get(f"/api/v1/appointments/{appt.id}/")
         assert response.status_code == status.HTTP_200_OK
         assert response.data["id"] == str(appt.id)
         assert "can_cancel" in response.data
@@ -542,21 +546,21 @@ class TestAppointmentRetrieve:
         """Patient cannot retrieve another patient's appointment → 404."""
         other_patient = PatientFactory()
         appt = AppointmentFactory(patient=other_patient, doctor=doctor)
-        response = auth_client_patient.get(f"/api/appointments/{appt.id}/")
+        response = auth_client_patient.get(f"/api/v1/appointments/{appt.id}/")
         assert response.status_code == status.HTTP_404_NOT_FOUND
 
     def test_nonexistent_id_returns_404(self, db, auth_client_patient):
         """Non-existent appointment ID returns 404."""
         import uuid
 
-        response = auth_client_patient.get(f"/api/appointments/{uuid.uuid4()}/")
+        response = auth_client_patient.get(f"/api/v1/appointments/{uuid.uuid4()}/")
         assert response.status_code == status.HTTP_404_NOT_FOUND
 
     def test_unauthenticated_returns_401(self, db, patient, doctor):
         """Unauthenticated request → 401."""
         appt = AppointmentFactory(patient=patient, doctor=doctor)
         client = APIClient()
-        response = client.get(f"/api/appointments/{appt.id}/")
+        response = client.get(f"/api/v1/appointments/{appt.id}/")
         assert response.status_code == status.HTTP_401_UNAUTHORIZED
 
 
@@ -572,7 +576,7 @@ class TestAppointmentUpdate:
         """Patient updates the reason of their appointment → 200."""
         appt = AppointmentFactory(patient=patient, doctor=doctor, reason="Old reason")
         response = auth_client_patient.patch(
-            f"/api/appointments/{appt.id}/",
+            f"/api/v1/appointments/{appt.id}/",
             {"reason": "New reason"},
             format="json",
         )
@@ -585,7 +589,7 @@ class TestAppointmentUpdate:
         appt = AppointmentFactory(patient=patient, doctor=doctor)
         client = APIClient()
         response = client.patch(
-            f"/api/appointments/{appt.id}/",
+            f"/api/v1/appointments/{appt.id}/",
             {"reason": "X"},
             format="json",
         )
@@ -603,7 +607,7 @@ class TestAppointmentDelete:
     def test_admin_can_delete_appointment(self, db, auth_client_admin, patient, doctor):
         """Admin deletes an appointment → 204."""
         appt = AppointmentFactory(patient=patient, doctor=doctor)
-        response = auth_client_admin.delete(f"/api/appointments/{appt.id}/")
+        response = auth_client_admin.delete(f"/api/v1/appointments/{appt.id}/")
         assert response.status_code == status.HTTP_204_NO_CONTENT
         from apps.appointments.models import Appointment as Appt
 
@@ -614,7 +618,7 @@ class TestAppointmentDelete:
     ):
         """Patient cannot delete → 403."""
         appt = AppointmentFactory(patient=patient, doctor=doctor)
-        response = auth_client_patient.delete(f"/api/appointments/{appt.id}/")
+        response = auth_client_patient.delete(f"/api/v1/appointments/{appt.id}/")
         assert response.status_code == status.HTTP_403_FORBIDDEN
 
     def test_doctor_cannot_delete_appointment(
@@ -623,7 +627,7 @@ class TestAppointmentDelete:
         """Doctor cannot delete → 403 (or 404 — not in their queryset)."""
         other_patient = PatientFactory()
         appt = AppointmentFactory(patient=other_patient, doctor=doctor)
-        response = auth_client_doctor.delete(f"/api/appointments/{appt.id}/")
+        response = auth_client_doctor.delete(f"/api/v1/appointments/{appt.id}/")
         # Doctor can see this appointment (it's theirs), but destroy requires IsAdminRole
         assert response.status_code == status.HTTP_403_FORBIDDEN
 
@@ -640,7 +644,7 @@ class TestDoctorDetail:
         self, db, auth_client_patient, doctor
     ):
         """Detail response includes specialties, email, bio fields."""
-        response = auth_client_patient.get(f"/api/doctors/{doctor.id}/")
+        response = auth_client_patient.get(f"/api/v1/doctors/{doctor.id}/")
         assert response.status_code == status.HTTP_200_OK
         assert response.data["id"] == str(doctor.id)
         assert "specialties" in response.data
@@ -651,11 +655,11 @@ class TestDoctorDetail:
         """Non-existent doctor ID → 404."""
         import uuid
 
-        response = auth_client_patient.get(f"/api/doctors/{uuid.uuid4()}/")
+        response = auth_client_patient.get(f"/api/v1/doctors/{uuid.uuid4()}/")
         assert response.status_code == status.HTTP_404_NOT_FOUND
 
     def test_unauthenticated_returns_401(self, db, doctor):
         """Unauthenticated request → 401."""
         client = APIClient()
-        response = client.get(f"/api/doctors/{doctor.id}/")
+        response = client.get(f"/api/v1/doctors/{doctor.id}/")
         assert response.status_code == status.HTTP_401_UNAUTHORIZED

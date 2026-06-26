@@ -184,7 +184,7 @@ SPECTACULAR_SETTINGS = {
         "All endpoints require JWT authentication (`Bearer <token>`)."
     ),
     "VERSION": "1.0.0",
-    "SCHEMA_PATH_PREFIX": "/api/",
+    "SCHEMA_PATH_PREFIX": "/api/v1/",
     "SERVE_INCLUDE_SCHEMA": False,
     # Resolve status enum collision between Appointment and TimeSlot
     "ENUM_NAME_OVERRIDES": {

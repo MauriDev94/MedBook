@@ -138,7 +138,7 @@ class TestExceptionHandlerIntegration:
     """Hit real endpoints to verify the shape end-to-end."""
 
     def test_unauthenticated_request_returns_standard_shape(self, api_client):
-        response = api_client.get("/api/users/me/")
+        response = api_client.get("/api/v1/users/me/")
 
         assert response.status_code == status.HTTP_401_UNAUTHORIZED
         assert "code" in response.data
@@ -146,7 +146,7 @@ class TestExceptionHandlerIntegration:
 
     def test_invalid_token_returns_standard_shape(self, api_client):
         response = api_client.post(
-            "/api/token/",
+            "/api/v1/token/",
             {"email": "noexiste@example.com", "password": "wrong"},
             format="json",
         )
@@ -162,7 +162,7 @@ class TestExceptionHandlerIntegration:
         api_client.force_authenticate(user=user)
 
         response = api_client.get(
-            "/api/appointments/00000000-0000-0000-0000-000000000000/"
+            "/api/v1/appointments/00000000-0000-0000-0000-000000000000/"
         )
 
         assert response.status_code == status.HTTP_404_NOT_FOUND

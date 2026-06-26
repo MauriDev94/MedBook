@@ -34,7 +34,7 @@ class TestDoctorFilters:
         DoctorFactory(specialties=[dermatology])
 
         api_client.force_authenticate(user=UserFactory())
-        response = api_client.get("/api/doctors/?specialty=cardiology")
+        response = api_client.get("/api/v1/doctors/?specialty=cardiology")
 
         assert response.status_code == status.HTTP_200_OK
         ids = [d["id"] for d in response.data["results"]]
@@ -45,7 +45,7 @@ class TestDoctorFilters:
         DoctorFactory()
 
         api_client.force_authenticate(user=UserFactory())
-        response = api_client.get("/api/doctors/?specialty=nonexistent")
+        response = api_client.get("/api/v1/doctors/?specialty=nonexistent")
 
         assert response.status_code == status.HTTP_200_OK
         assert response.data["count"] == 0
@@ -55,7 +55,7 @@ class TestDoctorFilters:
         DoctorFactory()
 
         api_client.force_authenticate(user=UserFactory())
-        response = api_client.get("/api/doctors/")
+        response = api_client.get("/api/v1/doctors/")
 
         assert response.status_code == status.HTTP_200_OK
         assert response.data["count"] == 2
@@ -71,7 +71,7 @@ class TestAppointmentFilters:
         AppointmentFactory(patient=patient, status="confirmed")
 
         api_client.force_authenticate(user=patient.user)
-        response = api_client.get("/api/appointments/?status=pending")
+        response = api_client.get("/api/v1/appointments/?status=pending")
 
         assert response.status_code == status.HTTP_200_OK
         assert response.data["count"] == 1
@@ -84,7 +84,7 @@ class TestAppointmentFilters:
         AppointmentFactory(patient=patient, status="confirmed")
 
         api_client.force_authenticate(user=patient.user)
-        response = api_client.get("/api/appointments/?status=confirmed")
+        response = api_client.get("/api/v1/appointments/?status=confirmed")
 
         assert response.status_code == status.HTTP_200_OK
         assert response.data["count"] == 2
@@ -101,7 +101,7 @@ class TestAppointmentFilters:
 
         date_from = (timezone.now() + datetime.timedelta(days=5)).date().isoformat()
         api_client.force_authenticate(user=patient.user)
-        response = api_client.get(f"/api/appointments/?date_from={date_from}")
+        response = api_client.get(f"/api/v1/appointments/?date_from={date_from}")
 
         assert response.status_code == status.HTTP_200_OK
         assert response.data["count"] == 1
@@ -118,7 +118,7 @@ class TestAppointmentFilters:
 
         date_to = (timezone.now() - datetime.timedelta(days=5)).date().isoformat()
         api_client.force_authenticate(user=patient.user)
-        response = api_client.get(f"/api/appointments/?date_to={date_to}")
+        response = api_client.get(f"/api/v1/appointments/?date_to={date_to}")
 
         assert response.status_code == status.HTTP_200_OK
         assert response.data["count"] == 1
@@ -144,7 +144,7 @@ class TestAppointmentFilters:
 
         api_client.force_authenticate(user=patient.user)
         response = api_client.get(
-            f"/api/appointments/?date_from={date_from}&date_to={date_to}"
+            f"/api/v1/appointments/?date_from={date_from}&date_to={date_to}"
         )
 
         assert response.status_code == status.HTTP_200_OK
@@ -162,7 +162,7 @@ class TestScheduleFilters:
         ScheduleFactory(day_of_week=1)  # Tuesday
 
         api_client.force_authenticate(user=admin)
-        response = api_client.get("/api/schedules/?day_of_week=1")
+        response = api_client.get("/api/v1/schedules/?day_of_week=1")
 
         assert response.status_code == status.HTTP_200_OK
         assert response.data["count"] == 2
@@ -174,7 +174,7 @@ class TestScheduleFilters:
         ScheduleFactory(is_active=False)
 
         api_client.force_authenticate(user=admin)
-        response = api_client.get("/api/schedules/?is_active=false")
+        response = api_client.get("/api/v1/schedules/?is_active=false")
 
         assert response.status_code == status.HTTP_200_OK
         assert response.data["count"] == 1
@@ -185,7 +185,7 @@ class TestScheduleFilters:
         ScheduleFactory(is_active=False)
 
         api_client.force_authenticate(user=admin)
-        response = api_client.get("/api/schedules/?is_active=true")
+        response = api_client.get("/api/v1/schedules/?is_active=true")
 
         assert response.status_code == status.HTTP_200_OK
         assert response.data["count"] == 1

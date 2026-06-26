@@ -20,11 +20,11 @@ from tests.factories import (
 
 
 def notes_list_url(appointment):
-    return f"/api/appointments/{appointment.id}/notes/"
+    return f"/api/v1/appointments/{appointment.id}/notes/"
 
 
 def notes_detail_url(appointment, note):
-    return f"/api/appointments/{appointment.id}/notes/{note.id}/"
+    return f"/api/v1/appointments/{appointment.id}/notes/{note.id}/"
 
 
 @pytest.mark.django_db

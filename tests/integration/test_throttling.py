@@ -28,7 +28,7 @@ class TestLoginRateThrottle:
         client = APIClient()
         # A single bad-credential request should return 401, not 429
         response = client.post(
-            "/api/token/",
+            "/api/v1/token/",
             {"email": "nobody@test.com", "password": "wrong"},
             format="json",
         )
@@ -44,13 +44,13 @@ class TestLoginRateThrottle:
         client = APIClient()
         for _ in range(3):
             client.post(
-                "/api/token/",
+                "/api/v1/token/",
                 {"email": "nobody@test.com", "password": "wrong"},
                 format="json",
             )
 
         response = client.post(
-            "/api/token/",
+            "/api/v1/token/",
             {"email": "nobody@test.com", "password": "wrong"},
             format="json",
         )
@@ -65,13 +65,13 @@ class TestLoginRateThrottle:
         client = APIClient()
         for _ in range(3):
             client.post(
-                "/api/token/",
+                "/api/v1/token/",
                 {"email": "nobody@test.com", "password": "wrong"},
                 format="json",
             )
 
         response = client.post(
-            "/api/token/",
+            "/api/v1/token/",
             {"email": "nobody@test.com", "password": "wrong"},
             format="json",
         )
@@ -87,13 +87,13 @@ class TestLoginRateThrottle:
         # Exhaust the login throttle
         for _ in range(4):
             client.post(
-                "/api/token/",
+                "/api/v1/token/",
                 {"email": "nobody@test.com", "password": "wrong"},
                 format="json",
             )
 
         # Doctors list should still be accessible (different throttle scope)
-        response = client.get("/api/doctors/")
+        response = client.get("/api/v1/doctors/")
         # 401 (auth required) not 429 (throttled)
         assert response.status_code == status.HTTP_401_UNAUTHORIZED
 
@@ -123,13 +123,13 @@ class TestGlobalAnonRateThrottle:
         client = APIClient()
         for _ in range(3):
             client.post(
-                "/api/token/",
+                "/api/v1/token/",
                 {"email": "nobody@test.com", "password": "wrong"},
                 format="json",
             )
 
         response = client.post(
-            "/api/token/",
+            "/api/v1/token/",
             {"email": "nobody@test.com", "password": "wrong"},
             format="json",
         )
@@ -151,9 +151,9 @@ class TestGlobalUserRateThrottle:
         client = APIClient()
         client.force_authenticate(user=user_patient)
         for _ in range(3):
-            client.get("/api/doctors/")
+            client.get("/api/v1/doctors/")
 
-        response = client.get("/api/doctors/")
+        response = client.get("/api/v1/doctors/")
         assert response.status_code == status.HTTP_429_TOO_MANY_REQUESTS
 
 
@@ -170,7 +170,7 @@ class TestRefreshRateThrottle:
         client = APIClient()
         for _ in range(4):
             response = client.post(
-                "/api/token/refresh/",
+                "/api/v1/token/refresh/",
                 {"refresh": "invalid-token"},
                 format="json",
             )
@@ -181,7 +181,7 @@ class TestRefreshRateThrottle:
         """A single refresh request under the limit must not be throttled."""
         client = APIClient()
         response = client.post(
-            "/api/token/refresh/",
+            "/api/v1/token/refresh/",
             {"refresh": "invalid-token"},
             format="json",
         )
@@ -200,7 +200,7 @@ class TestRefreshTokenRotation:
 
         client = APIClient()
         first_response = client.post(
-            "/api/token/refresh/",
+            "/api/v1/token/refresh/",
             {"refresh": str(old_refresh)},
             format="json",
         )
@@ -209,7 +209,7 @@ class TestRefreshTokenRotation:
 
         # Re-using the old (now rotated) refresh token must fail.
         second_response = client.post(
-            "/api/token/refresh/",
+            "/api/v1/token/refresh/",
             {"refresh": str(old_refresh)},
             format="json",
         )

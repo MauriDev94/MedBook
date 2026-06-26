@@ -28,7 +28,7 @@ class TestScheduleList:
         ScheduleFactory(doctor=doctor_b)
 
         api_client.force_authenticate(user=doctor_a.user)
-        response = api_client.get("/api/schedules/")
+        response = api_client.get("/api/v1/schedules/")
 
         assert response.status_code == status.HTTP_200_OK
         ids = [s["id"] for s in response.data["results"]]
@@ -41,7 +41,7 @@ class TestScheduleList:
         ScheduleFactory()
 
         api_client.force_authenticate(user=admin)
-        response = api_client.get("/api/schedules/")
+        response = api_client.get("/api/v1/schedules/")
 
         assert response.status_code == status.HTTP_200_OK
         assert response.data["count"] == 2
@@ -51,13 +51,13 @@ class TestScheduleList:
         ScheduleFactory()
 
         api_client.force_authenticate(user=patient.user)
-        response = api_client.get("/api/schedules/")
+        response = api_client.get("/api/v1/schedules/")
 
         assert response.status_code == status.HTTP_200_OK
         assert response.data["count"] == 0
 
     def test_unauthenticated_returns_401(self, api_client):
-        response = api_client.get("/api/schedules/")
+        response = api_client.get("/api/v1/schedules/")
 
         assert response.status_code == status.HTTP_401_UNAUTHORIZED
 
@@ -66,7 +66,7 @@ class TestScheduleList:
         ScheduleFactory(doctor=doctor)
 
         api_client.force_authenticate(user=doctor.user)
-        response = api_client.get("/api/schedules/")
+        response = api_client.get("/api/v1/schedules/")
 
         assert response.status_code == status.HTTP_200_OK
         schedule = response.data["results"][0]
@@ -90,7 +90,7 @@ class TestScheduleCreate:
         api_client.force_authenticate(user=doctor.user)
 
         response = api_client.post(
-            "/api/schedules/",
+            "/api/v1/schedules/",
             {"day_of_week": 1, "start_time": "09:00", "end_time": "17:00"},
             format="json",
         )
@@ -104,7 +104,7 @@ class TestScheduleCreate:
         api_client.force_authenticate(user=doctor.user)
 
         response = api_client.post(
-            "/api/schedules/",
+            "/api/v1/schedules/",
             {
                 "day_of_week": 2,
                 "start_time": "08:00",
@@ -123,7 +123,7 @@ class TestScheduleCreate:
         api_client.force_authenticate(user=patient.user)
 
         response = api_client.post(
-            "/api/schedules/",
+            "/api/v1/schedules/",
             {"day_of_week": 0, "start_time": "09:00", "end_time": "17:00"},
             format="json",
         )
@@ -135,7 +135,7 @@ class TestScheduleCreate:
         api_client.force_authenticate(user=doctor.user)
 
         response = api_client.post(
-            "/api/schedules/",
+            "/api/v1/schedules/",
             {"day_of_week": 0, "start_time": "17:00", "end_time": "09:00"},
             format="json",
         )
@@ -147,7 +147,7 @@ class TestScheduleCreate:
         api_client.force_authenticate(user=doctor.user)
 
         response = api_client.post(
-            "/api/schedules/",
+            "/api/v1/schedules/",
             {"day_of_week": 0, "start_time": "09:00", "end_time": "09:00"},
             format="json",
         )
@@ -156,7 +156,7 @@ class TestScheduleCreate:
 
     def test_unauthenticated_returns_401(self, api_client):
         response = api_client.post(
-            "/api/schedules/",
+            "/api/v1/schedules/",
             {"day_of_week": 0, "start_time": "09:00", "end_time": "17:00"},
             format="json",
         )
@@ -173,7 +173,7 @@ class TestScheduleRetrieve:
         schedule = ScheduleFactory(doctor=doctor)
 
         api_client.force_authenticate(user=doctor.user)
-        response = api_client.get(f"/api/schedules/{schedule.id}/")
+        response = api_client.get(f"/api/v1/schedules/{schedule.id}/")
 
         assert response.status_code == status.HTTP_200_OK
         assert str(response.data["id"]) == str(schedule.id)
@@ -184,7 +184,7 @@ class TestScheduleRetrieve:
         schedule_b = ScheduleFactory(doctor=doctor_b)
 
         api_client.force_authenticate(user=doctor_a.user)
-        response = api_client.get(f"/api/schedules/{schedule_b.id}/")
+        response = api_client.get(f"/api/v1/schedules/{schedule_b.id}/")
 
         assert response.status_code == status.HTTP_404_NOT_FOUND
 
@@ -193,7 +193,7 @@ class TestScheduleRetrieve:
         schedule = ScheduleFactory()
 
         api_client.force_authenticate(user=admin)
-        response = api_client.get(f"/api/schedules/{schedule.id}/")
+        response = api_client.get(f"/api/v1/schedules/{schedule.id}/")
 
         assert response.status_code == status.HTTP_200_OK
 
@@ -208,7 +208,7 @@ class TestScheduleUpdate:
 
         api_client.force_authenticate(user=doctor.user)
         response = api_client.patch(
-            f"/api/schedules/{schedule.id}/",
+            f"/api/v1/schedules/{schedule.id}/",
             {"start_time": "10:00"},
             format="json",
         )
@@ -224,7 +224,7 @@ class TestScheduleUpdate:
 
         api_client.force_authenticate(user=doctor_a.user)
         response = api_client.patch(
-            f"/api/schedules/{schedule_b.id}/",
+            f"/api/v1/schedules/{schedule_b.id}/",
             {"start_time": "10:00"},
             format="json",
         )
@@ -237,7 +237,7 @@ class TestScheduleUpdate:
 
         api_client.force_authenticate(user=admin)
         response = api_client.patch(
-            f"/api/schedules/{schedule.id}/",
+            f"/api/v1/schedules/{schedule.id}/",
             {"is_active": False},
             format="json",
         )
@@ -254,7 +254,7 @@ class TestScheduleDelete:
         schedule = ScheduleFactory(doctor=doctor)
 
         api_client.force_authenticate(user=doctor.user)
-        response = api_client.delete(f"/api/schedules/{schedule.id}/")
+        response = api_client.delete(f"/api/v1/schedules/{schedule.id}/")
 
         assert response.status_code == status.HTTP_204_NO_CONTENT
         schedule.refresh_from_db()
@@ -266,7 +266,7 @@ class TestScheduleDelete:
         schedule_id = schedule.id
 
         api_client.force_authenticate(user=doctor.user)
-        api_client.delete(f"/api/schedules/{schedule.id}/")
+        api_client.delete(f"/api/v1/schedules/{schedule.id}/")
 
         assert Schedule.objects.filter(id=schedule_id).exists()
 
@@ -276,7 +276,7 @@ class TestScheduleDelete:
         schedule_b = ScheduleFactory(doctor=doctor_b)
 
         api_client.force_authenticate(user=doctor_a.user)
-        response = api_client.delete(f"/api/schedules/{schedule_b.id}/")
+        response = api_client.delete(f"/api/v1/schedules/{schedule_b.id}/")
 
         assert response.status_code == status.HTTP_404_NOT_FOUND
 
@@ -285,7 +285,7 @@ class TestScheduleDelete:
         schedule = ScheduleFactory()
 
         api_client.force_authenticate(user=admin)
-        response = api_client.delete(f"/api/schedules/{schedule.id}/")
+        response = api_client.delete(f"/api/v1/schedules/{schedule.id}/")
 
         assert response.status_code == status.HTTP_204_NO_CONTENT
         schedule.refresh_from_db()
@@ -296,6 +296,6 @@ class TestScheduleDelete:
         schedule = ScheduleFactory()
 
         api_client.force_authenticate(user=patient.user)
-        response = api_client.delete(f"/api/schedules/{schedule.id}/")
+        response = api_client.delete(f"/api/v1/schedules/{schedule.id}/")
 
         assert response.status_code == status.HTTP_404_NOT_FOUND

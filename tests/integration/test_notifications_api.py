@@ -92,7 +92,7 @@ class TestAppointmentCreatedEmail:
     ):
         with django_capture_on_commit_callbacks(execute=True):
             auth_client_patient.post(
-                "/api/appointments/",
+                "/api/v1/appointments/",
                 {"slot": str(available_slot.id), "reason": "Routine checkup"},
             )
         assert len(mail.outbox) == 1
@@ -112,7 +112,7 @@ class TestAppointmentCreatedEmail:
 
         with django_capture_on_commit_callbacks(execute=True):
             auth_client_patient.post(
-                "/api/appointments/",
+                "/api/v1/appointments/",
                 {"slot": str(available_slot.id), "reason": "Checkup"},
             )
         assert len(mail.outbox) == 0
@@ -127,7 +127,7 @@ class TestAppointmentConfirmedEmail:
             patient=patient, doctor=doctor, status=Appointment.Status.PENDING
         )
         with django_capture_on_commit_callbacks(execute=True):
-            auth_client_doctor.post(f"/api/appointments/{appointment.id}/confirm/")
+            auth_client_doctor.post(f"/api/v1/appointments/{appointment.id}/confirm/")
 
         assert len(mail.outbox) == 1
         assert patient.user.email in mail.outbox[0].to
@@ -143,7 +143,7 @@ class TestAppointmentCancelledEmail:
             patient=patient, doctor=doctor, status=Appointment.Status.PENDING
         )
         with django_capture_on_commit_callbacks(execute=True):
-            auth_client_patient.post(f"/api/appointments/{appointment.id}/cancel/")
+            auth_client_patient.post(f"/api/v1/appointments/{appointment.id}/cancel/")
 
         assert len(mail.outbox) == 1
         assert patient.user.email in mail.outbox[0].to
