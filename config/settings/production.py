@@ -87,3 +87,23 @@ STORAGES = {  # noqa: F405
         "BACKEND": "whitenoise.storage.CompressedManifestStaticFilesStorage",
     },
 }
+
+# ---------------------------------------------------------------------------
+# Error tracking (Sentry) — gated by SENTRY_DSN
+# ---------------------------------------------------------------------------
+# Only initializes when SENTRY_DSN is set. Without it, this is a no-op:
+# local dev and CI never need a DSN and must keep working unmodified.
+# Never hardcode a DSN here — it always comes from the environment.
+SENTRY_DSN = config("SENTRY_DSN", default="")
+
+if SENTRY_DSN:
+    import sentry_sdk
+    from sentry_sdk.integrations.django import DjangoIntegration
+
+    sentry_sdk.init(
+        dsn=SENTRY_DSN,
+        integrations=[DjangoIntegration()],
+        traces_sample_rate=config("SENTRY_TRACES_SAMPLE_RATE", default=0.0, cast=float),
+        send_default_pii=False,
+        environment=config("SENTRY_ENVIRONMENT", default="production"),
+    )

@@ -3,3 +3,6 @@
 # Production
 gunicorn>=22,<23
 whitenoise[brotli]>=6.8,<7
+
+# Error tracking — gated by SENTRY_DSN env var (see config/settings/production.py)
+sentry-sdk[django]>=2,<3

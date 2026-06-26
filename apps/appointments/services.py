@@ -9,12 +9,31 @@ update both the appointment AND the slot in one transaction).
 """
 
 import datetime
+import logging
 
 from django.core.exceptions import ValidationError
 from django.db import transaction
 from django.utils import timezone
 
 from apps.appointments.models import Appointment, TimeSlot
+
+audit_logger = logging.getLogger("medbook.audit")
+
+
+def _log_transition(action: str, appointment: Appointment, actor) -> None:
+    """Log a clinical state transition for audit trail purposes.
+
+    Structured message: action, appointment id, and the actor (id + email)
+    who performed it. Timestamp is implicit via the log record's `created`.
+    Never log sensitive fields (passwords, tokens, headers).
+    """
+    audit_logger.info(
+        "action=%s appointment_id=%s actor_id=%s actor_email=%s",
+        action,
+        appointment.id,
+        actor.id,
+        actor.email,
+    )
 
 
 @transaction.atomic
@@ -102,6 +121,7 @@ def confirm_appointment(appointment: Appointment, confirmed_by) -> Appointment:
         ValueError: if the appointment is not in PENDING status.
     """
     appointment.confirm()  # raises ValueError if invalid transition
+    _log_transition("confirm_appointment", appointment, confirmed_by)
 
     from apps.notifications.services import send_appointment_confirmed
 
@@ -128,6 +148,7 @@ def cancel_appointment(appointment: Appointment, cancelled_by) -> Appointment:
         ValueError: if the appointment cannot be cancelled (e.g. COMPLETED).
     """
     appointment.cancel()  # raises ValueError if invalid transition
+    _log_transition("cancel_appointment", appointment, cancelled_by)
 
     appointment.slot.status = TimeSlot.Status.AVAILABLE
     appointment.slot.save(update_fields=["status", "updated_at"])
@@ -139,8 +160,12 @@ def cancel_appointment(appointment: Appointment, cancelled_by) -> Appointment:
 
 
 @transaction.atomic
-def complete_appointment(appointment: Appointment) -> Appointment:
+def complete_appointment(appointment: Appointment, completed_by) -> Appointment:
     """Transition a CONFIRMED appointment to COMPLETED.
+
+    Args:
+        appointment: The Appointment instance to complete.
+        completed_by: User performing the action (for audit trail).
 
     Returns:
         The updated Appointment instance.
@@ -149,12 +174,17 @@ def complete_appointment(appointment: Appointment) -> Appointment:
         ValueError: if the appointment is not CONFIRMED.
     """
     appointment.complete()  # raises ValueError if invalid transition
+    _log_transition("complete_appointment", appointment, completed_by)
     return appointment
 
 
 @transaction.atomic
-def mark_no_show(appointment: Appointment) -> Appointment:
+def mark_no_show(appointment: Appointment, marked_by) -> Appointment:
     """Mark a CONFIRMED appointment as NO_SHOW when the patient doesn't attend.
+
+    Args:
+        appointment: The Appointment instance to mark.
+        marked_by: User performing the action (for audit trail).
 
     Returns:
         The updated Appointment instance.
@@ -163,6 +193,7 @@ def mark_no_show(appointment: Appointment) -> Appointment:
         ValueError: if the appointment is not CONFIRMED.
     """
     appointment.mark_no_show()  # raises ValueError if invalid transition
+    _log_transition("mark_no_show", appointment, marked_by)
     return appointment
 
 
