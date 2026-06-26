@@ -31,6 +31,22 @@ SECURE_HSTS_PRELOAD = True
 SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
 
 # ---------------------------------------------------------------------------
+# Proxy-aware client IP resolution (DRF throttling)
+# ---------------------------------------------------------------------------
+# Render sits its app behind a single edge layer (Cloudflare + Render's load
+# balancer act as one hop from the app's perspective): the request reaching
+# Gunicorn carries X-Forwarded-For with exactly one trusted hop prepended.
+# DRF's SimpleRateThrottle.get_ident() uses REST_FRAMEWORK["NUM_PROXIES"] to
+# pick "the Nth-from-last" IP in X-Forwarded-For instead of trusting
+# REMOTE_ADDR (which would be the proxy's IP, not the real client's).
+# Without this, every request behind Render's proxy collapses onto the same
+# throttle bucket (the proxy IP), making per-client rate limiting useless.
+REST_FRAMEWORK = {  # noqa: F405
+    **REST_FRAMEWORK,  # noqa: F405
+    "NUM_PROXIES": 1,
+}
+
+# ---------------------------------------------------------------------------
 # Database
 # ---------------------------------------------------------------------------
 DATABASES = {

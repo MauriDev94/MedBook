@@ -17,3 +17,17 @@ class LoginRateThrottle(AnonRateThrottle):
     """
 
     scope = "login"
+
+
+class RefreshRateThrottle(AnonRateThrottle):
+    """Rate limit for the JWT token refresh endpoint (/api/token/refresh/).
+
+    Refresh requests are unauthenticated (the access token may already be
+    expired), so this is IP-based like LoginRateThrottle. Prevents abuse of
+    the refresh flow (e.g. brute-forcing stolen/expired refresh tokens).
+    Rate configured via settings: DEFAULT_THROTTLE_RATES["refresh"].
+
+    Default: 10 requests per minute per IP.
+    """
+
+    scope = "refresh"

@@ -3,9 +3,10 @@ from rest_framework import status, viewsets
 from rest_framework.decorators import action
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
-from rest_framework_simplejwt.views import TokenObtainPairView
+from rest_framework.throttling import AnonRateThrottle
+from rest_framework_simplejwt.views import TokenObtainPairView, TokenRefreshView
 
-from apps.core.throttling import LoginRateThrottle
+from apps.core.throttling import LoginRateThrottle, RefreshRateThrottle
 from apps.users.serializers import (
     CustomTokenObtainPairSerializer,
     UserSerializer,
@@ -17,10 +18,26 @@ class CustomTokenObtainPairView(TokenObtainPairView):
     """JWT login endpoint. Returns access + refresh tokens with custom claims.
 
     Rate limited to 5 requests/minute per IP to prevent brute-force attacks.
+    AllowAny views don't inherit the global DEFAULT_THROTTLE_CLASSES once
+    throttle_classes is overridden here, so the global AnonRateThrottle is
+    listed explicitly alongside LoginRateThrottle (defense in depth).
     """
 
     serializer_class = CustomTokenObtainPairSerializer
-    throttle_classes = [LoginRateThrottle]
+    throttle_classes = [LoginRateThrottle, AnonRateThrottle]
+
+
+class CustomTokenRefreshView(TokenRefreshView):
+    """JWT refresh endpoint. Issues a new access + refresh token pair.
+
+    Rate limited to prevent abuse of the refresh flow (e.g. brute-forcing
+    stolen/expired refresh tokens). SIMPLE_JWT["ROTATE_REFRESH_TOKENS"] is
+    True, so each call also blacklists the consumed refresh token.
+    Global AnonRateThrottle is listed explicitly for the same reason as
+    CustomTokenObtainPairView above.
+    """
+
+    throttle_classes = [RefreshRateThrottle, AnonRateThrottle]
 
 
 class UserViewSet(viewsets.GenericViewSet):
