@@ -16,6 +16,7 @@ from django.db import transaction
 from django.utils import timezone
 
 from apps.appointments.models import Appointment, TimeSlot
+from apps.core.exceptions import SlotConflict
 
 audit_logger = logging.getLogger("medbook.audit")
 
@@ -37,40 +38,39 @@ def _log_transition(action: str, appointment: Appointment, actor) -> None:
 
 
 @transaction.atomic
-def create_appointment(
-    patient, doctor, slot: TimeSlot, reason: str = ""
-) -> Appointment:
+def create_appointment(patient, slot: TimeSlot, reason: str = "") -> Appointment:
     """Create an appointment and atomically reserve the slot.
 
     Uses an atomic UPDATE on the slot to prevent race conditions: if two
     requests try to book the same slot simultaneously, only one UPDATE
-    will match (status=AVAILABLE), and the other will raise ValidationError.
+    will match (status=AVAILABLE), and the other will raise SlotConflict.
 
     Sends a booking-received email to the patient after persisting.
 
     Args:
         patient: Patient instance (from request.user.patient_profile).
-        doctor: Doctor instance (inferred from slot.schedule.doctor).
-        slot: TimeSlot to reserve.
+        slot: TimeSlot to reserve. The doctor is derived from
+            slot.schedule.doctor — never passed explicitly, so the
+            assigned doctor can never drift from the slot being booked.
         reason: Optional reason for the appointment.
 
     Returns:
         The created Appointment instance.
 
     Raises:
-        ValidationError: if the slot was taken between validation and creation.
+        SlotConflict: if the slot was taken between validation and creation.
     """
     updated = TimeSlot.objects.filter(
         id=slot.id, status=TimeSlot.Status.AVAILABLE
     ).update(status=TimeSlot.Status.RESERVED, updated_at=timezone.now())
 
     if not updated:
-        raise ValidationError("This time slot is no longer available.")
+        raise SlotConflict()
 
     slot.refresh_from_db()
     appointment = Appointment.objects.create(
         patient=patient,
-        doctor=doctor,
+        doctor=slot.schedule.doctor,
         slot=slot,
         reason=reason,
     )

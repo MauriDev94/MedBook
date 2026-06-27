@@ -45,6 +45,14 @@ class TimeSlot(BaseModel):
         return f"{self.schedule.doctor} | {self.start_datetime:%Y-%m-%d %H:%M} [{self.status}]"
 
 
+class InvalidTransition(ValueError):
+    """Raised when an Appointment state transition is not allowed.
+
+    Subclass of ValueError so existing `except ValueError` call sites keep
+    working unchanged; the custom exception handler maps it to a 400.
+    """
+
+
 class Appointment(BaseModel):
     """A booking linking a patient, a doctor, and a concrete TimeSlot.
 
@@ -111,32 +119,36 @@ class Appointment(BaseModel):
     # ------------------------------------------------------------------
 
     def confirm(self) -> None:
-        """pending → confirmed. Raises ValueError if transition is invalid."""
+        """pending → confirmed. Raises InvalidTransition if invalid."""
         if not self.can_be_confirmed():
-            raise ValueError(f"Cannot confirm appointment with status '{self.status}'.")
+            raise InvalidTransition(
+                f"Cannot confirm appointment with status '{self.status}'."
+            )
         self.status = self.Status.CONFIRMED
         self.save(update_fields=["status", "updated_at"])
 
     def cancel(self) -> None:
-        """pending|confirmed → cancelled. Raises ValueError if transition is invalid."""
+        """pending|confirmed → cancelled. Raises InvalidTransition if invalid."""
         if not self.can_be_cancelled():
-            raise ValueError(f"Cannot cancel appointment with status '{self.status}'.")
+            raise InvalidTransition(
+                f"Cannot cancel appointment with status '{self.status}'."
+            )
         self.status = self.Status.CANCELLED
         self.save(update_fields=["status", "updated_at"])
 
     def complete(self) -> None:
-        """confirmed → completed. Raises ValueError if transition is invalid."""
+        """confirmed → completed. Raises InvalidTransition if invalid."""
         if not self.can_be_completed():
-            raise ValueError(
+            raise InvalidTransition(
                 f"Cannot complete appointment with status '{self.status}'."
             )
         self.status = self.Status.COMPLETED
         self.save(update_fields=["status", "updated_at"])
 
     def mark_no_show(self) -> None:
-        """confirmed → no_show. Raises ValueError if transition is invalid."""
+        """confirmed → no_show. Raises InvalidTransition if invalid."""
         if not self.can_be_marked_no_show():
-            raise ValueError(
+            raise InvalidTransition(
                 f"Cannot mark as no-show appointment with status '{self.status}'."
             )
         self.status = self.Status.NO_SHOW

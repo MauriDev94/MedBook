@@ -102,6 +102,26 @@ class TestExceptionHandlerShape:
 
         assert response is None
 
+    def test_invalid_transition_maps_to_400(self):
+        """InvalidTransition (raised by Appointment state methods) → 400.
+
+        It IS a ValueError, but unlike a generic/unexpected ValueError
+        (which must escalate to 500 to avoid masking real bugs), it's a
+        well-known domain exception that always means "bad request".
+        """
+        from apps.appointments.models import InvalidTransition
+
+        exc = InvalidTransition("Cannot confirm appointment with status 'confirmed'.")
+        response = call_handler(exc)
+
+        assert response is not None
+        assert response.status_code == status.HTTP_400_BAD_REQUEST
+        assert response.data["code"] == "validation_error"
+        assert (
+            response.data["detail"]
+            == "Cannot confirm appointment with status 'confirmed'."
+        )
+
     def test_django_validation_error_maps_to_400(self):
         """Django's ValidationError (raised by services) → 400, not a 500.
 
