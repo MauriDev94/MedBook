@@ -1,5 +1,6 @@
 """URL configuration for MedBook project."""
 
+from django.conf import settings
 from django.contrib import admin
 from django.urls import include, path
 from django.views.generic.base import RedirectView
@@ -27,8 +28,8 @@ urlpatterns = [
     path("", RedirectView.as_view(url="/api/docs/", permanent=False), name="root"),
     # Infrastructure
     path("health/", health_check, name="health-check"),
-    # Admin
-    path("admin/", admin.site.urls),
+    # Admin — path is configurable via DJANGO_ADMIN_URL to reduce brute-force surface
+    path(settings.DJANGO_ADMIN_URL, admin.site.urls),
     # OpenAPI
     path("api/schema/", SpectacularAPIView.as_view(), name="schema"),
     path("api/docs/", SpectacularSwaggerView.as_view(url_name="schema"), name="docs"),

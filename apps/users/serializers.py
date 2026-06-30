@@ -5,7 +5,17 @@ from apps.users.models import User
 
 
 class CustomTokenObtainPairSerializer(TokenObtainPairSerializer):
-    """Adds custom claims (role, email, full_name) to the JWT payload."""
+    """Adds custom claims (role, email, full_name) to the JWT payload.
+
+    Security note: JWT payloads are base64-encoded, NOT encrypted. Anyone in
+    possession of the token (e.g. via browser devtools, a proxy, or a stolen
+    token) can read these claims without verifying the signature. Therefore
+    only non-sensitive data is placed here. ``role``, ``email`` and
+    ``full_name`` are considered safe to expose this way — this is a
+    deliberate design decision, not an oversight. Do NOT add sensitive data
+    (passwords, secrets, PII beyond what's already public-facing, etc.) to
+    these claims.
+    """
 
     @classmethod
     def get_token(cls, user):
