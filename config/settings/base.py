@@ -17,6 +17,14 @@ SECRET_KEY = config("SECRET_KEY")
 DEBUG = config("DEBUG", default=False, cast=bool)
 ALLOWED_HOSTS = config("ALLOWED_HOSTS", default="localhost,127.0.0.1", cast=Csv())
 
+# Admin path is configurable to reduce brute-force/scanning surface on the
+# well-known "/admin/" path. Django requires the mounted path to end with
+# a trailing slash, so we normalise it here regardless of how the env var
+# was set.
+DJANGO_ADMIN_URL = config("DJANGO_ADMIN_URL", default="admin/")
+if not DJANGO_ADMIN_URL.endswith("/"):
+    DJANGO_ADMIN_URL += "/"
+
 # ---------------------------------------------------------------------------
 # Application definition
 # ---------------------------------------------------------------------------
@@ -106,6 +114,9 @@ DATABASES = {
 # Password validation
 # ---------------------------------------------------------------------------
 AUTH_PASSWORD_VALIDATORS = [
+    {
+        "NAME": "django.contrib.auth.password_validation.UserAttributeSimilarityValidator"
+    },
     {"NAME": "django.contrib.auth.password_validation.MinimumLengthValidator"},
     {"NAME": "django.contrib.auth.password_validation.CommonPasswordValidator"},
     {"NAME": "django.contrib.auth.password_validation.NumericPasswordValidator"},
