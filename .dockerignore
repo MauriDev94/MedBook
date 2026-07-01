@@ -1,0 +1,59 @@
+# Version control
+.git
+.github
+
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+*.egg
+.ruff_cache/
+.pytest_cache/
+
+# Virtualenv
+.venv/
+venv/
+
+# Environment / secrets — never bake these into an image
+.env
+.env.*
+!.env.example
+
+# Database
+db.sqlite3
+
+# Coverage
+.coverage
+.coverage.*
+htmlcov/
+coverage/
+
+# Tests and docs — not needed at runtime
+tests/
+docs/
+
+# Project planning / agent docs — not part of the runtime image
+.agent/
+.atl/
+.claude/
+AGENT.md
+CLAUDE.md
+PRD.md
+SPRINT.md
+
+# IDE / OS
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+*.stackdump
+
+# Docker itself
+Dockerfile
+.dockerignore
+docker-compose.yml
+docker-compose.test.yml
+
+# Static collected locally (rebuilt in the image)
+staticfiles/
+media/

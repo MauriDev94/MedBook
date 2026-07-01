@@ -247,6 +247,25 @@ Open **http://localhost:8000/api/docs/** for the interactive Swagger UI.
 
 ---
 
+## Deploy
+
+Production deploy is **Render-native** — see [`render.yaml`](./render.yaml) for the build/start commands (gunicorn, WhiteNoise-served static files, managed Postgres).
+
+A multi-stage [`Dockerfile`](./Dockerfile) is also included as a **portable alternative** to run the same app anywhere Docker runs (it does not replace the Render deploy):
+
+```bash
+docker build -t medbook:latest .
+docker run --rm -p 8000:8000 \
+  -e SECRET_KEY=... \
+  -e ALLOWED_HOSTS=localhost,127.0.0.1 \
+  -e DATABASE_URL=postgres://user:pass@host:5432/medbook \
+  medbook:latest
+```
+
+The image builds in two stages (deps → slim runtime), runs `collectstatic` at build time, and serves the app as a non-root user.
+
+---
+
 ## Running tests
 
 Tests run against a real PostgreSQL database (same as production).
