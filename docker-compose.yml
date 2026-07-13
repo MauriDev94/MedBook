@@ -12,7 +12,33 @@ services:
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
     volumes:
       - medbook_pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-postgres}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  web:
+    build: .
+    container_name: medbook-web
+    depends_on:
+      db:
+        condition: service_healthy
+    ports:
+      - "8000:8000"
+    environment:
+      # Local dev settings — NOT production. Production settings enforce
+      # SECURE_SSL_REDIRECT=True, which would break plain HTTP on localhost.
+      DJANGO_SETTINGS_MODULE: config.settings.local
+      SECRET_KEY: dev-not-a-secret
+      DEBUG: "True"
+      ALLOWED_HOSTS: localhost,127.0.0.1
+      # host = "db" (the compose service name), port = 5432 (Postgres'
+      # container-internal port, not the 5435 host-mapped port above).
+      DATABASE_URL: postgres://postgres:postgres@db:5432/medbook
+    command: >
+      sh -c "python manage.py migrate --noinput &&
+             gunicorn config.wsgi:application --bind 0.0.0.0:8000"
 
 volumes:
   medbook_pgdata:
-    external: true
