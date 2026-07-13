@@ -20,7 +20,7 @@ services:
 
   web:
     build: .
-    container_name: medbook-web
+    container_name: medbook-api
     depends_on:
       db:
         condition: service_healthy
