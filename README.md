@@ -245,6 +245,32 @@ DJANGO_SETTINGS_MODULE=config.settings.local python manage.py runserver
 
 Open **http://localhost:8000/api/docs/** for the interactive Swagger UI.
 
+### Alternative: one-command dev stack with `docker compose up`
+
+`docker-compose.yml` now unifies **app + DB** in a single stack — no manual
+`pip install` / `createdb` / `runserver` steps required:
+
+```bash
+docker compose up
+```
+
+This builds the `web` service from the root [`Dockerfile`](./Dockerfile) and
+starts it alongside the `db` (Postgres 16) service. Notes:
+
+- `web` waits for `db`'s healthcheck (`pg_isready`) before starting.
+- `web` runs with `DJANGO_SETTINGS_MODULE=config.settings.local` (**not**
+  `production` — the production settings force `SECURE_SSL_REDIRECT=True`,
+  which would break plain HTTP on `localhost`).
+- On every start, `web` runs `python manage.py migrate --noinput` before
+  launching `gunicorn`, so the schema is always up to date.
+- The API is available at **http://localhost:8000/api/docs/**.
+- All `web` env vars (`SECRET_KEY`, `DATABASE_URL`, etc.) are dev-only
+  placeholders hardcoded in `docker-compose.yml` for a true one-command
+  `up` — do not reuse them anywhere outside local development.
+- `medbook_pgdata` is a regular (non-`external`) named volume, so
+  `docker compose up` works out of the box without pre-creating it by hand.
+  Run `docker compose down -v` to drop it if you want a clean database.
+
 ---
 
 ## Deploy
@@ -263,6 +289,8 @@ docker run --rm -p 8000:8000 \
 ```
 
 The image builds in two stages (deps → slim runtime), runs `collectstatic` at build time, and serves the app as a non-root user.
+
+`docker-compose.yml` (see [Local setup](#alternative-one-command-dev-stack-with-docker-compose-up)) wraps this same `Dockerfile` for **local development only** — it hardcodes dev credentials and `DEBUG=True`, and is not used for the Render deploy.
 
 ---
 
