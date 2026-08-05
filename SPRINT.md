@@ -25,14 +25,14 @@
 
 ## Checklist acumulativo — Semana 2
 
-- [x] `python manage.py migrate` corre sin errores
+- [x] `python manage.py migrate` se ejecuta sin errores
 - [x] Migraciones de appointments aplicadas
 - [x] `pytest tests/ -v` pasa al 100% (169 tests, 99% cobertura)
 - [x] Cobertura `apps/appointments/services.py` = 100%
 - [x] Cobertura `apps/core/permissions.py` = 100%
 - [x] Cobertura `apps/appointments/models.py` = 100%
 - [x] Flujo completo: POST /api/token/ → POST /api/appointments/ → POST /api/appointments/{id}/confirm/
-- [x] `python manage.py generate_slots` corre sin errores
+- [x] `python manage.py generate_slots` se ejecuta sin errores
 - [x] Signal genera slots al crear un Schedule
 - [x] GET /api/doctors/{id}/available-slots/ retorna slots disponibles
 - [x] Ningún ViewSet accede al ORM directamente (todo via services o queryset)
@@ -96,5 +96,5 @@
 
 - `AUTH_TOKEN_CLASSES` debe ser `"rest_framework_simplejwt.tokens.AccessToken"` (path completo) — PR #52
 - `.env` no debe tener dos `DATABASE_URL` — la segunda pisa la primera y apunta a la DB de tests
-- `PYTHONIOENCODING=utf-8` necesario en Windows para correr `spectacular` (carácter `→` en docstrings)
+- `PYTHONIOENCODING=utf-8` necesario en Windows para ejecutar `spectacular` (carácter `→` en docstrings)
 - `full_name` es `@property` en nuestro User, no `get_full_name()` (no hereda de `AbstractUser`)

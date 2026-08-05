@@ -295,7 +295,7 @@ Resumen rápido:
 ## Convenciones del proyecto
 
 ```bash
-# Lint (corre automático en cada commit vía pre-commit)
+# Lint (se ejecuta automáticamente en cada commit vía pre-commit)
 ruff check . && ruff format --check .
 
 # Generar slots para los próximos 30 días

@@ -13,7 +13,7 @@
 $env:DJANGO_SETTINGS_MODULE='config.settings.local'
 ```
 
-> CRÍTICO: Nunca usar `Start-Process` para levantar Django. Siempre `python manage.py runserver` en terminal dedicada con env vars ya seteadas.
+> CRÍTICO: Nunca usar `Start-Process` para iniciar Django. Siempre `python manage.py runserver` en terminal dedicada con env vars ya configuradas.
 
 ---
 
@@ -21,13 +21,13 @@ $env:DJANGO_SETTINGS_MODULE='config.settings.local'
 
 ```bash
 pip install -r requirements/local.txt
-pre-commit install   # instala el hook — ruff corre automático en cada commit
+pre-commit install   # instala el hook — ruff se ejecuta automáticamente en cada commit
 ```
 
 ## Comandos esenciales
 
 ```bash
-# Lint — correr antes de cada commit (pre-commit lo hace automático)
+# Lint — ejecutar antes de cada commit (pre-commit lo hace automático)
 ruff check . && ruff format --check .
 
 # Tests — siempre contra PostgreSQL (igual que CI)
@@ -181,7 +181,7 @@ Detenerse, mostrar output completo y esperar confirmación explícita antes de a
 - ❌ SQLite en desarrollo o tests oficiales — PostgreSQL siempre
 - ❌ Fixtures JSON/YAML — solo factory_boy
 - ❌ Escribir implementación antes del test
-- ❌ `Start-Process` para levantar Django en Windows
+- ❌ `Start-Process` para iniciar Django en Windows
 - ❌ Iterar silenciosamente ante errores — siempre reportar y pausar
 
 ---
