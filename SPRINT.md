@@ -98,3 +98,29 @@
 - `.env` no debe tener dos `DATABASE_URL` — la segunda pisa la primera y apunta a la DB de tests
 - `PYTHONIOENCODING=utf-8` necesario en Windows para correr `spectacular` (carácter `→` en docstrings)
 - `full_name` es `@property` en nuestro User, no `get_full_name()` (no hereda de `AbstractUser`)
+
+---
+
+# Sprint — Semana 4: Preparación fullstack
+
+> **Objetivo:** Dejar la API lista para el frontend server-rendered (Django templates + HTMX, ver [ADR 0002](./docs/adr/0002-server-rendered-web-frontend.md)): Django LTS, registro público de pacientes y slots generados de forma continua.
+> El sprint del frontend (`apps/web`) se planifica al cerrar este.
+
+---
+
+## Estado
+
+| Paso | Descripción | Issue | PR | Estado |
+|------|-------------|-------|----|--------|
+| 20 | Django 5.2 LTS + DRF 3.18 + bumps de Dependabot (#121–#125) | #126 | — | ⬜ |
+| 21 | Registro público de pacientes (service + `POST /api/v1/users/register/`) | #127 | — | ⬜ |
+| 22 | `generate_slots` al arrancar el servicio en Render | #128 | — | ⬜ |
+
+---
+
+## Checklist acumulativo — Semana 4
+
+- [ ] Django 5.2 LTS en producción, sin PRs de Dependabot pendientes
+- [ ] `POST /api/v1/users/register/` crea User + Patient y permite login inmediato en `/api/v1/token/`
+- [ ] Cada arranque o deploy en Render deja slots disponibles para los próximos 14 días
+- [ ] Gate de coverage ≥ 95% branch se mantiene
