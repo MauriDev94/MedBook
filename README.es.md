@@ -1,12 +1,12 @@
 # MedBook API
 
-> API REST para reservas médicas — Django 5.1 + DRF 3.15  
+> API REST para reservas médicas — Django 5.2 LTS + DRF 3.18  
 > Proyecto de portafolio que demuestra patrones Django de nivel producción.
 
 [![Tests](https://img.shields.io/badge/tests-274%20passing-brightgreen)](./tests)
 [![Coverage](https://img.shields.io/badge/branch%20coverage-98.7%25-brightgreen)](./tests)
 [![Python](https://img.shields.io/badge/python-3.12-blue)](https://python.org)
-[![Django](https://img.shields.io/badge/django-5.1-green)](https://djangoproject.com)
+[![Django](https://img.shields.io/badge/django-5.2%20LTS-green)](https://djangoproject.com)
 
 **[Read in English →](./README.md)**
 
@@ -25,12 +25,12 @@ El objetivo es demostrar competencia real con Django: queries ORM complejas, per
 | Capa | Tecnología | Versión |
 |---|---|---|
 | Lenguaje | Python | 3.12 |
-| Framework | Django | 5.1.15 |
-| REST | Django REST Framework | 3.15.2 |
-| Auth | djangorestframework-simplejwt | 5.3.1 |
-| Filtros | django-filter | 24.x |
-| Docs API | drf-spectacular (OpenAPI 3) | 0.27.2 |
-| Email | django-anymail (Resend) | 10.3 |
+| Framework | Django | 5.2 LTS (5.2.18) |
+| REST | Django REST Framework | 3.18.3 |
+| Auth | djangorestframework-simplejwt | 5.5.1 |
+| Filtros | django-filter | 26.x |
+| Docs API | drf-spectacular (OpenAPI 3) | 0.30.0 |
+| Email | django-anymail (Resend) | 15.x |
 | CORS | django-cors-headers | 4.9.0 |
 | Static files | whitenoise[brotli] | 6.8 |
 | Base de datos | PostgreSQL 16 | — |

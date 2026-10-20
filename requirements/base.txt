@@ -1,9 +1,9 @@
-Django>=5.1,<5.2
-djangorestframework>=3.15,<3.16
-djangorestframework-simplejwt>=5.3,<5.4
+Django>=5.2,<5.3
+djangorestframework>=3.18,<3.19
+djangorestframework-simplejwt>=5.5,<5.6
 django-cors-headers>=4,<5
-django-filter>=24,<25
-drf-spectacular>=0.27,<0.28
+django-filter>=26.1,<27
+drf-spectacular>=0.30,<0.31
 django-anymail>=15.1,<16
 psycopg2-binary>=2.9,<2.10
 python-decouple>=3,<4
