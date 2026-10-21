@@ -1,12 +1,12 @@
 # MedBook API
 
-> REST API for medical appointment booking — Django 5.1 + DRF 3.15  
+> REST API for medical appointment booking — Django 5.2 LTS + DRF 3.18  
 > Portfolio project demonstrating production-grade Django patterns.
 
-[![Tests](https://img.shields.io/badge/tests-274%20passing-brightgreen)](./tests)
-[![Coverage](https://img.shields.io/badge/branch%20coverage-98.7%25-brightgreen)](./tests)
+[![Tests](https://img.shields.io/badge/tests-305%20passing-brightgreen)](./tests)
+[![Coverage](https://img.shields.io/badge/branch%20coverage-99.4%25-brightgreen)](./tests)
 [![Python](https://img.shields.io/badge/python-3.12-blue)](https://python.org)
-[![Django](https://img.shields.io/badge/django-5.1-green)](https://djangoproject.com)
+[![Django](https://img.shields.io/badge/django-5.2%20LTS-green)](https://djangoproject.com)
 
 **[Leer en Español →](./README.es.md)**
 
@@ -25,12 +25,12 @@ The goal is to demonstrate real-world Django competency: complex ORM queries, RB
 | Layer | Technology | Version |
 |---|---|---|
 | Language | Python | 3.12 |
-| Framework | Django | 5.1.15 |
-| REST | Django REST Framework | 3.15.2 |
-| Auth | djangorestframework-simplejwt | 5.3.1 |
-| Filtering | django-filter | 24.x |
-| API docs | drf-spectacular (OpenAPI 3) | 0.27.2 |
-| Email | django-anymail (Resend) | 10.3 |
+| Framework | Django | 5.2 LTS (5.2.18) |
+| REST | Django REST Framework | 3.18.3 |
+| Auth | djangorestframework-simplejwt | 5.5.1 |
+| Filtering | django-filter | 26.x |
+| API docs | drf-spectacular (OpenAPI 3) | 0.30.0 |
+| Email | django-anymail (Resend) | 15.x |
 | CORS | django-cors-headers | 4.9.0 |
 | Static files | whitenoise[brotli] | 6.8 |
 | Database | PostgreSQL 16 | — |
@@ -327,7 +327,7 @@ createdb medbook_test          # or via Docker on port 5436
 # See .env.test.example for configuration
 ```
 
-Current stats: **274 tests · 98.7% branch coverage · 0 failures**
+Current stats: **305 tests · 99.4% branch coverage · 0 failures**
 
 ---
 
