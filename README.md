@@ -3,7 +3,7 @@
 > REST API for medical appointment booking — Django 5.2 LTS + DRF 3.18  
 > Portfolio project demonstrating production-grade Django patterns.
 
-[![Tests](https://img.shields.io/badge/tests-305%20passing-brightgreen)](./tests)
+[![Tests](https://img.shields.io/badge/tests-331%20passing-brightgreen)](./tests)
 [![Coverage](https://img.shields.io/badge/branch%20coverage-99.4%25-brightgreen)](./tests)
 [![Python](https://img.shields.io/badge/python-3.12-blue)](https://python.org)
 [![Django](https://img.shields.io/badge/django-5.2%20LTS-green)](https://djangoproject.com)
@@ -124,6 +124,7 @@ Docs: `GET /api/docs/` (Swagger UI)
 |---|---|---|---|
 | GET | `/api/v1/users/me/` | Authenticated user profile | Any |
 | PATCH | `/api/v1/users/me/` | Update first_name, last_name | Any |
+| POST | `/api/v1/users/register/` | Patient self-registration → 201 with the profile (no tokens; log in via `/api/v1/token/`). Rate limited to 10/hour per IP | Public |
 
 ### Doctors
 | Method | Endpoint | Description | Auth |
@@ -327,7 +328,7 @@ createdb medbook_test          # or via Docker on port 5436
 # See .env.test.example for configuration
 ```
 
-Current stats: **305 tests · 99.4% branch coverage · 0 failures**
+Current stats: **331 tests · 99.4% branch coverage · 0 failures**
 
 ---
 

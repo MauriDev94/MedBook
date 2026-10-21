@@ -3,7 +3,7 @@
 > API REST para reservas médicas — Django 5.2 LTS + DRF 3.18  
 > Proyecto de portafolio que demuestra patrones Django de nivel producción.
 
-[![Tests](https://img.shields.io/badge/tests-305%20passing-brightgreen)](./tests)
+[![Tests](https://img.shields.io/badge/tests-331%20passing-brightgreen)](./tests)
 [![Coverage](https://img.shields.io/badge/branch%20coverage-99.4%25-brightgreen)](./tests)
 [![Python](https://img.shields.io/badge/python-3.12-blue)](https://python.org)
 [![Django](https://img.shields.io/badge/django-5.2%20LTS-green)](https://djangoproject.com)
@@ -124,6 +124,7 @@ Docs: `GET /api/docs/` (Swagger UI)
 |---|---|---|---|
 | GET | `/api/v1/users/me/` | Perfil del usuario autenticado | Cualquiera |
 | PATCH | `/api/v1/users/me/` | Actualizar first_name, last_name | Cualquiera |
+| POST | `/api/v1/users/register/` | Registro de paciente → 201 con el perfil (sin tokens; el login va por `/api/v1/token/`). Límite de 10/hora por IP | Público |
 
 ### Doctores
 | Método | Endpoint | Descripción | Auth |
@@ -270,7 +271,7 @@ pytest -v
 pytest -x
 ```
 
-Estado actual: **305 tests · 99.4% branch coverage · 0 fallos**
+Estado actual: **331 tests · 99.4% branch coverage · 0 fallos**
 
 ---
 
