@@ -108,65 +108,65 @@ Cualquier otra transición lanza `ValueError`.
 
 ## Endpoints de la API
 
-Base URL: `/api/`  
+Base URL: `/api/v1/`  
 Auth: header `Bearer <access_token>`  
 Docs: `GET /api/docs/` (Swagger UI)
 
 ### Auth
 | Método | Endpoint | Descripción |
 |---|---|---|
-| POST | `/api/token/` | Login → `{access, refresh}` |
-| POST | `/api/token/refresh/` | Refrescar access token |
-| POST | `/api/token/blacklist/` | Logout (invalida refresh token) |
+| POST | `/api/v1/token/` | Login → `{access, refresh}` |
+| POST | `/api/v1/token/refresh/` | Refrescar access token |
+| POST | `/api/v1/token/blacklist/` | Logout (invalida refresh token) |
 
 ### Usuarios
 | Método | Endpoint | Descripción | Auth |
 |---|---|---|---|
-| GET | `/api/users/me/` | Perfil del usuario autenticado | Cualquiera |
-| PATCH | `/api/users/me/` | Actualizar first_name, last_name | Cualquiera |
+| GET | `/api/v1/users/me/` | Perfil del usuario autenticado | Cualquiera |
+| PATCH | `/api/v1/users/me/` | Actualizar first_name, last_name | Cualquiera |
 
 ### Doctores
 | Método | Endpoint | Descripción | Auth |
 |---|---|---|---|
-| GET | `/api/doctors/` | Listar doctores (filtro: `?specialty=cardiology`) | Cualquiera |
-| GET | `/api/doctors/{id}/` | Detalle con specialties | Cualquiera |
-| GET | `/api/doctors/{id}/available-slots/` | Slots disponibles | Cualquiera |
+| GET | `/api/v1/doctors/` | Listar doctores (filtro: `?specialty=cardiology`) | Cualquiera |
+| GET | `/api/v1/doctors/{id}/` | Detalle con specialties | Cualquiera |
+| GET | `/api/v1/doctors/{id}/available-slots/` | Slots disponibles | Cualquiera |
 
 ### Schedules (Horarios)
 | Método | Endpoint | Descripción | Auth |
 |---|---|---|---|
-| GET | `/api/schedules/` | Lista (doctor: propios; admin: todos) | Doctor/Admin |
-| POST | `/api/schedules/` | Crear horario | Doctor |
-| GET | `/api/schedules/{id}/` | Detalle | Doctor/Admin |
-| PUT/PATCH | `/api/schedules/{id}/` | Actualizar | Dueño/Admin |
-| DELETE | `/api/schedules/{id}/` | Soft-delete (is_active=False) | Dueño/Admin |
+| GET | `/api/v1/schedules/` | Lista (doctor: propios; admin: todos) | Doctor/Admin |
+| POST | `/api/v1/schedules/` | Crear horario | Doctor |
+| GET | `/api/v1/schedules/{id}/` | Detalle | Doctor/Admin |
+| PUT/PATCH | `/api/v1/schedules/{id}/` | Actualizar | Dueño/Admin |
+| DELETE | `/api/v1/schedules/{id}/` | Soft-delete (is_active=False) | Dueño/Admin |
 
 ### Appointments (Citas)
 | Método | Endpoint | Descripción | Auth |
 |---|---|---|---|
-| GET | `/api/appointments/` | Lista filtrada por rol automáticamente | Cualquiera |
-| POST | `/api/appointments/` | Reservar cita | Paciente |
-| GET | `/api/appointments/{id}/` | Detalle | Dueño/Admin |
-| PATCH | `/api/appointments/{id}/` | Actualizar motivo | Dueño/Admin |
-| DELETE | `/api/appointments/{id}/` | Eliminar | Solo Admin |
-| POST | `/api/appointments/{id}/confirm/` | Confirmar (pending → confirmed) | Médico (dueño) |
-| POST | `/api/appointments/{id}/cancel/` | Cancelar | Paciente o Médico (dueño) |
-| POST | `/api/appointments/{id}/complete/` | Completar (confirmed → completed) | Médico (dueño) |
-| POST | `/api/appointments/{id}/no_show/` | Marcar inasistencia | Médico (dueño) |
+| GET | `/api/v1/appointments/` | Lista filtrada por rol automáticamente | Cualquiera |
+| POST | `/api/v1/appointments/` | Reservar cita | Paciente |
+| GET | `/api/v1/appointments/{id}/` | Detalle | Dueño/Admin |
+| PATCH | `/api/v1/appointments/{id}/` | Actualizar motivo | Dueño/Admin |
+| DELETE | `/api/v1/appointments/{id}/` | Eliminar | Solo Admin |
+| POST | `/api/v1/appointments/{id}/confirm/` | Confirmar (pending → confirmed) | Médico (dueño) |
+| POST | `/api/v1/appointments/{id}/cancel/` | Cancelar | Paciente o Médico (dueño) |
+| POST | `/api/v1/appointments/{id}/complete/` | Completar (confirmed → completed) | Médico (dueño) |
+| POST | `/api/v1/appointments/{id}/no_show/` | Marcar inasistencia | Médico (dueño) |
 
 ### Notas Médicas
 | Método | Endpoint | Descripción | Auth |
 |---|---|---|---|
-| GET | `/api/appointments/{id}/notes/` | Listar notas | Médico (dueño)/Admin |
-| POST | `/api/appointments/{id}/notes/` | Crear nota | Médico (dueño) |
-| GET | `/api/appointments/{id}/notes/{nid}/` | Detalle de nota | Médico (dueño)/Admin |
+| GET | `/api/v1/appointments/{id}/notes/` | Listar notas | Médico (dueño)/Admin |
+| POST | `/api/v1/appointments/{id}/notes/` | Crear nota | Médico (dueño) |
+| GET | `/api/v1/appointments/{id}/notes/{nid}/` | Detalle de nota | Médico (dueño)/Admin |
 
 ### Filtros disponibles
 ```
-GET /api/doctors/?specialty=cardiology
-GET /api/appointments/?status=pending
-GET /api/appointments/?date_from=2025-01-01&date_to=2025-12-31
-GET /api/schedules/?day_of_week=0&is_active=true
+GET /api/v1/doctors/?specialty=cardiology
+GET /api/v1/appointments/?status=pending
+GET /api/v1/appointments/?date_from=2025-01-01&date_to=2025-12-31
+GET /api/v1/schedules/?day_of_week=0&is_active=true
 ```
 
 ---
