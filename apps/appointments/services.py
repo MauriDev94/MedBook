@@ -228,16 +228,13 @@ def generate_slots_for_schedule(schedule, days_ahead: int = 7) -> list[TimeSlot]
         if candidate_date.weekday() != schedule.day_of_week:
             continue
 
-        # Walk through the schedule window in consultation_duration steps
-        current = datetime.datetime.combine(
-            candidate_date,
-            schedule.start_time,
-            tzinfo=datetime.timezone.utc,
+        # Walk through the schedule window in consultation_duration steps.
+        # Schedule times are local clinic time (TIME_ZONE, ADR 0003).
+        current = timezone.make_aware(
+            datetime.datetime.combine(candidate_date, schedule.start_time)
         )
-        end_of_day = datetime.datetime.combine(
-            candidate_date,
-            schedule.end_time,
-            tzinfo=datetime.timezone.utc,
+        end_of_day = timezone.make_aware(
+            datetime.datetime.combine(candidate_date, schedule.end_time)
         )
 
         while current + duration <= end_of_day:

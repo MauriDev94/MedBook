@@ -126,7 +126,9 @@ AUTH_PASSWORD_VALIDATORS = [
 # Internationalization
 # ---------------------------------------------------------------------------
 LANGUAGE_CODE = "en-us"
-TIME_ZONE = "UTC"
+# Doctor schedules are entered and shown in Chilean time; datetimes are
+# still stored in UTC (USE_TZ). See docs/adr/0003-clinic-time-zone.md.
+TIME_ZONE = "America/Santiago"
 USE_I18N = True
 USE_TZ = True
 
