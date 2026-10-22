@@ -139,10 +139,11 @@
 
 | Paso | Descripción | Issue | PR | Estado |
 |------|-------------|-------|----|--------|
-| 23 | Horarios en hora de Chile (`TIME_ZONE`, generación de slots, data migration) | #133 | — | ⬜ |
+| 23 | Horarios en hora de Chile (`TIME_ZONE`, generación de slots, data migration) | #133 | — | ⏳ |
 | 24 | Base web: `apps/web`, layout, Tailwind (`django-tailwind-cli`), HTMX, i18n es/en | #134 | — | ⬜ |
 | 25 | Login, logout y registro web con sesión; RBAC web compartido con DRF | #135 | — | ⬜ |
 | 26 | Catálogo de doctores y slots disponibles (HTMX) | #136 | — | ⬜ |
+| 30 | **Bug**: re-reservar un slot liberado por cancelación (`OneToOne` → FK + unique parcial). Va antes del 27 | #142 | — | ⬜ |
 | 27 | Reservar cita (services de booking, manejo de conflictos) | #137 | — | ⬜ |
 | 28 | Mis citas y cancelación; selector de visibilidad compartido con la API | #138 | — | ⬜ |
 | 29 | Páginas de error, accesibilidad, docs y verificación en Render | #139 | — | ⬜ |
@@ -163,4 +164,5 @@
 ## Notas técnicas registradas — Semana 5
 
 - Windows no trae gettext: `winget install mlocati.GetText` (o correr `makemessages` dentro de Docker). Render no lo necesita porque los `.mo` se versionan.
-- `django-tailwind-cli` descarga el binario de Tailwind en el primer `tailwind build`; en Render ocurre durante el `buildCommand`.
+- `django-tailwind-cli` descarga el binario de Tailwind en el primer `tailwind build`; en Render ocurre durante el `buildCommand`. No detecta musl: en el Dockerfile Alpine (Paso 24) hay que bajar `tailwindcss-linux-x64-musl` y usar `TAILWIND_CLI_PATH`.
+- El servicio de Render se creó a mano (sin Blueprint): `render.yaml` es solo referencia. Los cambios de build o start se pegan en el dashboard (ver `CLAUDE.md`).

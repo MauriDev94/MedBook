@@ -110,7 +110,8 @@ Cualquier otra transición lanza `ValueError`.
 
 Base URL: `/api/v1/`  
 Auth: header `Bearer <access_token>`  
-Docs: `GET /api/docs/` (Swagger UI)
+Docs: `GET /api/docs/` (Swagger UI)  
+Fechas: ISO 8601 en hora de Chile con su desfase, por ejemplo `2026-01-14T09:00:00-03:00` (se guardan en UTC). Los horarios de los doctores se interpretan en `America/Santiago` (ver [ADR 0003](./docs/adr/0003-clinic-time-zone.md)).
 
 ### Auth
 | Método | Endpoint | Descripción |

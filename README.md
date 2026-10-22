@@ -110,7 +110,8 @@ Any other transition raises `ValueError`.
 
 Base URL: `/api/v1/`  
 Auth: `Bearer <access_token>` header  
-Docs: `GET /api/docs/` (Swagger UI)
+Docs: `GET /api/docs/` (Swagger UI)  
+Datetimes: ISO 8601 in Chilean time with its offset, e.g. `2026-01-14T09:00:00-03:00` (stored in UTC). Doctor schedules are interpreted in `America/Santiago` — see [ADR 0003](./docs/adr/0003-clinic-time-zone.md).
 
 ### Auth
 | Method | Endpoint | Description |
