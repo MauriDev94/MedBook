@@ -8,3 +8,5 @@ django-anymail>=15.1,<16
 psycopg2-binary>=2.9,<2.10
 python-decouple>=3,<4
 dj-database-url>=2,<3
+# IANA time-zone data for zoneinfo where the OS has none (Windows, Alpine)
+tzdata>=2026.1

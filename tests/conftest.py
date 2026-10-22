@@ -31,12 +31,6 @@ def pytest_configure(config):
 
 
 @pytest.fixture(autouse=True)
-def timezone_settings(settings):
-    """Ensure consistent timezone across all tests."""
-    settings.TIME_ZONE = "UTC"
-
-
-@pytest.fixture(autouse=True)
 def clear_mail_outbox():
     """Reset mail.outbox before every test.
 
