@@ -3,7 +3,7 @@
 > REST API for medical appointment booking — Django 5.2 LTS + DRF 3.18  
 > Portfolio project demonstrating production-grade Django patterns.
 
-[![Tests](https://img.shields.io/badge/tests-305%20passing-brightgreen)](./tests)
+[![Tests](https://img.shields.io/badge/tests-331%20passing-brightgreen)](./tests)
 [![Coverage](https://img.shields.io/badge/branch%20coverage-99.4%25-brightgreen)](./tests)
 [![Python](https://img.shields.io/badge/python-3.12-blue)](https://python.org)
 [![Django](https://img.shields.io/badge/django-5.2%20LTS-green)](https://djangoproject.com)
@@ -108,65 +108,66 @@ Any other transition raises `ValueError`.
 
 ## API Endpoints
 
-Base URL: `/api/`  
+Base URL: `/api/v1/`  
 Auth: `Bearer <access_token>` header  
 Docs: `GET /api/docs/` (Swagger UI)
 
 ### Auth
 | Method | Endpoint | Description |
 |---|---|---|
-| POST | `/api/token/` | Login → `{access, refresh}` |
-| POST | `/api/token/refresh/` | Refresh access token |
-| POST | `/api/token/blacklist/` | Logout (invalidate refresh token) |
+| POST | `/api/v1/token/` | Login → `{access, refresh}` |
+| POST | `/api/v1/token/refresh/` | Refresh access token |
+| POST | `/api/v1/token/blacklist/` | Logout (invalidate refresh token) |
 
 ### Users
 | Method | Endpoint | Description | Auth |
 |---|---|---|---|
-| GET | `/api/users/me/` | Authenticated user profile | Any |
-| PATCH | `/api/users/me/` | Update first_name, last_name | Any |
+| GET | `/api/v1/users/me/` | Authenticated user profile | Any |
+| PATCH | `/api/v1/users/me/` | Update first_name, last_name | Any |
+| POST | `/api/v1/users/register/` | Patient self-registration → 201 with the profile (no tokens; log in via `/api/v1/token/`). Rate limited to 10/hour per IP | Public |
 
 ### Doctors
 | Method | Endpoint | Description | Auth |
 |---|---|---|---|
-| GET | `/api/doctors/` | List doctors (filter: `?specialty=cardiology`) | Any |
-| GET | `/api/doctors/{id}/` | Doctor detail with specialties | Any |
-| GET | `/api/doctors/{id}/available-slots/` | Available time slots | Any |
+| GET | `/api/v1/doctors/` | List doctors (filter: `?specialty=cardiology`) | Any |
+| GET | `/api/v1/doctors/{id}/` | Doctor detail with specialties | Any |
+| GET | `/api/v1/doctors/{id}/available-slots/` | Available time slots | Any |
 
 ### Schedules
 | Method | Endpoint | Description | Auth |
 |---|---|---|---|
-| GET | `/api/schedules/` | List schedules (doctor: own; admin: all) | Doctor/Admin |
-| POST | `/api/schedules/` | Create schedule | Doctor |
-| GET | `/api/schedules/{id}/` | Schedule detail | Doctor/Admin |
-| PUT/PATCH | `/api/schedules/{id}/` | Update schedule | Owner/Admin |
-| DELETE | `/api/schedules/{id}/` | Soft-delete (is_active=False) | Owner/Admin |
+| GET | `/api/v1/schedules/` | List schedules (doctor: own; admin: all) | Doctor/Admin |
+| POST | `/api/v1/schedules/` | Create schedule | Doctor |
+| GET | `/api/v1/schedules/{id}/` | Schedule detail | Doctor/Admin |
+| PUT/PATCH | `/api/v1/schedules/{id}/` | Update schedule | Owner/Admin |
+| DELETE | `/api/v1/schedules/{id}/` | Soft-delete (is_active=False) | Owner/Admin |
 
 ### Appointments
 | Method | Endpoint | Description | Auth |
 |---|---|---|---|
-| GET | `/api/appointments/` | List (patient: own; doctor: own; admin: all) | Any |
-| POST | `/api/appointments/` | Book appointment | Patient |
-| GET | `/api/appointments/{id}/` | Detail | Owner/Admin |
-| PATCH | `/api/appointments/{id}/` | Update reason | Owner/Admin |
-| DELETE | `/api/appointments/{id}/` | Hard delete | Admin |
-| POST | `/api/appointments/{id}/confirm/` | Confirm (pending → confirmed) | Doctor (owner) |
-| POST | `/api/appointments/{id}/cancel/` | Cancel | Patient or Doctor (owner) |
-| POST | `/api/appointments/{id}/complete/` | Complete (confirmed → completed) | Doctor (owner) |
-| POST | `/api/appointments/{id}/no_show/` | Mark no-show (confirmed → no_show) | Doctor (owner) |
+| GET | `/api/v1/appointments/` | List (patient: own; doctor: own; admin: all) | Any |
+| POST | `/api/v1/appointments/` | Book appointment | Patient |
+| GET | `/api/v1/appointments/{id}/` | Detail | Owner/Admin |
+| PATCH | `/api/v1/appointments/{id}/` | Update reason | Owner/Admin |
+| DELETE | `/api/v1/appointments/{id}/` | Hard delete | Admin |
+| POST | `/api/v1/appointments/{id}/confirm/` | Confirm (pending → confirmed) | Doctor (owner) |
+| POST | `/api/v1/appointments/{id}/cancel/` | Cancel | Patient or Doctor (owner) |
+| POST | `/api/v1/appointments/{id}/complete/` | Complete (confirmed → completed) | Doctor (owner) |
+| POST | `/api/v1/appointments/{id}/no_show/` | Mark no-show (confirmed → no_show) | Doctor (owner) |
 
 ### Medical Notes
 | Method | Endpoint | Description | Auth |
 |---|---|---|---|
-| GET | `/api/appointments/{id}/notes/` | List notes | Doctor (owner)/Admin |
-| POST | `/api/appointments/{id}/notes/` | Create note | Doctor (owner) |
-| GET | `/api/appointments/{id}/notes/{nid}/` | Note detail | Doctor (owner)/Admin |
+| GET | `/api/v1/appointments/{id}/notes/` | List notes | Doctor (owner)/Admin |
+| POST | `/api/v1/appointments/{id}/notes/` | Create note | Doctor (owner) |
+| GET | `/api/v1/appointments/{id}/notes/{nid}/` | Note detail | Doctor (owner)/Admin |
 
 ### Filters available
 ```
-GET /api/doctors/?specialty=cardiology
-GET /api/appointments/?status=pending
-GET /api/appointments/?date_from=2025-01-01&date_to=2025-12-31
-GET /api/schedules/?day_of_week=0&is_active=true
+GET /api/v1/doctors/?specialty=cardiology
+GET /api/v1/appointments/?status=pending
+GET /api/v1/appointments/?date_from=2025-01-01&date_to=2025-12-31
+GET /api/v1/schedules/?day_of_week=0&is_active=true
 ```
 
 ---
@@ -327,7 +328,7 @@ createdb medbook_test          # or via Docker on port 5436
 # See .env.test.example for configuration
 ```
 
-Current stats: **305 tests · 99.4% branch coverage · 0 failures**
+Current stats: **331 tests · 99.4% branch coverage · 0 failures**
 
 ---
 

@@ -112,8 +112,8 @@
 
 | Paso | Descripción | Issue | PR | Estado |
 |------|-------------|-------|----|--------|
-| 20 | Django 5.2 LTS + DRF 3.18 + bumps de Dependabot (#121–#125) | #126 | — | ⬜ |
-| 21 | Registro público de pacientes (service + `POST /api/v1/users/register/`) | #127 | — | ⬜ |
+| 20 | Django 5.2 LTS + DRF 3.18 + bumps de Dependabot (#121–#125) | #126 | #130 | ✅ |
+| 21 | Registro público de pacientes (service + `POST /api/v1/users/register/`) | #127 | — | ⏳ |
 | 22 | `generate_slots` al arrancar el servicio en Render | #128 | — | ⬜ |
 
 ---

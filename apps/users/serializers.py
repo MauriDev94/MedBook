@@ -48,6 +48,47 @@ class UserSerializer(serializers.ModelSerializer):
         return obj.full_name
 
 
+class PatientRegistrationSerializer(serializers.Serializer):
+    """Write serializer — used for POST /api/users/register/.
+
+    Field-level checks (format, length, required) live here; the business
+    rules (unique email, password policy) and the creation itself are
+    delegated to apps.users.services. There is no `role` field: the service
+    always creates a patient, so privilege escalation is impossible. The view
+    responds with UserSerializer, never with this serializer.
+    """
+
+    email = serializers.EmailField(max_length=254)
+    password = serializers.CharField(
+        write_only=True, trim_whitespace=False, style={"input_type": "password"}
+    )
+    first_name = serializers.CharField(max_length=150)
+    last_name = serializers.CharField(max_length=150)
+    phone = serializers.CharField(max_length=20, required=False, allow_blank=True)
+    date_of_birth = serializers.DateField(required=False, allow_null=True)
+    emergency_contact = serializers.CharField(
+        max_length=100, required=False, allow_blank=True
+    )
+
+    def validate(self, data: dict) -> dict:
+        """Delegate cross-field business validation to the service layer."""
+        from apps.users.services import validate_patient_registration
+
+        validate_patient_registration(
+            email=data["email"],
+            password=data["password"],
+            first_name=data["first_name"],
+            last_name=data["last_name"],
+        )
+        return data
+
+    def create(self, validated_data: dict) -> User:
+        """Delegate atomic creation (User + Patient profile) to the service."""
+        from apps.users.services import register_patient
+
+        return register_patient(**validated_data)
+
+
 class UserUpdateSerializer(serializers.ModelSerializer):
     """Write serializer — used for PATCH /api/users/me/.
 

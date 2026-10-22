@@ -158,7 +158,8 @@ REST_FRAMEWORK = {
     ],
     "EXCEPTION_HANDLER": "apps.core.exceptions.custom_exception_handler",
     # Rate limiting — global defaults apply to every endpoint; "login" and
-    # "refresh" scopes apply additionally to the JWT auth endpoints.
+    # "refresh" scopes apply additionally to the JWT auth endpoints, and
+    # "register" to patient self-registration.
     "DEFAULT_THROTTLE_CLASSES": (
         "rest_framework.throttling.AnonRateThrottle",
         "rest_framework.throttling.UserRateThrottle",
@@ -168,6 +169,7 @@ REST_FRAMEWORK = {
         "user": "120/minute",
         "login": "5/minute",
         "refresh": "10/minute",
+        "register": "10/hour",
     },
 }
 
