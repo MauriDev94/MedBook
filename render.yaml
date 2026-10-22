@@ -1,9 +1,27 @@
+# Render Blueprint de MedBook: fuente de verdad del servicio de producción.
+#
+# El servicio está gestionado por un Blueprint con auto-sync: todo cambio a
+# este archivo que llega a `master` se aplica solo en Render. No editar estos
+# campos en el dashboard; cambiarlos aquí con un PR.
+#
+# Secretos: NO se declaran aquí, así el Blueprint nunca los sobrescribe. Viven
+# solo en el dashboard (Environment): SECRET_KEY, DATABASE_URL,
+# DJANGO_SUPERUSER_EMAIL, DJANGO_SUPERUSER_PASSWORD.
+#
+# Python: lo define `.python-version` (major.minor → Render usa el último
+# parche). No usar la variable PYTHON_VERSION, que exige versión completa y
+# tiene prioridad sobre el archivo.
 services:
   - type: web
-    name: medbook-api
-    env: python
-    region: oregon
+    # Debe coincidir con el nombre del servicio existente: así el Blueprint
+    # lo adopta en vez de crear uno nuevo (misma URL y mismos secretos).
+    name: MedBook
+    runtime: python
     plan: free
+    region: oregon
+    branch: master
+    autoDeployTrigger: commit
+    healthCheckPath: /health/
 
     buildCommand: >-
       pip install -r requirements/production.txt &&
@@ -28,20 +46,10 @@ services:
       - key: DJANGO_SETTINGS_MODULE
         value: config.settings.production
 
-      - key: PYTHON_VERSION
-        value: "3.12.0"
-
-      # Render auto-genera un valor seguro
-      - key: SECRET_KEY
-        generateValue: true
-
-      # Actualizar con el dominio real después del primer deploy
+      # Cualquier subdominio de Render; se ajusta al host exacto en el Paso 32
+      # (migración a Docker, que trae URL nueva).
       - key: ALLOWED_HOSTS
         value: ".onrender.com"
-
-      # Proveer manualmente en el dashboard de Render
-      - key: DATABASE_URL
-        sync: false
 
       - key: DEFAULT_FROM_EMAIL
         value: "MedBook <noreply@medbook.com>"

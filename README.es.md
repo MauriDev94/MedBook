@@ -252,7 +252,7 @@ Abrir **http://localhost:8000/api/docs/** para el Swagger interactivo.
 
 ## Deploy
 
-El deploy de producción es **nativo de Render**: ver [`render.yaml`](./render.yaml) para los comandos de build y arranque (gunicorn, archivos estáticos con WhiteNoise, Postgres administrado).
+Producción corre en **Render** y se gestiona como infraestructura como código: [`render.yaml`](./render.yaml) es un **Blueprint** de Render con auto-sync, así que cualquier cambio que llegue a `master` se aplica solo al servicio (comandos de build y arranque, health check en `/health/`, variables no secretas). Los secretos (`SECRET_KEY`, `DATABASE_URL`, credenciales del superusuario) quedan fuera del archivo y viven solo en el dashboard de Render. La versión de Python sale de [`.python-version`](./.python-version).
 
 ### Generación de slots en producción
 
