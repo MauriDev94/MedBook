@@ -276,7 +276,7 @@ starts it alongside the `db` (Postgres 16) service. Notes:
 
 ## Deploy
 
-Production deploy is **Render-native** — see [`render.yaml`](./render.yaml) for the build/start commands (gunicorn, WhiteNoise-served static files, managed Postgres).
+Production runs on **Render**, managed as infrastructure as code: [`render.yaml`](./render.yaml) is a Render **Blueprint** with auto-sync, so any change to it merged into `master` is applied to the service automatically (build/start commands, health check on `/health/`, non-secret env vars). Secrets (`SECRET_KEY`, `DATABASE_URL`, superuser credentials) are kept out of the file and live only in the Render dashboard. The Python version comes from [`.python-version`](./.python-version).
 
 ### Slot generation in production
 
