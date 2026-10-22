@@ -1,9 +1,9 @@
 # MedBook API
 
 > REST API for medical appointment booking — Django 5.2 LTS + DRF 3.18  
-> Portfolio project demonstrating production-grade Django patterns.
+> Portfolio project built with TDD: appointment state machine, object-level RBAC and race-safe booking.
 
-[![Tests](https://img.shields.io/badge/tests-331%20passing-brightgreen)](./tests)
+[![Tests](https://img.shields.io/badge/tests-335%20passing-brightgreen)](./tests)
 [![Coverage](https://img.shields.io/badge/branch%20coverage-99.4%25-brightgreen)](./tests)
 [![Python](https://img.shields.io/badge/python-3.12-blue)](https://python.org)
 [![Django](https://img.shields.io/badge/django-5.2%20LTS-green)](https://djangoproject.com)
@@ -336,7 +336,7 @@ createdb medbook_test          # or via Docker on port 5436
 # See .env.test.example for configuration
 ```
 
-Current stats: **331 tests · 99.4% branch coverage · 0 failures**
+Current stats: **335 tests · 99.4% branch coverage · 0 failures**
 
 ---
 
