@@ -278,6 +278,14 @@ starts it alongside the `db` (Postgres 16) service. Notes:
 
 Production deploy is **Render-native** — see [`render.yaml`](./render.yaml) for the build/start commands (gunicorn, WhiteNoise-served static files, managed Postgres).
 
+### Slot generation in production
+
+The Render free plan has no cron jobs, so `startCommand` runs `python manage.py generate_slots --days=14` on every boot. Free instances sleep after 15 minutes without traffic and boot again on the next request and on every deploy, so slots get topped up whenever the API is in use.
+
+- The command is idempotent: it only inserts missing slots and reports `0 new slots` on a rerun.
+- It runs in a subshell. If it fails, a `WARNING` line is logged and gunicorn starts anyway, while a failing `migrate` or `ensure_superuser` still blocks the boot.
+- On a paid plan, replace it with a Render cron job (`type: cron`, daily `python manage.py generate_slots --days=14`; minimum USD 1/month) and remove it from `startCommand`.
+
 A multi-stage [`Dockerfile`](./Dockerfile) is also included as a **portable alternative** to run the same app anywhere Docker runs (it does not replace the Render deploy):
 
 ```bash

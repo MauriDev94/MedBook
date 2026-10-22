@@ -53,12 +53,12 @@ class Command(BaseCommand):
             total_schedules += 1
             self.stdout.write(
                 f"  Schedule {schedule.pk} "
-                f"(Dr. {schedule.doctor.user.email}): {count} slots"
+                f"(Dr. {schedule.doctor.user.email}): {count} new slots"
             )
 
         self.stdout.write(
             self.style.SUCCESS(
-                f"\nDone. {total_slots} slots generated "
+                f"\nDone. {total_slots} new slots generated "
                 f"across {total_schedules} schedule(s)."
             )
         )

@@ -250,6 +250,20 @@ Abrir **http://localhost:8000/api/docs/** para el Swagger interactivo.
 
 ---
 
+## Deploy
+
+El deploy de producción es **nativo de Render**: ver [`render.yaml`](./render.yaml) para los comandos de build y arranque (gunicorn, archivos estáticos con WhiteNoise, Postgres administrado).
+
+### Generación de slots en producción
+
+El plan free de Render no tiene cron jobs, así que el `startCommand` corre `python manage.py generate_slots --days=14` en cada arranque. La instancia free duerme tras 15 minutos sin tráfico y vuelve a arrancar con el siguiente request y en cada deploy, así que los slots se completan mientras la API se esté usando.
+
+- El comando es idempotente: solo inserta los slots que faltan y en una segunda corrida reporta `0 new slots`.
+- Corre en un subshell. Si falla, deja una línea `WARNING` en el log y gunicorn arranca igual; en cambio, si falla `migrate` o `ensure_superuser`, el arranque se detiene.
+- En un plan pago, reemplazarlo por un cron job de Render (`type: cron`, diario, `python manage.py generate_slots --days=14`; mínimo USD 1/mes) y sacarlo del `startCommand`.
+
+---
+
 ## Correr los tests
 
 Los tests corren contra PostgreSQL real (igual que producción) usando **branch coverage** como estándar — no solo cobertura de líneas. Branch coverage detecta caminos `if/else` sin testear que el coverage de líneas oculta.

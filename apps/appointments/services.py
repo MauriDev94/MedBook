@@ -204,15 +204,16 @@ def generate_slots_for_schedule(schedule, days_ahead: int = 7) -> list[TimeSlot]
     at intervals of doctor.consultation_duration minutes between
     schedule.start_time and schedule.end_time.
 
-    Uses bulk_create(ignore_conflicts=True) so running this twice is safe
-    (idempotent — no duplicate slots are created).
+    Idempotent: slots that already exist are skipped, so running this on
+    every deploy/boot (see render.yaml) never duplicates or reports phantom
+    slots. Costs two queries at most: one lookup and one bulk INSERT.
 
     Args:
         schedule: A Schedule instance with day_of_week, start_time, end_time.
         days_ahead: How many days into the future to generate slots for.
 
     Returns:
-        List of TimeSlot objects that were successfully created.
+        List of the TimeSlot objects this call inserted (empty on a rerun).
     """
     if days_ahead <= 0:
         return []
@@ -250,8 +251,23 @@ def generate_slots_for_schedule(schedule, days_ahead: int = 7) -> list[TimeSlot]
             )
             current += duration
 
-    created = TimeSlot.objects.bulk_create(
-        slots_to_create,
-        ignore_conflicts=True,
+    if not slots_to_create:
+        return []
+
+    # bulk_create(ignore_conflicts=True) returns every object it receives,
+    # inserted or not, so existing slots are dropped first: the return value
+    # must list only what this call actually created.
+    existing_starts = set(
+        TimeSlot.objects.filter(
+            schedule=schedule,
+            start_datetime__in=[slot.start_datetime for slot in slots_to_create],
+        ).values_list("start_datetime", flat=True)
     )
-    return list(created)
+    new_slots = [
+        slot for slot in slots_to_create if slot.start_datetime not in existing_starts
+    ]
+
+    # ignore_conflicts still guards the race where a concurrent run inserts
+    # the same slot between the lookup above and this INSERT.
+    TimeSlot.objects.bulk_create(new_slots, ignore_conflicts=True)
+    return new_slots
