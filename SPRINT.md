@@ -113,14 +113,14 @@
 | Paso | Descripción | Issue | PR | Estado |
 |------|-------------|-------|----|--------|
 | 20 | Django 5.2 LTS + DRF 3.18 + bumps de Dependabot (#121–#125) | #126 | #130 | ✅ |
-| 21 | Registro público de pacientes (service + `POST /api/v1/users/register/`) | #127 | — | ⏳ |
-| 22 | `generate_slots` al arrancar el servicio en Render | #128 | — | ⬜ |
+| 21 | Registro público de pacientes (service + `POST /api/v1/users/register/`) | #127 | #131 | ✅ |
+| 22 | `generate_slots` al arrancar el servicio en Render | #128 | — | ⏳ |
 
 ---
 
 ## Checklist acumulativo — Semana 4
 
 - [ ] Django 5.2 LTS en producción, sin PRs de Dependabot pendientes
-- [ ] `POST /api/v1/users/register/` crea User + Patient y permite login inmediato en `/api/v1/token/`
+- [x] `POST /api/v1/users/register/` crea User + Patient y permite login inmediato en `/api/v1/token/`
 - [ ] Cada arranque o deploy en Render deja slots disponibles para los próximos 14 días
 - [ ] Gate de coverage ≥ 95% branch se mantiene
