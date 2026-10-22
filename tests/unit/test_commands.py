@@ -86,3 +86,39 @@ class TestGenerateSlotsCommand:
         call_command("generate_slots", days=7)
         captured = capsys.readouterr()
         assert "Done" in captured.out or "slot" in captured.out.lower()
+
+    def test_command_reports_created_slot_count(self, db, capsys):
+        """The summary reports exactly how many slots were inserted."""
+        schedule = ScheduleFactory()
+        TimeSlot.objects.filter(schedule=schedule).delete()
+
+        call_command("generate_slots", days=7)
+
+        created = TimeSlot.objects.filter(schedule=schedule).count()
+        assert created > 0
+        assert (
+            f"Done. {created} new slots generated across 1 schedule(s)."
+            in capsys.readouterr().out
+        )
+
+    def test_command_rerun_reports_zero_new_slots(self, db, capsys):
+        """On Render the command runs on every boot; reruns must report 0."""
+        ScheduleFactory()  # post_save signal already created 7 days of slots
+
+        call_command("generate_slots", days=7)
+
+        assert (
+            "Done. 0 new slots generated across 1 schedule(s)."
+            in capsys.readouterr().out
+        )
+
+    def test_command_queries_scale_with_schedules_not_slots(
+        self, db, django_assert_max_num_queries
+    ):
+        """No N+1: one query for the schedules, at most two per schedule
+        (existing-slot lookup + one bulk INSERT), regardless of slot count."""
+        schedules = ScheduleFactory.create_batch(3)
+        TimeSlot.objects.all().delete()
+
+        with django_assert_max_num_queries(1 + 2 * len(schedules)):
+            call_command("generate_slots", days=14)

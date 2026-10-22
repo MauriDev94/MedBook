@@ -395,14 +395,35 @@ class TestGenerateSlotsForSchedule:
             assert delta == timedelta(minutes=duration)
 
     def test_no_duplicate_slots_on_rerun(self, db):
-        """Running twice does not create duplicate slots (ignore_conflicts)."""
+        """Running twice creates no duplicates and the rerun reports nothing new."""
         schedule = ScheduleFactory()
+        # Drop the slots the post_save signal created to start from zero.
+        TimeSlot.objects.filter(schedule=schedule).delete()
+
         first_run = services.generate_slots_for_schedule(schedule, days_ahead=7)
         second_run = services.generate_slots_for_schedule(schedule, days_ahead=7)
+
+        assert len(first_run) > 0
+        assert second_run == []
         total = TimeSlot.objects.filter(schedule=schedule).count()
-        assert total == len(first_run)  # second run added nothing
-        # Second run returns empty or same count — no duplicates in DB
-        _ = second_run  # suppress unused variable
+        assert total == len(first_run)
+
+    def test_rerun_returns_only_missing_slots(self, db):
+        """Only slots absent from the DB are inserted and returned.
+
+        bulk_create(ignore_conflicts=True) returns every object it was given,
+        inserted or not, so the return value must be filtered beforehand —
+        otherwise the command reports phantom slots on every rerun.
+        """
+        schedule = ScheduleFactory()  # post_save signal creates 7 days of slots
+        existing = TimeSlot.objects.filter(schedule=schedule).order_by("start_datetime")
+        missing = existing.first()
+        missing_start = missing.start_datetime
+        missing.delete()
+
+        created = services.generate_slots_for_schedule(schedule, days_ahead=7)
+
+        assert [slot.start_datetime for slot in created] == [missing_start]
 
     def test_returns_list_of_timeslot_objects(self, db):
         """Return value is a list of TimeSlot instances."""
