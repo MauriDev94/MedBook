@@ -114,13 +114,53 @@
 |------|-------------|-------|----|--------|
 | 20 | Django 5.2 LTS + DRF 3.18 + bumps de Dependabot (#121–#125) | #126 | #130 | ✅ |
 | 21 | Registro público de pacientes (service + `POST /api/v1/users/register/`) | #127 | #131 | ✅ |
-| 22 | `generate_slots` al arrancar el servicio en Render | #128 | — | ⏳ |
+| 22 | `generate_slots` al arrancar el servicio en Render | #128 | #132 | ✅ |
 
 ---
 
 ## Checklist acumulativo — Semana 4
 
-- [ ] Django 5.2 LTS en producción, sin PRs de Dependabot pendientes
+- [x] Django 5.2 LTS en producción, sin PRs de Dependabot pendientes
 - [x] `POST /api/v1/users/register/` crea User + Patient y permite login inmediato en `/api/v1/token/`
-- [ ] Cada arranque o deploy en Render deja slots disponibles para los próximos 14 días
+- [ ] Cada arranque o deploy en Render deja slots disponibles para los próximos 14 días (pendiente: confirmar `Done. N new slots…` en los logs de Render)
+- [x] Gate de coverage ≥ 95% branch se mantiene (99.43%)
+
+---
+
+# Sprint — Semana 5: Frontend del paciente
+
+> **Objetivo:** Un paciente puede registrarse, iniciar sesión, buscar doctores, reservar y cancelar citas desde la web (Django templates + HTMX), en español o inglés y con horarios en hora de Chile.
+> Decisiones: [ADR 0002](./docs/adr/0002-server-rendered-web-frontend.md) (frontend, Tailwind sin Node, i18n es/en, sin Alpine) y [ADR 0003](./docs/adr/0003-clinic-time-zone.md) (`America/Santiago`).
+> El panel del doctor queda para el sprint siguiente.
+
+---
+
+## Estado
+
+| Paso | Descripción | Issue | PR | Estado |
+|------|-------------|-------|----|--------|
+| 23 | Horarios en hora de Chile (`TIME_ZONE`, generación de slots, data migration) | #133 | — | ⬜ |
+| 24 | Base web: `apps/web`, layout, Tailwind (`django-tailwind-cli`), HTMX, i18n es/en | #134 | — | ⬜ |
+| 25 | Login, logout y registro web con sesión; RBAC web compartido con DRF | #135 | — | ⬜ |
+| 26 | Catálogo de doctores y slots disponibles (HTMX) | #136 | — | ⬜ |
+| 27 | Reservar cita (services de booking, manejo de conflictos) | #137 | — | ⬜ |
+| 28 | Mis citas y cancelación; selector de visibilidad compartido con la API | #138 | — | ⬜ |
+| 29 | Páginas de error, accesibilidad, docs y verificación en Render | #139 | — | ⬜ |
+
+---
+
+## Checklist acumulativo — Semana 5
+
+- [ ] Un horario de 09:00–17:00 se ve como 09:00–17:00 en Chile, en verano y en invierno
+- [ ] Flujo completo en la web: registro → login → doctores → reserva → mis citas → cancelación
+- [ ] UI en español por defecto y en inglés con el selector; la API sigue respondiendo en inglés
+- [ ] Ninguna view web accede al ORM: todo pasa por services o selectors
+- [ ] Build de Tailwind en Render, Docker y CI; `.mo` al día (chequeo en CI)
 - [ ] Gate de coverage ≥ 95% branch se mantiene
+
+---
+
+## Notas técnicas registradas — Semana 5
+
+- Windows no trae gettext: `winget install mlocati.GetText` (o correr `makemessages` dentro de Docker). Render no lo necesita porque los `.mo` se versionan.
+- `django-tailwind-cli` descarga el binario de Tailwind en el primer `tailwind build`; en Render ocurre durante el `buildCommand`.
