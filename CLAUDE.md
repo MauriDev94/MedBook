@@ -57,7 +57,7 @@ python manage.py ensure_superuser        # idempotent, used by the Render start 
 
 CI (`.github/workflows/ci.yml`): ruff lint + format → missing-migrations check → pytest on Postgres 16 → Codecov.
 
-Deploy: the production Render service (`MedBook`, https://medbook-oiio.onrender.com, free plan, auto-deploy from `master`) was created by hand, **not from a Blueprint**, so Render ignores `render.yaml`; that file is reference only. Any change to the build or start command or to env vars must also be pasted in the Render dashboard (Settings) by the owner. Confirm it from the deploy log line `==> Running '…'`. The free plan has no pre-deploy command and no cron jobs.
+Deploy: the production Render service (`MedBook`, https://medbook-oiio.onrender.com, free plan, auto-deploy from `master`) is managed by a Render **Blueprint**: `render.yaml` is the source of truth and auto-syncs on every merge to `master` (Paso 31, #144). Change build or start commands, health check or non-secret env vars there, never in the dashboard. Secrets (`SECRET_KEY`, `DATABASE_URL`, `DJANGO_SUPERUSER_*`) are deliberately absent from the file and live only in the dashboard. The Python version comes from `.python-version`; do not add `PYTHON_VERSION`. A Blueprint never deletes resources. Confirm a deploy from the log line `==> Running '…'`. The free plan has no pre-deploy command and no cron jobs. Moving production to Docker Alpine is planned after Paso 24 (Paso 32, #145) and needs a new service.
 
 ## Architecture
 
