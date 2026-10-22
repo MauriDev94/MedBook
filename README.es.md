@@ -1,9 +1,9 @@
 # MedBook API
 
 > API REST para reservas médicas — Django 5.2 LTS + DRF 3.18  
-> Proyecto de portafolio que demuestra patrones Django de nivel producción.
+> Proyecto de portafolio hecho con TDD: máquina de estados de citas, RBAC a nivel de objeto y reservas sin race conditions.
 
-[![Tests](https://img.shields.io/badge/tests-331%20passing-brightgreen)](./tests)
+[![Tests](https://img.shields.io/badge/tests-335%20passing-brightgreen)](./tests)
 [![Coverage](https://img.shields.io/badge/branch%20coverage-99.4%25-brightgreen)](./tests)
 [![Python](https://img.shields.io/badge/python-3.12-blue)](https://python.org)
 [![Django](https://img.shields.io/badge/django-5.2%20LTS-green)](https://djangoproject.com)
@@ -285,7 +285,7 @@ pytest -v
 pytest -x
 ```
 
-Estado actual: **331 tests · 99.4% branch coverage · 0 fallos**
+Estado actual: **335 tests · 99.4% branch coverage · 0 fallos**
 
 ---
 
