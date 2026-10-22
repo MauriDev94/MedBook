@@ -464,6 +464,76 @@ class TestGenerateSlotsForSchedule:
         assert slots == []  # Tuesday doesn't match MONDAY schedule
 
 
+@pytest.mark.django_db
+class TestSlotGenerationTimeZone:
+    """Schedules are interpreted in America/Santiago (ADR 0003).
+
+    Chile is UTC-3 in summer (January) and UTC-4 in winter (June), so a
+    09:00 local slot is stored as 12:00 or 13:00 UTC respectively.
+    """
+
+    @staticmethod
+    def _wednesday_schedule():
+        import datetime
+
+        from apps.doctors.models import Schedule
+
+        schedule = ScheduleFactory(
+            day_of_week=Schedule.DayOfWeek.WEDNESDAY,
+            start_time=datetime.time(9, 0),
+            end_time=datetime.time(11, 0),
+        )
+        # Drop the slots the post_save signal created for the real "today".
+        TimeSlot.objects.filter(schedule=schedule).delete()
+        return schedule
+
+    @pytest.mark.parametrize(
+        ("wednesday", "utc_hour"),
+        [
+            pytest.param((2026, 1, 14), 12, id="summer-utc-3"),
+            pytest.param((2026, 6, 17), 13, id="winter-utc-4"),
+        ],
+    )
+    def test_nine_am_schedule_starts_at_nine_local_time(self, wednesday, utc_hour):
+        import datetime
+        from unittest.mock import patch
+
+        from django.utils import timezone
+
+        schedule = self._wednesday_schedule()
+        local_date = datetime.date(*wednesday)
+
+        with patch.object(timezone, "localdate", return_value=local_date):
+            slots = services.generate_slots_for_schedule(schedule, days_ahead=1)
+
+        first = min(slots, key=lambda slot: slot.start_datetime)
+        assert first.start_datetime == datetime.datetime(
+            *wednesday, utc_hour, 0, tzinfo=datetime.timezone.utc
+        )
+        assert timezone.localtime(first.start_datetime).time() == datetime.time(9, 0)
+        last = max(slots, key=lambda slot: slot.end_datetime)
+        assert timezone.localtime(last.end_datetime).time() == datetime.time(11, 0)
+
+    def test_today_is_the_chilean_calendar_date(self):
+        """02:00 UTC on Thursday is still Wednesday 23:00 in Chile (UTC-3)."""
+        import datetime
+        from unittest.mock import patch
+
+        from django.utils import timezone
+
+        schedule = self._wednesday_schedule()
+        thursday_2am_utc = datetime.datetime(
+            2026, 1, 15, 2, 0, tzinfo=datetime.timezone.utc
+        )
+
+        with patch.object(timezone, "now", return_value=thursday_2am_utc):
+            slots = services.generate_slots_for_schedule(schedule, days_ahead=1)
+
+        assert slots, "In Chile it is still Wednesday, so Wednesday slots are due"
+        local_dates = {timezone.localtime(slot.start_datetime).date() for slot in slots}
+        assert local_dates == {datetime.date(2026, 1, 14)}
+
+
 # ---------------------------------------------------------------------------
 # create_appointment
 # ---------------------------------------------------------------------------
