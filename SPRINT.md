@@ -144,7 +144,7 @@
 | 25 | Login, logout y registro web con sesión; RBAC web compartido con DRF | #135 | — | ⬜ |
 | 26 | Catálogo de doctores y slots disponibles (HTMX) | #136 | — | ⬜ |
 | 30 | **Bug**: re-reservar un slot liberado por cancelación (`OneToOne` → FK + unique parcial). Va antes del 27 | #142 | — | ⬜ |
-| 31 | Render como Blueprint: `render.yaml` adopta el servicio `MedBook` (auto-sync). Va antes de mergear el 23 | #144 | #146 | ⏳ |
+| 31 | Render como Blueprint: `render.yaml` adopta el servicio `MedBook` (auto-sync). Va antes de mergear el 23 | #144 | #146 | ✅ |
 | 32 | Producción en Docker Alpine (servicio nuevo vía Blueprint). Va después del 24 | #145 | — | ⬜ |
 | 27 | Reservar cita (services de booking, manejo de conflictos) | #137 | — | ⬜ |
 | 28 | Mis citas y cancelación; selector de visibilidad compartido con la API | #138 | — | ⬜ |
