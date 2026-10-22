@@ -4,7 +4,9 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 MedBook is a medical appointment booking REST API (portfolio project) built with Django + DRF (versions pinned in `requirements/base.txt`), PostgreSQL 16, Python 3.12. Default branch: `master`.
 
-Today it is API-only, with no templates and no frontend. A server-rendered web UI (Django templates + HTMX in a new `apps/web` app, session auth, reusing the service layer) is the agreed direction — see `docs/adr/0002-server-rendered-web-frontend.md`.
+Today it is API-only, with no templates and no frontend. Sprint "Semana 5" in `SPRINT.md` (Pasos 23–29, issues #133–#139) builds the patient-facing web UI. Its decisions are recorded in two ADRs:
+- `docs/adr/0002-server-rendered-web-frontend.md`: Django templates + HTMX in a new `apps/web` app, session auth reusing the service layer, Tailwind 4 via `django-tailwind-cli` (no Node), Spanish/English i18n with the JSON API kept in English, no Alpine.js.
+- `docs/adr/0003-clinic-time-zone.md`: schedules are interpreted in `America/Santiago` (`TIME_ZONE`), and slots are built with `make_aware` instead of hard-coded UTC.
 
 Sources of truth: `README.md` (endpoints, RBAC matrix, setup), `docs/architecture.md` (decision log with trade-offs), `docs/adr/`, `SPRINT.md` (historical sprint plan), `docs/REMEDIATION-PLAN.md` (post-audit work). There is no `PRD.md` or `AGENT.md` in the repo.
 

@@ -72,14 +72,23 @@ documentation and fewer examples, for little gain over HTMX at this scope.
   business rule added in a view instead of a service would have to be
   duplicated, which the existing layer rules already forbid.
 
-## Open questions (decide when planning the frontend sprint)
+## Open questions — resolved when planning the frontend sprint (2026-10-22)
 
-- CSS: the Tailwind standalone CLI (no Node) versus plain CSS or a classless
-  framework.
-- UI language and display time zone: the API uses `LANGUAGE_CODE = "en-us"` and
-  `TIME_ZONE = "UTC"`. The UI probably needs Spanish and `America/Santiago`
-  for display.
-- Whether Alpine.js is needed at all on top of HTMX.
+- **CSS**: Tailwind CSS 4 through `django-tailwind-cli`, which downloads the
+  standalone Tailwind binary, so no Node or npm is needed. The CSS is compiled at
+  build time (Render `buildCommand`, `Dockerfile` and CI) before
+  `collectstatic`. The generated file is not committed.
+- **Language**: a bilingual UI with Django i18n — Spanish by default, English
+  available. `LocaleMiddleware` picks the language from a cookie (a switcher
+  posting to `set_language`), then from `Accept-Language`. URLs carry no language
+  prefix. `.po` and compiled `.mo` files are committed, so Render needs no
+  gettext; CI checks they are up to date. The JSON API stays in English whatever
+  `Accept-Language` says, to keep its contract stable.
+- **Time zone**: schedules are interpreted in `America/Santiago` — see
+  [ADR 0003](./0003-clinic-time-zone.md).
+- **Alpine.js**: not adopted. HTMX covers the planned interactions, and small
+  vanilla JS is added only if a case needs it. HTMX helpers come from
+  `django-htmx` (`request.htmx`, HX response classes).
 
 ## Revisit if
 
