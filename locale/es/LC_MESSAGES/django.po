@@ -9,7 +9,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: MedBook\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2026-10-23 02:16-0300\n"
+"POT-Creation-Date: 2026-10-23 03:12-0300\n"
 "PO-Revision-Date: 2026-10-23 02:20-0300\n"
 "Last-Translator: \n"
 "Language-Team: Spanish\n"
@@ -20,11 +20,59 @@ msgstr ""
 "Plural-Forms: nplurals=3; plural=n == 1 ? 0 : n != 0 && n % 1000000 == 0 ? "
 "1 : 2;\n"
 
+msgid "A user with this email already exists."
+msgstr "Ya existe un usuario con este correo."
+
+msgid "Incorrect email or password."
+msgstr "Correo o contraseña incorrectos."
+
+msgid "Email"
+msgstr "Correo electrónico"
+
+msgid "First name"
+msgstr "Nombre"
+
+msgid "Last name"
+msgstr "Apellido"
+
+msgid "Password"
+msgstr "Contraseña"
+
+msgid "Confirm password"
+msgstr "Confirmar contraseña"
+
+msgid "The passwords do not match."
+msgstr "Las contraseñas no coinciden."
+
+msgid "Log in"
+msgstr "Ingresar"
+
+msgid "Don't have an account?"
+msgstr "¿No tienes cuenta?"
+
+msgid "Sign up"
+msgstr "Crear cuenta"
+
+msgid "Create your account"
+msgstr "Crea tu cuenta"
+
+msgid "Patient accounts only. Doctors are registered by the clinic."
+msgstr "Solo cuentas de paciente. A los médicos los registra la clínica."
+
+msgid "Already have an account?"
+msgstr "¿Ya tienes cuenta?"
+
 msgid "Main"
 msgstr "Principal"
 
 msgid "API docs"
 msgstr "Documentación API"
+
+msgid "Panel"
+msgstr "Panel"
+
+msgid "Log out"
+msgstr "Cerrar sesión"
 
 msgid ""
 "MedBook is a portfolio project: a medical appointment booking app built with "
@@ -71,3 +119,47 @@ msgstr "Revisa o cancela tus citas desde un solo lugar."
 
 msgid "Language"
 msgstr "Idioma"
+
+#, python-format
+msgid "Hello, %(name)s"
+msgstr "Hola, %(name)s"
+
+msgid ""
+"The admin panel arrives in an upcoming sprint. Meanwhile, manage the clinic "
+"from the Django admin."
+msgstr ""
+"El panel de administración llega en un próximo sprint. Mientras tanto, "
+"administra la clínica desde el admin de Django."
+
+msgid "Open the Django admin"
+msgstr "Abrir el admin de Django"
+
+msgid ""
+"The doctor panel (schedules, appointments and medical notes) arrives in an "
+"upcoming sprint. Meanwhile, the API covers all of it."
+msgstr ""
+"El panel de doctores (horarios, citas y notas médicas) llega en un próximo "
+"sprint. Mientras tanto, la API cubre todo eso."
+
+msgid "Open the API docs"
+msgstr "Abrir la documentación de la API"
+
+msgid "Too many attempts"
+msgstr "Demasiados intentos"
+
+#, python-format
+msgid "For your security, please wait %(minutes)s minute and try again."
+msgid_plural ""
+"For your security, please wait %(minutes)s minutes and try again."
+msgstr[0] "Por seguridad, espera %(minutes)s minuto e inténtalo de nuevo."
+msgstr[1] "Por seguridad, espera %(minutes)s minutos e inténtalo de nuevo."
+msgstr[2] "Por seguridad, espera %(minutes)s minutos e inténtalo de nuevo."
+
+msgid "Back to the form"
+msgstr "Volver al formulario"
+
+msgid "You have logged out."
+msgstr "Cerraste sesión."
+
+msgid "Welcome to MedBook! Your account is ready."
+msgstr "¡Bienvenido a MedBook! Tu cuenta está lista."

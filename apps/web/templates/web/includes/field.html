@@ -1,0 +1,12 @@
+{# One form field: label, widget, help text and errors. #}
+{# Usage: {% include "web/includes/field.html" with field=form.email %} #}
+<div>
+  <label for="{{ field.id_for_label }}" class="block text-sm font-medium text-slate-700">{{ field.label }}</label>
+  <div class="mt-1">{{ field }}</div>
+  {% if field.help_text %}
+    <div id="{{ field.auto_id }}_helptext" class="mt-2 text-xs text-slate-500 [&_ul]:list-disc [&_ul]:space-y-0.5 [&_ul]:pl-4">{{ field.help_text|safe }}</div>
+  {% endif %}
+  {% for error in field.errors %}
+    <p class="mt-1 text-sm text-red-700">{{ error }}</p>
+  {% endfor %}
+</div>

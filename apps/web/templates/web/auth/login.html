@@ -1,0 +1,22 @@
+{% extends "web/base.html" %}
+{% load i18n %}
+
+{% block title %}{% translate "Log in" %} · MedBook{% endblock %}
+
+{% block content %}
+  <section class="mx-auto max-w-md px-4 py-12">
+    <h1 class="text-2xl font-bold tracking-tight text-slate-900">{% translate "Log in" %}</h1>
+    <form method="post" class="mt-6 space-y-4 rounded-lg border border-slate-200 bg-white p-6">
+      {% csrf_token %}
+      {% include "web/includes/form_errors.html" %}
+      {% include "web/includes/field.html" with field=form.username %}
+      {% include "web/includes/field.html" with field=form.password %}
+      {% if next %}<input type="hidden" name="next" value="{{ next }}">{% endif %}
+      <button type="submit" class="w-full rounded-md bg-teal-600 px-4 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-teal-700">{% translate "Log in" %}</button>
+    </form>
+    <p class="mt-4 text-sm text-slate-600">
+      {% translate "Don't have an account?" %}
+      <a href="{% url 'web:signup' %}" class="font-semibold text-teal-700 hover:underline">{% translate "Sign up" %}</a>
+    </p>
+  </section>
+{% endblock %}

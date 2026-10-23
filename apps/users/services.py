@@ -1,8 +1,9 @@
 """Business logic for the users domain.
 
 Pure Python — no HTTP, no serializers. The registration flow is shared by
-the API (PatientRegistrationSerializer) and, later, the server-rendered web
-sign-up form (ADR 0002), so every rule lives here and nowhere else.
+the API (PatientRegistrationSerializer) and the web sign-up form
+(apps.web.forms.SignupForm, ADR 0002), so every rule lives here and nowhere
+else.
 
 Errors are raised as django.core.exceptions.ValidationError keyed by field
 name ({"email": [...], "password": [...]}), which DRF and Django forms both
@@ -14,11 +15,14 @@ import datetime
 from django.contrib.auth.password_validation import validate_password
 from django.core.exceptions import ValidationError
 from django.db import IntegrityError, transaction
+from django.utils.translation import gettext_lazy as _
 
 from apps.patients.models import Patient
 from apps.users.models import Role, User
 
-DUPLICATE_EMAIL_MESSAGE = "A user with this email already exists."
+# Lazy: the web form shows it in the visitor's language; the API resolves
+# it while English is active (apps.core.middleware.EnglishApiMiddleware).
+DUPLICATE_EMAIL_MESSAGE = _("A user with this email already exists.")
 
 
 def validate_patient_registration(

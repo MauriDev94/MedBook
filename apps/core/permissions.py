@@ -6,12 +6,14 @@ only identity/role checks and ownership comparisons.
 Hierarchy:
   has_permission  → view-level check (runs before the object is fetched)
   has_object_permission → instance-level check (runs after get_object())
+
+Role checks go through apps.core.roles, shared with the web UI's mixins.
 """
 
 from rest_framework.generics import get_object_or_404
 from rest_framework.permissions import BasePermission
 
-from apps.users.models import Role
+from apps.core.roles import is_admin, is_doctor, is_patient
 
 
 class IsDoctor(BasePermission):
@@ -20,11 +22,7 @@ class IsDoctor(BasePermission):
     message = "Only doctors can perform this action."
 
     def has_permission(self, request, view):
-        return bool(
-            request.user
-            and request.user.is_authenticated
-            and request.user.role == Role.DOCTOR
-        )
+        return is_doctor(request.user)
 
 
 class IsPatient(BasePermission):
@@ -33,11 +31,7 @@ class IsPatient(BasePermission):
     message = "Only patients can perform this action."
 
     def has_permission(self, request, view):
-        return bool(
-            request.user
-            and request.user.is_authenticated
-            and request.user.role == Role.PATIENT
-        )
+        return is_patient(request.user)
 
 
 class IsAdminRole(BasePermission):
@@ -46,11 +40,7 @@ class IsAdminRole(BasePermission):
     message = "Only admin users can perform this action."
 
     def has_permission(self, request, view):
-        return bool(
-            request.user
-            and request.user.is_authenticated
-            and request.user.role == Role.ADMIN
-        )
+        return is_admin(request.user)
 
 
 class IsDoctorOfAppointment(BasePermission):
@@ -93,11 +83,9 @@ class IsDoctorOrAdminForNote(BasePermission):
 
     def has_permission(self, request, view):
         user = request.user
-        if not (user and user.is_authenticated):
-            return False
-        if user.role == Role.ADMIN:
+        if is_admin(user):
             return True
-        if user.role != Role.DOCTOR:
+        if not is_doctor(user):
             return False
 
         from apps.appointments.models import Appointment

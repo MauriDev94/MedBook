@@ -65,6 +65,9 @@ INSTALLED_APPS = DJANGO_APPS + THIRD_PARTY_APPS + LOCAL_APPS
 # Auth
 # ---------------------------------------------------------------------------
 AUTH_USER_MODEL = "users.User"
+# Web UI session auth (the API keeps using JWT). Where a user lands after
+# logging in depends on the role: apps.web.views.landing_url_for().
+LOGIN_URL = "web:login"
 
 # ---------------------------------------------------------------------------
 # Middleware
@@ -101,6 +104,7 @@ TEMPLATES = [
                 "django.template.context_processors.request",
                 "django.contrib.auth.context_processors.auth",
                 "django.contrib.messages.context_processors.messages",
+                "apps.web.context_processors.roles",
             ],
         },
     },
