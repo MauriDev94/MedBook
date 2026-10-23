@@ -1,5 +1,7 @@
 import pytest
 from django.contrib.auth import get_user_model
+from django.utils import translation
+
 from apps.appointments.models import Appointment, TimeSlot
 from apps.doctors.models import Specialty
 from apps.users.models import Role
@@ -169,6 +171,19 @@ class TestSpecialtyModel:
         SpecialtyFactory(slug="unique-slug")
         with pytest.raises(Exception):
             Specialty.objects.create(name="Duplicate", slug="unique-slug")
+
+    def test_display_name_translates_seeded_names(self, db):
+        """Seeded names are stored in English; the web shows them translated."""
+        cardiology = SpecialtyFactory(name="Cardiology", slug="cardiology")
+
+        assert cardiology.display_name == "Cardiología"
+        with translation.override("en"):
+            assert cardiology.display_name == "Cardiology"
+
+    def test_display_name_falls_back_to_stored_name(self, db):
+        specialty = SpecialtyFactory(name="Sleep Medicine", slug="sleep-medicine")
+
+        assert specialty.display_name == "Sleep Medicine"
 
 
 class TestTimeSlotModel:
