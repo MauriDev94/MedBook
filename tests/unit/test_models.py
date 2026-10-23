@@ -10,6 +10,7 @@ from tests.factories import (
     SpecialtyFactory,
     TimeSlotFactory,
     UserFactory,
+    random_password,
 )
 
 User = get_user_model()
@@ -22,7 +23,7 @@ class TestUserModel:
         """Test creating a regular user with email."""
         user = UserFactory(email="test@example.com")
         assert user.email == "test@example.com"
-        assert user.check_password("testpass123")
+        assert user.check_password(user.raw_password)
         assert not user.is_staff
         assert not user.is_superuser
 
@@ -59,21 +60,22 @@ class TestUserModel:
 
     def test_manager_create_user(self, db):
         """Test UserManager.create_user sets email and password correctly."""
-        user = User.objects.create_user(email="mgr@example.com", password="pass1234")
+        password = random_password()
+        user = User.objects.create_user(email="mgr@example.com", password=password)
         assert user.email == "mgr@example.com"
-        assert user.check_password("pass1234")
+        assert user.check_password(password)
         assert not user.is_staff
         assert not user.is_superuser
 
     def test_manager_create_user_requires_email(self, db):
         """Test UserManager.create_user raises ValueError when email is empty."""
         with pytest.raises(ValueError, match="Email field must be set"):
-            User.objects.create_user(email="", password="pass1234")
+            User.objects.create_user(email="", password=random_password())
 
     def test_manager_create_superuser(self, db):
         """Test UserManager.create_superuser sets staff and superuser flags."""
         admin = User.objects.create_superuser(
-            email="admin@example.com", password="pass1234"
+            email="admin@example.com", password=random_password()
         )
         assert admin.is_staff
         assert admin.is_superuser
@@ -83,14 +85,14 @@ class TestUserModel:
         """Test UserManager.create_superuser raises if is_staff=False."""
         with pytest.raises(ValueError, match="is_staff=True"):
             User.objects.create_superuser(
-                email="bad@example.com", password="pass1234", is_staff=False
+                email="bad@example.com", password=random_password(), is_staff=False
             )
 
     def test_manager_create_superuser_requires_is_superuser(self, db):
         """Test UserManager.create_superuser raises if is_superuser=False."""
         with pytest.raises(ValueError, match="is_superuser=True"):
             User.objects.create_superuser(
-                email="bad@example.com", password="pass1234", is_superuser=False
+                email="bad@example.com", password=random_password(), is_superuser=False
             )
 
 

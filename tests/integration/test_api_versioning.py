@@ -8,7 +8,7 @@ Meta-endpoints (docs, schema, health, root) are intentionally NOT versioned.
 import pytest
 
 from apps.users.models import Role
-from tests.factories import UserFactory
+from tests.factories import UserFactory, random_password
 
 
 @pytest.fixture
@@ -41,7 +41,9 @@ class TestApiVersioning:
         assert response.status_code == 404
 
     def test_unversioned_token_no_longer_exists(self, client):
-        response = client.post("/api/token/", {"email": "x", "password": "y"})
+        response = client.post(
+            "/api/token/", {"email": "x", "password": random_password()}
+        )
 
         assert response.status_code == 404
 

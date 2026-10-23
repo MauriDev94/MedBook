@@ -13,6 +13,7 @@ import pytest
 from django.core.management import call_command
 
 from apps.users.models import User, Role
+from tests.factories import random_password
 
 
 @pytest.mark.django_db
@@ -29,7 +30,7 @@ class TestEnsureSuperuserCommand:
         return out.getvalue()
 
     def test_creates_superuser_when_env_vars_set(self):
-        output = self._call(email="admin@medbook.com", password="Admin1234!")
+        output = self._call(email="admin@medbook.com", password=random_password())
 
         user = User.objects.get(email="admin@medbook.com")
         assert user.is_superuser is True
@@ -40,17 +41,17 @@ class TestEnsureSuperuserCommand:
         # Create a superuser first
         User.objects.create_superuser(
             email="existing@medbook.com",
-            password="Admin1234!",
+            password=random_password(),
             role=Role.ADMIN,
         )
 
-        output = self._call(email="new@medbook.com", password="Admin1234!")
+        output = self._call(email="new@medbook.com", password=random_password())
 
         assert not User.objects.filter(email="new@medbook.com").exists()
         assert "already exists" in output
 
     def test_skips_if_email_not_set(self):
-        output = self._call(password="Admin1234!")  # no email
+        output = self._call(password=random_password())  # no email
 
         assert not User.objects.filter(is_superuser=True).exists()
         assert "not set" in output

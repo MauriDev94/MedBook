@@ -11,7 +11,7 @@ import pytest
 from django.contrib.auth.password_validation import validate_password
 from django.core.exceptions import ValidationError
 
-from tests.factories import UserFactory
+from tests.factories import UserFactory, random_password
 
 
 @pytest.mark.django_db
@@ -20,19 +20,19 @@ class TestUserAttributeSimilarityValidator:
         user = UserFactory(email="janedoe@medbook.com")
 
         with pytest.raises(ValidationError):
-            validate_password("janedoe@medbook.com", user=user)
+            validate_password(user.email, user=user)
 
     def test_password_similar_to_name_is_rejected(self):
         user = UserFactory(first_name="Jonathan", last_name="Smithson")
 
         with pytest.raises(ValidationError):
-            validate_password("jonathan123", user=user)
+            validate_password(f"{user.first_name.lower()}123", user=user)
 
     def test_unrelated_strong_password_is_accepted(self):
         user = UserFactory(email="janedoe@medbook.com")
 
         # Should not raise — unrelated to any user attribute.
-        validate_password("unrelated-strong-passphrase-92", user=user)
+        validate_password(random_password(), user=user)
 
 
 class TestAdminUrlConfig:

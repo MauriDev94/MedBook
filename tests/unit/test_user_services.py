@@ -18,10 +18,10 @@ from django.db import IntegrityError
 from apps.patients.models import Patient
 from apps.users import services
 from apps.users.models import Role, User
-from tests.factories import UserFactory
+from tests.factories import UserFactory, random_password, short_password
 
-# A phrase that passes every AUTH_PASSWORD_VALIDATORS check.
-REGISTRATION_PHRASE = "medbook-registro-2026"
+# Generated per run: passes every AUTH_PASSWORD_VALIDATORS check.
+REGISTRATION_PHRASE = random_password()
 
 
 def _register(**overrides):
@@ -104,13 +104,14 @@ class TestRegisterPatientValidation:
 
     def test_weak_password_raises_password_error(self):
         with pytest.raises(ValidationError) as exc_info:
-            _register(password="12345")
+            _register(password=short_password())
 
         assert "password" in exc_info.value.message_dict
 
     def test_password_similar_to_email_is_rejected(self):
         with pytest.raises(ValidationError) as exc_info:
-            _register(email="valentina.soto@example.com", password="valentina.soto")
+            email = "valentina.soto@example.com"
+            _register(email=email, password=email.split("@")[0])
 
         assert "password" in exc_info.value.message_dict
 
@@ -118,13 +119,13 @@ class TestRegisterPatientValidation:
         UserFactory(email="ana.perez@example.com")
 
         with pytest.raises(ValidationError) as exc_info:
-            _register(email="ana.perez@example.com", password="12345")
+            _register(email="ana.perez@example.com", password=short_password())
 
         assert set(exc_info.value.message_dict) == {"email", "password"}
 
     def test_invalid_registration_creates_nothing(self):
         with pytest.raises(ValidationError):
-            _register(password="12345")
+            _register(password=short_password())
 
         assert not User.objects.exists()
         assert not Patient.objects.exists()

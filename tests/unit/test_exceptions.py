@@ -10,6 +10,8 @@ Verifies that every DRF exception type is normalised to the same shape:
 
 import pytest
 from rest_framework import status
+
+from tests.factories import random_password
 from rest_framework.exceptions import (
     AuthenticationFailed,
     NotAuthenticated,
@@ -167,7 +169,7 @@ class TestExceptionHandlerIntegration:
     def test_invalid_token_returns_standard_shape(self, api_client):
         response = api_client.post(
             "/api/v1/token/",
-            {"email": "noexiste@example.com", "password": "wrong"},
+            {"email": "noexiste@example.com", "password": random_password()},
             format="json",
         )
 

@@ -1,7 +1,7 @@
 import jwt
 from rest_framework import status
 
-from tests.factories import UserFactory
+from tests.factories import UserFactory, random_password
 
 
 class TestAuthAPI:
@@ -9,11 +9,11 @@ class TestAuthAPI:
 
     def test_token_obtain_success(self, api_client, db):
         """Test POST /api/token/ returns 200 with access and refresh tokens."""
-        UserFactory(email="test@example.com", password="testpass123")
+        user = UserFactory(email="test@example.com")
 
         response = api_client.post(
             "/api/v1/token/",
-            {"email": "test@example.com", "password": "testpass123"},
+            {"email": user.email, "password": user.raw_password},
             format="json",
         )
 
@@ -23,9 +23,8 @@ class TestAuthAPI:
 
     def test_token_contains_custom_claims(self, api_client, db):
         """Test the decoded token contains role, email and full_name."""
-        UserFactory(
+        user = UserFactory(
             email="doctor@example.com",
-            password="testpass123",
             role="doctor",
             first_name="Jane",
             last_name="Smith",
@@ -33,7 +32,7 @@ class TestAuthAPI:
 
         response = api_client.post(
             "/api/v1/token/",
-            {"email": "doctor@example.com", "password": "testpass123"},
+            {"email": user.email, "password": user.raw_password},
             format="json",
         )
 
@@ -50,7 +49,7 @@ class TestAuthAPI:
 
         response = api_client.post(
             "/api/v1/token/",
-            {"email": "test@example.com", "password": "wrongpassword"},
+            {"email": "test@example.com", "password": random_password()},
             format="json",
         )
 
@@ -58,11 +57,11 @@ class TestAuthAPI:
 
     def test_token_refresh(self, api_client, db):
         """Test POST /api/token/refresh/ returns a new access token."""
-        UserFactory(email="test@example.com", password="testpass123")
+        user = UserFactory(email="test@example.com")
 
         token_response = api_client.post(
             "/api/v1/token/",
-            {"email": "test@example.com", "password": "testpass123"},
+            {"email": user.email, "password": user.raw_password},
             format="json",
         )
         refresh_token = token_response.data["refresh"]

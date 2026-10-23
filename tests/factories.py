@@ -1,4 +1,6 @@
 import datetime
+import secrets
+
 import factory
 from django.contrib.auth import get_user_model
 from django.utils import timezone
@@ -9,6 +11,18 @@ from apps.patients.models import Patient
 from apps.users.models import Role
 
 User = get_user_model()
+
+
+# Tests never hardcode passwords, not even fake ones: each call returns a new
+# random value, so no password literal ever lands in the repository.
+def random_password() -> str:
+    """A password that passes every AUTH_PASSWORD_VALIDATORS check."""
+    return secrets.token_urlsafe(16)
+
+
+def short_password() -> str:
+    """A random password shorter than MinimumLengthValidator's 8 characters."""
+    return secrets.token_urlsafe(16)[:5]
 
 
 class UserFactory(factory.django.DjangoModelFactory):
@@ -31,10 +45,14 @@ class UserFactory(factory.django.DjangoModelFactory):
         skip_postgeneration_save=True skips the automatic save after all
         post-generation hooks, so we must call save() ourselves here to
         ensure the hashed password is written to the DB.
+
+        The plain value stays on the instance as `raw_password`, so login
+        tests can use it: `UserFactory().raw_password`.
         """
         if not create:
             return
-        self.set_password(extracted or "testpass123")
+        self.raw_password = extracted or random_password()
+        self.set_password(self.raw_password)
         self.save(update_fields=["password"])
 
 
