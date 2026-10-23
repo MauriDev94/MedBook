@@ -3,7 +3,7 @@
 > REST API for medical appointment booking — Django 5.2 LTS + DRF 3.18  
 > Portfolio project built with TDD: appointment state machine, object-level RBAC and race-safe booking.
 
-[![Tests](https://img.shields.io/badge/tests-335%20passing-brightgreen)](./tests)
+[![Tests](https://img.shields.io/badge/tests-367%20passing-brightgreen)](./tests)
 [![Coverage](https://img.shields.io/badge/branch%20coverage-99.4%25-brightgreen)](./tests)
 [![Python](https://img.shields.io/badge/python-3.12-blue)](https://python.org)
 [![Django](https://img.shields.io/badge/django-5.2%20LTS-green)](https://djangoproject.com)
@@ -17,6 +17,8 @@
 MedBook is a REST API for managing medical appointments. It covers the full booking lifecycle: doctors publish their weekly schedules, the system generates concrete time slots, patients book them, and appointments move through a state machine (pending → confirmed → completed / cancelled / no-show).
 
 The goal is to demonstrate real-world Django competency: complex ORM queries, RBAC permissions, atomic transactions, TDD, custom admin, and clean architecture — the kind of things that come up in senior backend interviews.
+
+A server-rendered web UI (Django templates + HTMX, Spanish/English) is being built on top of the same service layer ([ADR 0002](./docs/adr/0002-server-rendered-web-frontend.md)). Its home page is served at `/`; the patient flows (sign-up, doctor catalog, booking) arrive in the following steps of [`SPRINT.md`](./SPRINT.md).
 
 ---
 
@@ -33,6 +35,8 @@ The goal is to demonstrate real-world Django competency: complex ORM queries, RB
 | Email | django-anymail (Resend) | 15.x |
 | CORS | django-cors-headers | 4.9.0 |
 | Static files | whitenoise[brotli] | 6.8 |
+| Web UI | Django templates + HTMX (vendored) + django-htmx | 2.0.11 / 1.29 |
+| CSS | Tailwind CSS via django-tailwind-cli (standalone CLI, no Node) | 4.3.3 / 4.8 |
 | Database | PostgreSQL 16 | — |
 | Tests | pytest-django + factory-boy | — |
 | Lint | ruff | — |
@@ -49,10 +53,13 @@ medbook/
 │   ├── doctors/        # Doctor, Specialty, Schedule models + signals
 │   ├── patients/       # Patient model
 │   ├── appointments/   # TimeSlot, Appointment, MedicalNote + state machine
-│   └── notifications/  # Email notification services
+│   ├── notifications/  # Email notification services
+│   └── web/            # Server-rendered UI: templates, views, Tailwind source (no models)
 ├── config/
 │   ├── settings/       # base.py / local.py / test.py / production.py
 │   └── urls.py
+├── locale/es/          # Spanish catalog for the web UI (.po + compiled .mo)
+├── static/             # Vendored JS (HTMX) + compiled Tailwind CSS (generated)
 └── tests/
     ├── unit/           # Pure logic: models, services (no HTTP)
     └── integration/    # Full HTTP stack: URL → ViewSet → DB
@@ -242,10 +249,25 @@ DJANGO_SETTINGS_MODULE=config.settings.local python manage.py createsuperuser
 
 ### 5. Start the server
 ```bash
+# Compile the CSS once (the first run downloads the pinned Tailwind CLI)
+DJANGO_SETTINGS_MODULE=config.settings.local python manage.py tailwind build
 DJANGO_SETTINGS_MODULE=config.settings.local python manage.py runserver
 ```
 
-Open **http://localhost:8000/api/docs/** for the interactive Swagger UI.
+Open **http://localhost:8000/** for the web UI and **http://localhost:8000/api/docs/** for the interactive Swagger UI.
+
+### Web UI: CSS and translations
+
+- **Tailwind**: while editing templates, run `python manage.py tailwind watch` in a second terminal. The source is `apps/web/styles/tailwind.css`; the output `static/css/tailwind.css` is generated and not committed. Render, CI and the Dockerfile compile it at build time.
+- **Translations**: UI strings are written in English and translated to Spanish (the default language) in `locale/es/LC_MESSAGES/django.po`. Both the `.po` and the compiled `.mo` are committed, because production has no gettext; CI fails if they are out of date. The JSON API always answers in English. Updating them needs GNU gettext:
+  - Windows: `winget install mlocati.GetText` (then open a new terminal)
+  - macOS: `brew install gettext` · Debian/Ubuntu: `sudo apt install gettext`
+
+  ```bash
+  python manage.py makemessages -l es --no-location --no-obsolete
+  # translate the new msgstr entries, then:
+  python manage.py compilemessages -l es --ignore=.venv
+  ```
 
 ### Alternative: one-command dev stack with `docker compose up`
 
@@ -266,6 +288,9 @@ starts it alongside the `db` (Postgres 16) service. Notes:
 - On every start, `web` runs `python manage.py migrate --noinput` before
   launching `gunicorn`, so the schema is always up to date.
 - The API is available at **http://localhost:8000/api/docs/**.
+- Static files (admin and web UI CSS) are not served in this stack: it runs
+  `gunicorn` with local settings, which have no WhiteNoise. Use `runserver`
+  for UI work.
 - All `web` env vars (`SECRET_KEY`, `DATABASE_URL`, etc.) are dev-only
   placeholders hardcoded in `docker-compose.yml` for a true one-command
   `up` — do not reuse them anywhere outside local development.
@@ -278,6 +303,8 @@ starts it alongside the `db` (Postgres 16) service. Notes:
 ## Deploy
 
 Production runs on **Render**, managed as infrastructure as code: [`render.yaml`](./render.yaml) is a Render **Blueprint** with auto-sync, so any change to it merged into `master` is applied to the service automatically (build/start commands, health check on `/health/`, non-secret env vars). Secrets (`SECRET_KEY`, `DATABASE_URL`, superuser credentials) are kept out of the file and live only in the Render dashboard. The Python version comes from [`.python-version`](./.python-version).
+
+The build runs `tailwind build` before `collectstatic`, because the manifest storage needs the compiled CSS. Translations are not compiled there: the `.mo` files are committed.
 
 ### Slot generation in production
 
@@ -298,7 +325,7 @@ docker run --rm -p 8000:8000 \
   medbook:latest
 ```
 
-The image builds in two stages (deps → slim runtime), runs `collectstatic` at build time, and serves the app as a non-root user.
+The image is built on **Alpine** in two stages. The builder installs the dependencies (all of them ship musllinux wheels), fetches the musl build of the Tailwind CLI (checked against the release sha256, because django-tailwind-cli does not detect musl), compiles the CSS and runs `collectstatic`. The runtime stage has no build tools and serves the app as a non-root user. Production moves to this image in Paso 32 ([#145](https://github.com/MauriDev94/MedBook/issues/145)).
 
 `docker-compose.yml` (see [Local setup](#alternative-one-command-dev-stack-with-docker-compose-up)) wraps this same `Dockerfile` for **local development only** — it hardcodes dev credentials and `DEBUG=True`, and is not used for the Render deploy.
 

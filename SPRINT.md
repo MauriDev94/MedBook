@@ -139,8 +139,8 @@
 
 | Paso | Descripción | Issue | PR | Estado |
 |------|-------------|-------|----|--------|
-| 23 | Horarios en hora de Chile (`TIME_ZONE`, generación de slots, data migration) | #133 | — | ⏳ |
-| 24 | Base web: `apps/web`, layout, Tailwind (`django-tailwind-cli`), HTMX, i18n es/en | #134 | — | ⬜ |
+| 23 | Horarios en hora de Chile (`TIME_ZONE`, generación de slots, data migration) | #133 | #143 | ✅ |
+| 24 | Base web: `apps/web`, layout, Tailwind (`django-tailwind-cli`), HTMX, i18n es/en; Dockerfile Alpine | #134 | — | ⏳ |
 | 25 | Login, logout y registro web con sesión; RBAC web compartido con DRF | #135 | — | ⬜ |
 | 26 | Catálogo de doctores y slots disponibles (HTMX) | #136 | — | ⬜ |
 | 30 | **Bug**: re-reservar un slot liberado por cancelación (`OneToOne` → FK + unique parcial). Va antes del 27 | #142 | — | ⬜ |
@@ -155,9 +155,9 @@
 
 ## Checklist acumulativo — Semana 5
 
-- [ ] Un horario de 09:00–17:00 se ve como 09:00–17:00 en Chile, en verano y en invierno
+- [x] Un horario de 09:00–17:00 se ve como 09:00–17:00 en Chile, en verano y en invierno
 - [ ] Flujo completo en la web: registro → login → doctores → reserva → mis citas → cancelación
-- [ ] UI en español por defecto y en inglés con el selector; la API sigue respondiendo en inglés
+- [x] UI en español por defecto y en inglés con el selector; la API sigue respondiendo en inglés
 - [ ] Ninguna view web accede al ORM: todo pasa por services o selectors
 - [ ] Build de Tailwind en Render, Docker y CI; `.mo` al día (chequeo en CI)
 - [ ] Gate de coverage ≥ 95% branch se mantiene
@@ -167,5 +167,8 @@
 ## Notas técnicas registradas — Semana 5
 
 - Windows no trae gettext: `winget install mlocati.GetText` (o correr `makemessages` dentro de Docker). Render no lo necesita porque los `.mo` se versionan.
-- `django-tailwind-cli` descarga el binario de Tailwind en el primer `tailwind build`; en Render ocurre durante el `buildCommand`. No detecta musl: en el Dockerfile Alpine (Paso 24) hay que bajar `tailwindcss-linux-x64-musl` y usar `TAILWIND_CLI_PATH`.
+- `django-tailwind-cli` descarga el binario de Tailwind en el primer `tailwind build`; en Render ocurre durante el `buildCommand`. No detecta musl: el Dockerfile Alpine (Paso 24) baja `tailwindcss-linux-<arch>-musl`, lo verifica con el sha256 del release y lo usa vía `TAILWIND_CLI_PATH`. Ese binario (Bun) necesita `libstdc++`, que solo se instala en la etapa builder.
+- `makemessages` en Windows escribe rutas `.\apps\...` en los comentarios de ubicación, y en Linux saldrían con `/`: por eso se usa `--no-location` y CI compara el resultado ignorando solo `POT-Creation-Date`. El `.mo` compilado con gettext 1.0 (Windows) y 0.21 (Ubuntu 24.04) es idéntico byte a byte (verificado).
+- `production.py` redefinía `MIDDLEWARE` completo: `LocaleMiddleware` y `HtmxMiddleware` no habrían llegado a producción. Ahora inserta WhiteNoise en la lista de `base.py` (test en `tests/unit/test_production_settings.py`).
+- El stack de `docker compose up` corre gunicorn con settings locales y sin WhiteNoise, así que no sirve estáticos (ni el CSS de la web ni el del admin). Se resuelve en el Paso 32, cuando la imagen pase a ser la de producción.
 - El servicio de Render se creó a mano (sin Blueprint), así que `render.yaml` se ignoraba. El Paso 31 lo convierte en Blueprint (adopción por nombre: misma URL y mismos secretos) y desde ahí manda el archivo.
