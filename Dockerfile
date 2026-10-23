@@ -2,8 +2,9 @@
 #
 # Portable Dockerfile for MedBook — alternative to the Render-native deploy
 # defined in render.yaml (buildCommand/startCommand + gunicorn). This image
-# is NOT used by Render; it exists for portability (run anywhere Docker
-# runs) and to demonstrate multi-stage, non-root, slim Docker practices.
+# is NOT used by Render yet (production moves to it in Paso 32, #145); it
+# exists for portability and to demonstrate multi-stage, non-root, Alpine
+# Docker practices.
 #
 # Build:
 #   docker build -t medbook:latest .
@@ -17,9 +18,9 @@
 #     medbook:latest
 
 # ---------------------------------------------------------------------------
-# Stage 1: builder — install Python deps and run collectstatic
+# Stage 1: builder — Python deps, Tailwind CSS and collectstatic
 # ---------------------------------------------------------------------------
-FROM python:3.12-slim AS builder
+FROM python:3.12-alpine AS builder
 
 ENV PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1 \
@@ -28,54 +29,68 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
 
 WORKDIR /app
 
-# System deps needed to build psycopg2-binary's transitive requirements and
-# other compiled wheels. Kept isolated to the builder stage only.
-RUN apt-get update \
-    && apt-get install -y --no-install-recommends build-essential libpq-dev \
-    && rm -rf /var/lib/apt/lists/*
+# Every dependency ships a musllinux wheel (psycopg2-binary bundles libpq),
+# so no compiler toolchain is needed. libstdc++ is required by the standalone
+# Tailwind CLI (a Bun binary) and only lives in this stage.
+RUN apk add --no-cache libstdc++
 
 # Install Python deps first so this layer is cached unless requirements change.
 COPY requirements/ requirements/
 RUN pip install --no-cache-dir --prefix=/install -r requirements/production.txt
 
+# Tailwind standalone CLI, musl build. django-tailwind-cli would download the
+# glibc build (it does not detect musl), so the binary is fetched here,
+# checked against the release's sha256sums.txt and used via TAILWIND_CLI_PATH.
+# Keep TAILWIND_VERSION in sync with TAILWIND_CLI_VERSION in
+# config/settings/base.py.
+ARG TAILWIND_VERSION=4.3.3
+ARG TARGETARCH
+RUN case "${TARGETARCH:-amd64}" in \
+        amd64) arch=x64; sha256=a04d34ceacc8f52cbe8920ad846cdeb61d3d0021dba32db0d1f77c9d9fad7a6c ;; \
+        arm64) arch=arm64; sha256=71ea4be79c9de9827545682df3e040053fb535d37c71ed2cfdedf9385a0868e0 ;; \
+        *) echo "Unsupported architecture: ${TARGETARCH}" >&2; exit 1 ;; \
+    esac \
+    && wget -qO /usr/local/bin/tailwindcss \
+        "https://github.com/tailwindlabs/tailwindcss/releases/download/v${TAILWIND_VERSION}/tailwindcss-linux-${arch}-musl" \
+    && echo "${sha256}  /usr/local/bin/tailwindcss" | sha256sum -c - \
+    && chmod +x /usr/local/bin/tailwindcss
+
 # Copy the application code (see .dockerignore for exclusions).
 COPY . .
 
-# collectstatic needs a working Django settings import, including a
-# SECRET_KEY and ALLOWED_HOSTS — none of these are real secrets, they only
-# exist for this build-time step. The runtime container always gets its own
-# SECRET_KEY from the environment (see config/settings/base.py).
 ARG DJANGO_SETTINGS_MODULE=config.settings.production
 ENV DJANGO_SETTINGS_MODULE=${DJANGO_SETTINGS_MODULE} \
-    SECRET_KEY=build-only-not-a-secret \
-    ALLOWED_HOSTS=localhost \
-    DATABASE_URL=sqlite:////tmp/build.sqlite3
+    TAILWIND_CLI_PATH=/usr/local/bin/tailwindcss \
+    PYTHONPATH=/install/lib/python3.12/site-packages \
+    PATH="/install/bin:${PATH}"
 
-RUN PYTHONPATH=/install/lib/python3.12/site-packages \
-    PATH="/install/bin:${PATH}" \
-    python manage.py collectstatic --noinput
+# Django needs a working settings import, including SECRET_KEY and
+# ALLOWED_HOSTS. These values are not real secrets and are set only for
+# this RUN (never as ENV); the runtime container always gets its own
+# SECRET_KEY from the environment (see config/settings/base.py).
+# Tailwind first: the manifest storage used by collectstatic needs the CSS.
+RUN export SECRET_KEY=build-only-not-a-secret \
+        ALLOWED_HOSTS=localhost \
+        DATABASE_URL=sqlite:////tmp/build.sqlite3 \
+    && python manage.py tailwind build \
+    && python manage.py collectstatic --noinput
 
 # ---------------------------------------------------------------------------
-# Stage 2: runtime — slim image, non-root user, only what's needed to run
+# Stage 2: runtime — Alpine, non-root user, only what's needed to run
 # ---------------------------------------------------------------------------
-FROM python:3.12-slim AS runtime
+FROM python:3.12-alpine AS runtime
 
 ENV PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1 \
-    DJANGO_SETTINGS_MODULE=config.settings.production \
-    PATH="/usr/local/bin:${PATH}"
+    DJANGO_SETTINGS_MODULE=config.settings.production
 
-# Runtime needs libpq (psycopg2-binary links against it) but not the
-# compiler toolchain from the builder stage.
-RUN apt-get update \
-    && apt-get install -y --no-install-recommends libpq5 \
-    && rm -rf /var/lib/apt/lists/* \
-    && groupadd --gid 1000 appuser \
-    && useradd --uid 1000 --gid appuser --shell /bin/bash --create-home appuser
+# No system packages: the wheels bundle their native libraries (libpq too).
+RUN addgroup -g 1000 appuser \
+    && adduser -D -u 1000 -G appuser -s /bin/sh appuser
 
 WORKDIR /app
 
-# Bring in only the installed packages from the builder (no build tools,
+# Bring in only the installed packages from the builder (no Tailwind CLI,
 # no pip cache, no requirements source files).
 COPY --from=builder /install /usr/local
 COPY --from=builder --chown=appuser:appuser /app/staticfiles /app/staticfiles

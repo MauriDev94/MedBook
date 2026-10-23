@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 MedBook is a medical appointment booking REST API (portfolio project) built with Django + DRF (versions pinned in `requirements/base.txt`), PostgreSQL 16, Python 3.12. Default branch: `master`.
 
-Today it is API-only, with no templates and no frontend. Sprint "Semana 5" in `SPRINT.md` (Pasos 23–29, issues #133–#139) builds the patient-facing web UI. Its decisions are recorded in two ADRs:
+The JSON API is complete. Sprint "Semana 5" in `SPRINT.md` (Pasos 23–29, issues #133–#139) builds the patient-facing web UI. Its base landed in Paso 24: `apps/web` serves the home at `/` with the layout, Tailwind, HTMX and es/en i18n, but no business flows yet. Its decisions are recorded in two ADRs:
 - `docs/adr/0002-server-rendered-web-frontend.md`: Django templates + HTMX in a new `apps/web` app, session auth reusing the service layer, Tailwind 4 via `django-tailwind-cli` (no Node), Spanish/English i18n with the JSON API kept in English, no Alpine.js.
 - `docs/adr/0003-clinic-time-zone.md`: schedules are interpreted in `America/Santiago` (`TIME_ZONE`), and slots are built with `make_aware` instead of hard-coded UTC. Implemented in Paso 23. The API serialises datetimes with the Chilean offset and `__date` filters use Chilean dates. Never hard-code UTC when combining dates with schedule times.
 
@@ -22,6 +22,8 @@ pre-commit install                      # ruff --fix + ruff-format on commit
 ```
 
 Never use `Start-Process` to launch Django on Windows — run `python manage.py runserver` in a dedicated terminal with env vars already set.
+
+GNU gettext (needed only for `makemessages`/`compilemessages`) is installed on this machine with `winget install mlocati.GetText`, in `%LOCALAPPDATA%\Programs\gettext-iconv\bin` (on the user PATH; a shell opened before the install needs it prepended).
 
 Settings modules: `config.settings.local` (dev), `config.settings.test` (pytest, set in `pytest.ini`), `config.settings.production` (Render). Config is read with `python-decouple` from `.env`; `.env.example` lists the keys.
 
@@ -51,13 +53,23 @@ PYTHONIOENCODING=utf-8 python manage.py spectacular --validate --fail-on-warn
 # Project management commands
 python manage.py generate_slots [--days=30] [--doctor-id=<uuid>]
 python manage.py ensure_superuser        # idempotent, used by the Render start command
+
+# Web UI assets
+python manage.py tailwind build          # → static/css/tailwind.css (generated, gitignored)
+python manage.py tailwind watch          # rebuild on template changes, next to runserver
+
+# Translations (needs gettext). Commit both .po and .mo; CI fails if stale
+python manage.py makemessages -l es --no-location --no-obsolete
+python manage.py compilemessages -l es --ignore=.venv
 ```
+
+Translations: source strings are English (`{% translate %}` / `gettext_lazy`) and only `locale/es` has a catalog; English needs none because it falls back to the msgid. `--no-location` keeps Windows paths out of the `.po`, so CI's Linux run produces the same file. `--ignore=.venv` stops `compilemessages` from walking the virtualenv.
 
 `pytest.ini` addopts include `--cov-fail-under=95`, so any partial run without `--no-cov` will "fail" on coverage even when every test passes. The `fail_under = 85` in `pyproject.toml` is overridden by that flag.
 
-CI (`.github/workflows/ci.yml`): ruff lint + format → missing-migrations check → pytest on Postgres 16 → Codecov.
+CI (`.github/workflows/ci.yml`): ruff lint + format, then two jobs. "Assets" runs `tailwind build` + `collectstatic` with production settings and checks that `makemessages`/`compilemessages` leave no diff. "Tests" runs the missing-migrations check, pytest on Postgres 16 and Codecov.
 
-Deploy: the production Render service (`MedBook`, https://medbook-oiio.onrender.com, free plan, auto-deploy from `master`) is managed by a Render **Blueprint**: `render.yaml` is the source of truth and auto-syncs on every merge to `master` (Paso 31, #144). Change build or start commands, health check or non-secret env vars there, never in the dashboard. Secrets (`SECRET_KEY`, `DATABASE_URL`, `DJANGO_SUPERUSER_*`) are deliberately absent from the file and live only in the dashboard. The Python version comes from `.python-version`; do not add `PYTHON_VERSION`. A Blueprint never deletes resources. Confirm a deploy from the log line `==> Running '…'`. The free plan has no pre-deploy command and no cron jobs. Moving production to Docker Alpine is planned after Paso 24 (Paso 32, #145) and needs a new service.
+Deploy: the production Render service (`MedBook`, https://medbook-oiio.onrender.com, free plan, auto-deploy from `master`) is managed by a Render **Blueprint**: `render.yaml` is the source of truth and auto-syncs on every merge to `master` (Paso 31, #144). Change build or start commands, health check or non-secret env vars there, never in the dashboard. Secrets (`SECRET_KEY`, `DATABASE_URL`, `DJANGO_SUPERUSER_*`) are deliberately absent from the file and live only in the dashboard. The Python version comes from `.python-version`; do not add `PYTHON_VERSION`. A Blueprint never deletes resources. Confirm a deploy from the log line `==> Running '…'`. The free plan has no pre-deploy command and no cron jobs. The `buildCommand` runs `tailwind build` before `collectstatic`, because the manifest storage fails without the CSS. The `Dockerfile` is already `python:3.12-alpine`: django-tailwind-cli does not detect musl, so the builder fetches the musl Tailwind CLI (pinned sha256) and sets `TAILWIND_CLI_PATH`. Keep its `TAILWIND_VERSION` in sync with `TAILWIND_CLI_VERSION` in `base.py`. Moving production to that image is Paso 32 (#145) and needs a new service.
 
 ## Architecture
 
@@ -69,7 +81,8 @@ Key flows that span multiple apps:
 - **Booking**: `AppointmentCreateSerializer.validate()` calls `validate_appointment_booking` (slot available, no overlapping patient appointment via `Q`/range filters → 400). `create_appointment` then reserves the slot with an atomic conditional `UPDATE ... WHERE status=available`; losing the race raises `SlotConflict` (409). The doctor is always derived from `slot.schedule.doctor`.
 - **State machine**: transition methods live on `Appointment` (`confirm()`, `cancel()`, `complete()`, `mark_no_show()`) and raise `InvalidTransition` on illegal moves. Service functions wrap them in `@transaction.atomic`, write an audit line to the `medbook.audit` logger, free the slot on cancel, and send emails via `transaction.on_commit` (never inline).
 - **Errors**: `apps/core/exceptions.custom_exception_handler` normalises every error to `{detail, code, field_errors?}` and maps Django `ValidationError` / `InvalidTransition` to 400. Keep this shape when adding errors.
-- **Routing**: everything is under `/api/v1/` (`config/urls.py`); JWT at `/api/v1/token/`, `token/refresh/`, `token/blacklist/`; medical notes are nested manually at `/api/v1/appointments/<id>/notes/`. Swagger at `/api/docs/`, `/` redirects there, `/health/` for Render. Admin path comes from `DJANGO_ADMIN_URL`.
+- **Routing**: everything is under `/api/v1/` (`config/urls.py`); JWT at `/api/v1/token/`, `token/refresh/`, `token/blacklist/`; medical notes are nested manually at `/api/v1/appointments/<id>/notes/`. Swagger at `/api/docs/`, `/health/` for Render. Admin path comes from `DJANGO_ADMIN_URL`. The web UI owns `/` (`apps.web.urls`, included last) and `/i18n/setlang/` switches its language.
+- **Web UI** (`apps/web`, ADR 0002): templates, views and later forms; no models and no business logic. Views call services, like the API. The layout (`web/base.html`) loads `{% tailwind_css %}` and the vendored `static/vendor/htmx-<version>.min.js`, and sends the CSRF token on every HTMX request via `hx-headers` on `<body>`. `django_htmx` provides `request.htmx`. Tailwind only scans `apps/web` (`apps/web/styles/tailwind.css` uses `source(none)` + `@source`), so class names must appear literally there. Language: `LANGUAGE_CODE = "es"`, `LocaleMiddleware` (cookie first, then `Accept-Language`), no URL prefix. `apps.core.middleware.EnglishApiMiddleware` re-activates English for every `/api/` path, so API messages never change with the visitor's language. `production.py` inserts WhiteNoise into base's `MIDDLEWARE` instead of redefining it; add new middleware in `base.py` only.
 - **Auth/security**: SimpleJWT with 15-min access, 1-day refresh, rotation + blacklist; global anon/user throttles plus `login`/`refresh`/`register` scopes; `NUM_PROXIES=1` in production.
 - **Registration**: patients self-register through `apps/users/services.register_patient` (User with role=patient + Patient profile in one transaction; case-insensitive email uniqueness; Django password validators; field-keyed `ValidationError`). `POST /api/v1/users/register/` is public, skips authentication and returns the profile only, never tokens. The future web sign-up form must call the same service. Doctors and admins are still created via the admin.
 

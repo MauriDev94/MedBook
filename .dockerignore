@@ -54,6 +54,8 @@ Dockerfile
 docker-compose.yml
 docker-compose.test.yml
 
-# Static collected locally (rebuilt in the image)
+# Static collected locally and Tailwind output (rebuilt in the image)
 staticfiles/
+.django_tailwind_cli/
+static/css/tailwind.css
 media/

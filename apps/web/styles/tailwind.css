@@ -1,0 +1,9 @@
+/*
+ * Tailwind entry point. `python manage.py tailwind build` compiles it into
+ * static/css/tailwind.css (generated, not committed).
+ *
+ * Automatic source detection is off: only the web app is scanned for class
+ * names (its templates and, later, the widget classes in its forms).
+ */
+@import "tailwindcss" source(none);
+@source "..";

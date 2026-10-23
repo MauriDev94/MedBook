@@ -1,0 +1,35 @@
+{% load i18n static tailwind_cli %}<!DOCTYPE html>
+<html lang="{{ LANGUAGE_CODE }}">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{% block title %}MedBook{% endblock %}</title>
+  {% tailwind_css %}
+  <script src="{% static 'vendor/htmx-2.0.11.min.js' %}" defer></script>
+</head>
+{# Every HTMX request sends the CSRF token as a header (django-htmx docs). #}
+<body class="flex min-h-screen flex-col bg-slate-50 text-slate-800 antialiased" hx-headers='{"X-CSRFToken": "{{ csrf_token }}"}'>
+  <header class="border-b border-slate-200 bg-white">
+    <nav class="mx-auto flex max-w-5xl items-center justify-between gap-4 px-4 py-3" aria-label="{% translate 'Main' %}">
+      <a href="{% url 'web:home' %}" class="text-lg font-bold tracking-tight text-teal-700">MedBook</a>
+      <div class="flex items-center gap-4 text-sm">
+        <a href="{% url 'docs' %}" class="text-slate-600 hover:text-teal-700">{% translate "API docs" %}</a>
+        {% include "web/includes/language_switcher.html" %}
+      </div>
+    </nav>
+  </header>
+
+  {% include "web/includes/messages.html" %}
+
+  <main class="flex-1">
+    {% block content %}{% endblock %}
+  </main>
+
+  <footer class="border-t border-slate-200 bg-white">
+    <div class="mx-auto flex max-w-5xl flex-wrap items-center justify-between gap-2 px-4 py-6 text-sm text-slate-500">
+      <p>{% translate "MedBook is a portfolio project: a medical appointment booking app built with Django." %}</p>
+      <a href="https://github.com/MauriDev94/MedBook" class="hover:text-teal-700">GitHub</a>
+    </div>
+  </footer>
+</body>
+</html>

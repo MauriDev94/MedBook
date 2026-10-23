@@ -59,16 +59,15 @@ DATABASES = {
 # ---------------------------------------------------------------------------
 # Static files — WhiteNoise serves them directly from Gunicorn
 # ---------------------------------------------------------------------------
+# Inserted into base's list instead of redefining it, so base middleware
+# (LocaleMiddleware, HtmxMiddleware, ...) cannot go missing in production.
+_after_security = (
+    MIDDLEWARE.index("django.middleware.security.SecurityMiddleware") + 1  # noqa: F405
+)
 MIDDLEWARE = [  # noqa: F405
-    "django.middleware.security.SecurityMiddleware",
+    *MIDDLEWARE[:_after_security],  # noqa: F405
     "whitenoise.middleware.WhiteNoiseMiddleware",  # right after SecurityMiddleware
-    "corsheaders.middleware.CorsMiddleware",
-    "django.contrib.sessions.middleware.SessionMiddleware",
-    "django.middleware.common.CommonMiddleware",
-    "django.middleware.csrf.CsrfViewMiddleware",
-    "django.contrib.auth.middleware.AuthenticationMiddleware",
-    "django.contrib.messages.middleware.MessageMiddleware",
-    "django.middleware.clickjacking.XFrameOptionsMiddleware",
+    *MIDDLEWARE[_after_security:],  # noqa: F405
 ]
 
 STATIC_ROOT = BASE_DIR / "staticfiles"  # noqa: F405

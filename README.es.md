@@ -3,7 +3,7 @@
 > API REST para reservas médicas — Django 5.2 LTS + DRF 3.18  
 > Proyecto de portafolio hecho con TDD: máquina de estados de citas, RBAC a nivel de objeto y reservas sin race conditions.
 
-[![Tests](https://img.shields.io/badge/tests-335%20passing-brightgreen)](./tests)
+[![Tests](https://img.shields.io/badge/tests-367%20passing-brightgreen)](./tests)
 [![Coverage](https://img.shields.io/badge/branch%20coverage-99.4%25-brightgreen)](./tests)
 [![Python](https://img.shields.io/badge/python-3.12-blue)](https://python.org)
 [![Django](https://img.shields.io/badge/django-5.2%20LTS-green)](https://djangoproject.com)
@@ -17,6 +17,8 @@
 MedBook es una API REST para gestionar reservas médicas. Cubre el ciclo completo: los médicos publican sus horarios semanales, el sistema genera slots concretos, los pacientes los reservan y las citas avanzan a través de una máquina de estados (pending → confirmed → completed / cancelled / no-show).
 
 El objetivo es demostrar competencia real con Django: queries ORM complejas, permisos RBAC, transacciones atómicas, TDD, admin personalizado y arquitectura limpia — exactamente lo que aparece en entrevistas técnicas senior.
+
+Sobre la misma capa de servicios se está construyendo una web server-rendered (templates de Django + HTMX, en español e inglés), según el [ADR 0002](./docs/adr/0002-server-rendered-web-frontend.md). Su home ya responde en `/`; los flujos del paciente (registro, catálogo de doctores, reserva) llegan en los pasos siguientes de [`SPRINT.md`](./SPRINT.md).
 
 ---
 
@@ -33,6 +35,8 @@ El objetivo es demostrar competencia real con Django: queries ORM complejas, per
 | Email | django-anymail (Resend) | 15.x |
 | CORS | django-cors-headers | 4.9.0 |
 | Static files | whitenoise[brotli] | 6.8 |
+| Web | Templates de Django + HTMX (vendorizado) + django-htmx | 2.0.11 / 1.29 |
+| CSS | Tailwind CSS vía django-tailwind-cli (CLI standalone, sin Node) | 4.3.3 / 4.8 |
 | Base de datos | PostgreSQL 16 | — |
 | Tests | pytest-django + factory-boy | — |
 | Lint | ruff | — |
@@ -49,10 +53,13 @@ medbook/
 │   ├── doctors/        # Doctor, Specialty, Schedule + signals
 │   ├── patients/       # Patient model
 │   ├── appointments/   # TimeSlot, Appointment, MedicalNote + máquina de estados
-│   └── notifications/  # Servicios de email
+│   ├── notifications/  # Servicios de email
+│   └── web/            # Web server-rendered: templates, views, fuente de Tailwind (sin modelos)
 ├── config/
 │   ├── settings/       # base.py / local.py / test.py / production.py
 │   └── urls.py
+├── locale/es/          # Catálogo en español de la web (.po + .mo compilado)
+├── static/             # JS vendorizado (HTMX) + CSS de Tailwind compilado (generado)
 └── tests/
     ├── unit/           # Lógica pura: modelos, services (sin HTTP)
     └── integration/    # Stack HTTP completo: URL → ViewSet → DB
@@ -244,16 +251,35 @@ DJANGO_SETTINGS_MODULE=config.settings.local python manage.py createsuperuser
 
 ### 5. Levantar el servidor
 ```bash
+# Compilar el CSS una vez (la primera corrida descarga el CLI de Tailwind fijado)
+DJANGO_SETTINGS_MODULE=config.settings.local python manage.py tailwind build
 DJANGO_SETTINGS_MODULE=config.settings.local python manage.py runserver
 ```
 
-Abrir **http://localhost:8000/api/docs/** para el Swagger interactivo.
+Abrir **http://localhost:8000/** para la web y **http://localhost:8000/api/docs/** para el Swagger interactivo.
+
+### Web: CSS y traducciones
+
+- **Tailwind**: mientras se editan templates, correr `python manage.py tailwind watch` en otra terminal. La fuente es `apps/web/styles/tailwind.css`; la salida `static/css/tailwind.css` se genera y no se versiona. Render, CI y el Dockerfile la compilan en el build.
+- **Traducciones**: los textos de la web se escriben en inglés y se traducen al español (idioma por defecto) en `locale/es/LC_MESSAGES/django.po`. Se versionan el `.po` y el `.mo` compilado, porque producción no tiene gettext; CI falla si quedan desactualizados. La API JSON responde siempre en inglés. Para actualizarlos hace falta GNU gettext:
+  - Windows: `winget install mlocati.GetText` (y abrir una terminal nueva)
+  - macOS: `brew install gettext` · Debian/Ubuntu: `sudo apt install gettext`
+
+  ```bash
+  python manage.py makemessages -l es --no-location --no-obsolete
+  # traducir los msgstr nuevos y luego:
+  python manage.py compilemessages -l es --ignore=.venv
+  ```
 
 ---
 
 ## Deploy
 
 Producción corre en **Render** y se gestiona como infraestructura como código: [`render.yaml`](./render.yaml) es un **Blueprint** de Render con auto-sync, así que cualquier cambio que llegue a `master` se aplica solo al servicio (comandos de build y arranque, health check en `/health/`, variables no secretas). Los secretos (`SECRET_KEY`, `DATABASE_URL`, credenciales del superusuario) quedan fuera del archivo y viven solo en el dashboard de Render. La versión de Python sale de [`.python-version`](./.python-version).
+
+El build corre `tailwind build` antes de `collectstatic`, porque el storage con manifest necesita el CSS compilado. Las traducciones no se compilan ahí: los `.mo` están versionados.
+
+El [`Dockerfile`](./Dockerfile) multi-stage sobre **Alpine** es una alternativa portable al deploy nativo de Render (producción pasa a esa imagen en el Paso 32, [#145](https://github.com/MauriDev94/MedBook/issues/145)). El builder instala las dependencias (todas tienen wheels musllinux), baja la build musl del CLI de Tailwind (verificada con el sha256 del release, porque django-tailwind-cli no detecta musl), compila el CSS y corre `collectstatic`. La etapa final no lleva herramientas de build y corre con un usuario sin privilegios.
 
 ### Generación de slots en producción
 

@@ -23,6 +23,47 @@ jobs:
       - name: Ruff format check
         run: ruff format --check .
 
+  assets:
+    name: Assets (Tailwind, i18n)
+    runs-on: ubuntu-24.04
+    needs: [lint]
+    permissions:
+      contents: read
+
+    # Same settings and build steps as Render: production storage (manifest +
+    # WhiteNoise) fails collectstatic if the compiled CSS is missing.
+    env:
+      DJANGO_SETTINGS_MODULE: config.settings.production
+      SECRET_KEY: ci-build-only-not-a-secret
+      ALLOWED_HOSTS: localhost
+      DATABASE_URL: sqlite:////tmp/ci-build.sqlite3
+
+    steps:
+      - uses: actions/checkout@v7
+      - uses: ./.github/actions/setup-django
+
+      - name: Install production dependencies
+        run: pip install -r requirements/production.txt
+
+      - name: Build Tailwind CSS and collect static files
+        run: |
+          python manage.py tailwind build
+          python manage.py collectstatic --noinput
+          test -s staticfiles/css/tailwind.css
+          ls staticfiles/vendor/htmx-*.min.js
+
+      - name: Install gettext
+        run: sudo apt-get update && sudo apt-get install -y --no-install-recommends gettext
+
+      # The .po/.mo files are committed because Render has no gettext; fail
+      # if they are stale. POT-Creation-Date changes on every run, so it is
+      # ignored.
+      - name: Translations are up to date
+        run: |
+          python manage.py makemessages -l es --no-location --no-obsolete
+          python manage.py compilemessages -l es --ignore=.venv
+          git diff --exit-code -I '^"POT-Creation-Date: ' -- locale/
+
   test:
     name: Tests (PostgreSQL)
     runs-on: ubuntu-24.04
