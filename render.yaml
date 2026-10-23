@@ -23,8 +23,13 @@ services:
     autoDeployTrigger: commit
     healthCheckPath: /health/
 
+    # `tailwind build` descarga el CLI de Tailwind (versión fijada en
+    # TAILWIND_CLI_VERSION) y compila static/css/tailwind.css. Va antes de
+    # collectstatic, cuyo manifest necesita el CSS. Las traducciones no se
+    # compilan aquí: los .mo están versionados (Render no tiene gettext).
     buildCommand: >-
       pip install -r requirements/production.txt &&
+      python manage.py tailwind build &&
       python manage.py collectstatic --noinput
 
     # Slots se (re)generan en cada arranque: el plan free no tiene cron jobs,
