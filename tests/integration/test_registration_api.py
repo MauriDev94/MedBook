@@ -16,12 +16,12 @@ from rest_framework.test import APIClient
 
 from apps.patients.models import Patient
 from apps.users.models import Role, User
-from tests.factories import UserFactory
+from tests.factories import UserFactory, random_password, short_password
 
 URL = "/api/v1/users/register/"
 
-# A phrase that passes every AUTH_PASSWORD_VALIDATORS check.
-REGISTRATION_PHRASE = "medbook-registro-2026"
+# Generated per run: passes every AUTH_PASSWORD_VALIDATORS check.
+REGISTRATION_PHRASE = random_password()
 
 
 @pytest.fixture(autouse=True)
@@ -130,7 +130,9 @@ class TestRegisterValidation:
         assert "email" in response.data["field_errors"]
 
     def test_weak_password_returns_400_with_field_error(self, api_client):
-        response = api_client.post(URL, _payload(password="12345"), format="json")
+        response = api_client.post(
+            URL, _payload(password=short_password()), format="json"
+        )
 
         assert response.status_code == status.HTTP_400_BAD_REQUEST
         assert "password" in response.data["field_errors"]
@@ -153,7 +155,7 @@ class TestRegisterValidation:
         assert "email" in response.data["field_errors"]
 
     def test_failed_registration_creates_nothing(self, api_client):
-        api_client.post(URL, _payload(password="12345"), format="json")
+        api_client.post(URL, _payload(password=short_password()), format="json")
 
         assert not User.objects.exists()
         assert not Patient.objects.exists()

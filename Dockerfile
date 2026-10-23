@@ -11,9 +11,9 @@
 #
 # Run (env vars must be supplied at runtime — never baked into the image):
 #   docker run --rm -p 8000:8000 \
-#     -e SECRET_KEY=... \
+#     -e SECRET_KEY="<your-secret-key>" \
 #     -e ALLOWED_HOSTS=localhost,127.0.0.1 \
-#     -e DATABASE_URL=postgres://user:pass@host:5432/medbook \
+#     -e DATABASE_URL="postgres://<user>:<password>@<host>:5432/medbook" \
 #     -e DJANGO_SETTINGS_MODULE=config.settings.production \
 #     medbook:latest
 
@@ -65,11 +65,12 @@ ENV DJANGO_SETTINGS_MODULE=${DJANGO_SETTINGS_MODULE} \
     PATH="/install/bin:${PATH}"
 
 # Django needs a working settings import, including SECRET_KEY and
-# ALLOWED_HOSTS. These values are not real secrets and are set only for
-# this RUN (never as ENV); the runtime container always gets its own
-# SECRET_KEY from the environment (see config/settings/base.py).
+# ALLOWED_HOSTS. They are set only for this RUN (never as ENV), and the key
+# is random and thrown away with the builder stage; the runtime container
+# always gets its own SECRET_KEY from the environment.
 # Tailwind first: the manifest storage used by collectstatic needs the CSS.
-RUN export SECRET_KEY=build-only-not-a-secret \
+RUN SECRET_KEY="$(python -c 'import secrets; print(secrets.token_urlsafe(50))')" \
+    && export SECRET_KEY \
         ALLOWED_HOSTS=localhost \
         DATABASE_URL=sqlite:////tmp/build.sqlite3 \
     && python manage.py tailwind build \

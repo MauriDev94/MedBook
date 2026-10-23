@@ -9,7 +9,8 @@ services:
     environment:
       POSTGRES_DB: ${POSTGRES_DB:-medbook}
       POSTGRES_USER: ${POSTGRES_USER:-postgres}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
+      # No default on purpose: it comes from your untracked .env
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?}
     volumes:
       - medbook_pgdata:/var/lib/postgresql/data
     healthcheck:
@@ -30,12 +31,16 @@ services:
       # Local dev settings — NOT production. Production settings enforce
       # SECURE_SSL_REDIRECT=True, which would break plain HTTP on localhost.
       DJANGO_SETTINGS_MODULE: config.settings.local
-      SECRET_KEY: dev-not-a-secret
+      # Secrets come from your untracked .env (see .env.example); `:?` makes
+      # compose stop and name any missing one. Nothing secret is written here.
+      SECRET_KEY: ${SECRET_KEY:?}
       DEBUG: "True"
       ALLOWED_HOSTS: localhost,127.0.0.1
       # host = "db" (the compose service name), port = 5432 (Postgres'
       # container-internal port, not the 5435 host-mapped port above).
-      DATABASE_URL: postgres://postgres:postgres@db:5432/medbook
+      # No password in the URL: libpq (psycopg2) reads it from PGPASSWORD.
+      DATABASE_URL: postgres://${POSTGRES_USER:-postgres}@db:5432/${POSTGRES_DB:-medbook}
+      PGPASSWORD: ${POSTGRES_PASSWORD:?}
     command: >
       sh -c "python manage.py migrate --noinput &&
              gunicorn config.wsgi:application --bind 0.0.0.0:8000"

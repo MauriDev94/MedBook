@@ -1,5 +1,5 @@
 name: Setup Django
-description: Python + pip dependencies (with cache) — requires actions/checkout before
+description: Python + pip dependencies (with cache) and a throwaway SECRET_KEY — requires actions/checkout before
 
 inputs:
   python-version:
@@ -21,3 +21,11 @@ runs:
       run: |
         pip install --upgrade pip
         pip install -r requirements/local.txt
+
+    # Clave aleatoria por ejecución: ninguna clave queda escrita en el repo.
+    - name: Generar SECRET_KEY desechable
+      shell: bash
+      run: |
+        key="$(python -c 'import secrets; print(secrets.token_urlsafe(50))')"
+        echo "::add-mask::$key"
+        echo "SECRET_KEY=$key" >> "$GITHUB_ENV"

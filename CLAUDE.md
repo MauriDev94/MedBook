@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 MedBook is a medical appointment booking REST API (portfolio project) built with Django + DRF (versions pinned in `requirements/base.txt`), PostgreSQL 16, Python 3.12. Default branch: `master`.
 
-The JSON API is complete. Sprint "Semana 5" in `SPRINT.md` (Pasos 23–29, issues #133–#139) builds the patient-facing web UI. Its base landed in Paso 24: `apps/web` serves the home at `/` with the layout, Tailwind, HTMX and es/en i18n, but no business flows yet. Its decisions are recorded in two ADRs:
+The JSON API is complete. Sprint "Semana 5" in `SPRINT.md` (Pasos 23–29, issues #133–#139) builds the patient-facing web UI. Done so far: the base (Paso 24: layout, Tailwind, HTMX, es/en i18n) and session auth (Paso 25: login, logout, patient sign-up). Booking flows come next. Its decisions are recorded in two ADRs:
 - `docs/adr/0002-server-rendered-web-frontend.md`: Django templates + HTMX in a new `apps/web` app, session auth reusing the service layer, Tailwind 4 via `django-tailwind-cli` (no Node), Spanish/English i18n with the JSON API kept in English, no Alpine.js.
 - `docs/adr/0003-clinic-time-zone.md`: schedules are interpreted in `America/Santiago` (`TIME_ZONE`), and slots are built with `make_aware` instead of hard-coded UTC. Implemented in Paso 23. The API serialises datetimes with the Chilean offset and `__date` filters use Chilean dates. Never hard-code UTC when combining dates with schedule times.
 
@@ -28,6 +28,7 @@ GNU gettext (needed only for `makemessages`/`compilemessages`) is installed on t
 Settings modules: `config.settings.local` (dev), `config.settings.test` (pytest, set in `pytest.ini`), `config.settings.production` (Render). Config is read with `python-decouple` from `.env`; `.env.example` lists the keys.
 
 Databases (Docker):
+- Both compose files need `SECRET_KEY` / `POSTGRES_PASSWORD` / `POSTGRES_TEST_PASSWORD` in `.env` (no defaults; compose stops naming the missing one). Existing volumes keep the password they were created with.
 - Dev: `docker compose up` starts Postgres on host port **5435** plus the app on 8000 (runs `migrate` then gunicorn with local settings). `docker compose up db` for just the DB.
 - Tests: `docker compose -f docker-compose.test.yml up -d` starts Postgres on host port **5436**, which is the default `DATABASE_URL` in `config/settings/test.py`. An optional `.env.test` overrides it (loaded in `test.py`, not `conftest.py`, because pytest-django imports settings first).
 
@@ -83,8 +84,9 @@ Key flows that span multiple apps:
 - **Errors**: `apps/core/exceptions.custom_exception_handler` normalises every error to `{detail, code, field_errors?}` and maps Django `ValidationError` / `InvalidTransition` to 400. Keep this shape when adding errors.
 - **Routing**: everything is under `/api/v1/` (`config/urls.py`); JWT at `/api/v1/token/`, `token/refresh/`, `token/blacklist/`; medical notes are nested manually at `/api/v1/appointments/<id>/notes/`. Swagger at `/api/docs/`, `/health/` for Render. Admin path comes from `DJANGO_ADMIN_URL`. The web UI owns `/` (`apps.web.urls`, included last) and `/i18n/setlang/` switches its language.
 - **Web UI** (`apps/web`, ADR 0002): templates, views and later forms; no models and no business logic. Views call services, like the API. The layout (`web/base.html`) loads `{% tailwind_css %}` and the vendored `static/vendor/htmx-<version>.min.js`, and sends the CSRF token on every HTMX request via `hx-headers` on `<body>`. `django_htmx` provides `request.htmx`. Tailwind only scans `apps/web` (`apps/web/styles/tailwind.css` uses `source(none)` + `@source`), so class names must appear literally there. Language: `LANGUAGE_CODE = "es"`, `LocaleMiddleware` (cookie first, then `Accept-Language`), no URL prefix. `apps.core.middleware.EnglishApiMiddleware` re-activates English for every `/api/` path, so API messages never change with the visitor's language. `production.py` inserts WhiteNoise into base's `MIDDLEWARE` instead of redefining it; add new middleware in `base.py` only.
+- **Web auth and RBAC** (Paso 25): Django session auth at `/login/`, `/logout/` (POST only) and `/signup/`; `LOGIN_URL = "web:login"`. `landing_url_for(user)` sends patients to `/` and doctors/admins to `/panel/`, a notice page until their panel exists; a safe `?next=` wins. Role checks for both paths live in `apps/core/roles.py` (`is_patient`, `is_doctor`, `is_admin`): the DRF permission classes call them, and so do the web mixins (`PatientRequiredMixin`, `StaffRequiredMixin` in `apps/web/mixins.py`: anonymous → login redirect, wrong role → 403) and the `apps.web.context_processors.roles` context processor (`user_is_patient`, …). Never compare `user.role` in templates or views. `ThrottleMixin` applies the API's DRF throttle classes to web POSTs, so the web login/sign-up and their API endpoints share one budget per IP (same scope, same cache key). Form widgets get Tailwind classes from `StyledFormMixin` in `apps/web/forms.py`.
 - **Auth/security**: SimpleJWT with 15-min access, 1-day refresh, rotation + blacklist; global anon/user throttles plus `login`/`refresh`/`register` scopes; `NUM_PROXIES=1` in production.
-- **Registration**: patients self-register through `apps/users/services.register_patient` (User with role=patient + Patient profile in one transaction; case-insensitive email uniqueness; Django password validators; field-keyed `ValidationError`). `POST /api/v1/users/register/` is public, skips authentication and returns the profile only, never tokens. The future web sign-up form must call the same service. Doctors and admins are still created via the admin.
+- **Registration**: patients self-register through `apps/users/services.register_patient` (User with role=patient + Patient profile in one transaction; case-insensitive email uniqueness; Django password validators; field-keyed `ValidationError`). `POST /api/v1/users/register/` is public, skips authentication and returns the profile only, never tokens. The web `SignupForm` calls `validate_patient_registration` in `clean()` and the view calls `register_patient`, like the API serializer. `DUPLICATE_EMAIL_MESSAGE` is `gettext_lazy`: Spanish on the web, English in the API. Doctors and admins are still created via the admin.
 
 ## Non-negotiable rules
 
@@ -103,15 +105,22 @@ Layer responsibilities:
 - ORM: `select_related` in every `get_queryset()` with FKs, `prefetch_related` for Doctor → specialties, `annotate()`/`Count()` for stats, `Q()` for schedule conflicts, `save(update_fields=[..., "updated_at"])` on partial saves. Filter in the ORM, never in Python loops.
 - Catch specific exceptions, never bare `except Exception` (the signal handler's last-resort `logger.exception` is the documented exception).
 - Never log passwords, tokens or Authorization headers.
+- Never hardcode a password or secret, not even a fake one. GitGuardian scans every PR and flagged test literals in PR #149. Each place has its own source:
+  - Tests use `tests.factories.random_password()`, `short_password()` (fails the minimum length) and `UserFactory().raw_password`; a wrong password is just another `random_password()`.
+  - CI gets a random `SECRET_KEY` from `.github/actions/setup-django`, and the Dockerfile generates its build-time key inside the `RUN`.
+  - `docker-compose*.yml` and `config/settings/local.py` read `SECRET_KEY`, `POSTGRES_PASSWORD`, `POSTGRES_TEST_PASSWORD` and `DATABASE_URL` from `.env`, with no defaults.
+  - GitGuardian also flags a custom message in compose's `${VAR:?message}` and any `${...}` in the password slot of a connection URL. Use a bare `${VAR:?}`, and pass the DB password to the `web` service as `PGPASSWORD`, which libpq reads.
+  - Docs use `<placeholders>` or shell-generated values.
 
 ## Testing
 
 Strict TDD (red → green → refactor): write the failing test before the implementation.
 
 - `tests/unit/` — models, services, permissions, commands, signals (DB allowed via `@pytest.mark.django_db`, no HTTP).
-- `tests/integration/` — full HTTP stack with `APIClient`.
-- All test data via `factory_boy` (`tests/factories.py`); no JSON/YAML fixtures. Shared fixtures (`api_client`, `user_patient`, `user_doctor`, `user_admin`, `doctor_profile`, …) are in `tests/conftest.py`, which also resets `mail.outbox` before each test (locmem email backend).
-- Every permission class needs a positive and a negative test.
+- `tests/integration/` — full HTTP stack: `APIClient` for the API, pytest-django's `client` for the web UI (`headers={"Accept-Language": ...}`, `{"HX-Request": "true"}`, `client.force_login(user)`).
+- All test data via `factory_boy` (`tests/factories.py`); no JSON/YAML fixtures. Shared fixtures (`api_client`, `user_patient`, `user_doctor`, `user_admin`, `doctor_profile`, …) are in `tests/conftest.py`, which also resets `mail.outbox` and the active language before each test. Django never deactivates the language a request activated, so without that reset a request in one test would decide the language of the next one. With no request, messages come out in Spanish (`LANGUAGE_CODE`); use `translation.override("en")` to assert English.
+- Throttled endpoints (API or web) need `cache.clear()` around each test; see `tests/integration/test_throttling.py` and `test_web_auth.py`.
+- Every permission class and every web role mixin needs a positive and a negative test.
 - Coverage targets: models + services 90%, views + serializers 80%, permissions 100%, management commands 70%; the global branch-coverage gate is 95%.
 
 ## Workflow

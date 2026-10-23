@@ -12,7 +12,7 @@
 ```powershell
 # Windows PowerShell
 $env:DJANGO_SETTINGS_MODULE='config.settings.local'
-$env:SECRET_KEY='dev-local-secret-key-medbook'
+# SECRET_KEY y DATABASE_URL se leen de tu .env (ver .env.example)
 python manage.py runserver
 ```
 
@@ -31,12 +31,19 @@ Admin: **http://localhost:8000/admin/**
 
 Los usuarios no se crean vía API (no hay endpoint de registro público). Se crean desde Django Admin o desde la shell.
 
+Las contraseñas de prueba se generan al vuelo y quedan en variables de entorno de tu terminal; nunca se escriben en el repo:
+
+```bash
+export ADMIN_PASSWORD="$(python -c 'import secrets; print(secrets.token_urlsafe(16))')"
+export DOCTOR_PASSWORD="$(python -c 'import secrets; print(secrets.token_urlsafe(16))')"
+export PATIENT_PASSWORD="$(python -c 'import secrets; print(secrets.token_urlsafe(16))')"
+```
+
 ### 0.1 Crear superusuario (admin)
 
 ```bash
-DJANGO_SETTINGS_MODULE=config.settings.local python manage.py createsuperuser
-# Email: admin@medbook.com
-# Password: Admin1234!
+DJANGO_SUPERUSER_PASSWORD="$ADMIN_PASSWORD" DJANGO_SETTINGS_MODULE=config.settings.local \
+  python manage.py createsuperuser --noinput --email admin@medbook.com
 ```
 
 ### 0.2 Crear doctor y paciente desde Django Shell
@@ -46,6 +53,8 @@ DJANGO_SETTINGS_MODULE=config.settings.local python manage.py shell
 ```
 
 ```python
+import os
+
 from apps.users.models import User, Role
 from apps.doctors.models import Doctor, Specialty
 from apps.patients.models import Patient
@@ -53,7 +62,7 @@ from apps.patients.models import Patient
 # --- Doctor ---
 doctor_user = User.objects.create_user(
     email="dr.garcia@medbook.com",
-    password="Doctor1234!",
+    password=os.environ["DOCTOR_PASSWORD"],
     role=Role.DOCTOR,
     first_name="Carlos",
     last_name="García",
@@ -71,7 +80,7 @@ print("Doctor creado:", doctor.user.email)
 # --- Paciente ---
 patient_user = User.objects.create_user(
     email="juan.perez@gmail.com",
-    password="Patient1234!",
+    password=os.environ["PATIENT_PASSWORD"],
     role=Role.PATIENT,
     first_name="Juan",
     last_name="Pérez",
@@ -122,7 +131,7 @@ O también puedes crear el horario desde el **Admin** en http://localhost:8000/a
 ```bash
 curl -s -X POST http://localhost:8000/api/token/ \
   -H "Content-Type: application/json" \
-  -d '{"email": "dr.garcia@medbook.com", "password": "Doctor1234!"}' \
+  -d "{\"email\": \"dr.garcia@medbook.com\", \"password\": \"$DOCTOR_PASSWORD\"}" \
   | python -m json.tool
 ```
 
@@ -142,7 +151,7 @@ Guarda el `access` token — lo usarás en todos los requests.
 # Guardar en variable (Linux/Mac)
 TOKEN=$(curl -s -X POST http://localhost:8000/api/token/ \
   -H "Content-Type: application/json" \
-  -d '{"email": "dr.garcia@medbook.com", "password": "Doctor1234!"}' \
+  -d "{\"email\": \"dr.garcia@medbook.com\", \"password\": \"$DOCTOR_PASSWORD\"}" \
   | python -c "import sys,json; print(json.load(sys.stdin)['access'])")
 
 echo "Token: $TOKEN"
@@ -199,7 +208,7 @@ for i in $(seq 1 6); do
   echo "Intento $i:"
   curl -s -X POST http://localhost:8000/api/token/ \
     -H "Content-Type: application/json" \
-    -d '{"email": "nadie@test.com", "password": "wrong"}' \
+    -d "{\"email\": \"nadie@test.com\", \"password\": \"$RANDOM$RANDOM\"}" \
     -w "  → HTTP %{http_code}\n" -o /dev/null
   sleep 0.5
 done
@@ -364,7 +373,7 @@ curl -s -X POST http://localhost:8000/api/schedules/ \
 ```bash
 PATIENT_TOKEN=$(curl -s -X POST http://localhost:8000/api/token/ \
   -H "Content-Type: application/json" \
-  -d '{"email": "juan.perez@gmail.com", "password": "Patient1234!"}' \
+  -d "{\"email\": \"juan.perez@gmail.com\", \"password\": \"$PATIENT_PASSWORD\"}" \
   | python -c "import sys,json; print(json.load(sys.stdin)['access'])")
 ```
 

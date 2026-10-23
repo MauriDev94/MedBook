@@ -3,6 +3,7 @@ from pathlib import Path
 
 import pytest
 from django.core import mail
+from django.utils import translation
 from rest_framework.test import APIClient
 
 from tests.factories import DoctorFactory, PatientFactory, UserFactory
@@ -28,6 +29,19 @@ def _load_env_file(path: Path) -> None:
 def pytest_configure(config):
     """Load .env.test before Django initialises its settings."""
     _load_env_file(Path(__file__).resolve().parent.parent / ".env.test")
+
+
+@pytest.fixture(autouse=True)
+def reset_active_language():
+    """Start and end every test with no active language (LANGUAGE_CODE, "es").
+
+    LocaleMiddleware activates a language per request but Django never
+    deactivates it afterwards, so without this a request in one test would
+    decide the language of messages built in the next one.
+    """
+    translation.deactivate()
+    yield
+    translation.deactivate()
 
 
 @pytest.fixture(autouse=True)

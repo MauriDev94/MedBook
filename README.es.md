@@ -3,7 +3,7 @@
 > API REST para reservas médicas — Django 5.2 LTS + DRF 3.18  
 > Proyecto de portafolio hecho con TDD: máquina de estados de citas, RBAC a nivel de objeto y reservas sin race conditions.
 
-[![Tests](https://img.shields.io/badge/tests-367%20passing-brightgreen)](./tests)
+[![Tests](https://img.shields.io/badge/tests-430%20passing-brightgreen)](./tests)
 [![Coverage](https://img.shields.io/badge/branch%20coverage-99.4%25-brightgreen)](./tests)
 [![Python](https://img.shields.io/badge/python-3.12-blue)](https://python.org)
 [![Django](https://img.shields.io/badge/django-5.2%20LTS-green)](https://djangoproject.com)
@@ -18,7 +18,7 @@ MedBook es una API REST para gestionar reservas médicas. Cubre el ciclo complet
 
 El objetivo es demostrar competencia real con Django: queries ORM complejas, permisos RBAC, transacciones atómicas, TDD, admin personalizado y arquitectura limpia — exactamente lo que aparece en entrevistas técnicas senior.
 
-Sobre la misma capa de servicios se está construyendo una web server-rendered (templates de Django + HTMX, en español e inglés), según el [ADR 0002](./docs/adr/0002-server-rendered-web-frontend.md). Su home ya responde en `/`; los flujos del paciente (registro, catálogo de doctores, reserva) llegan en los pasos siguientes de [`SPRINT.md`](./SPRINT.md).
+Sobre la misma capa de servicios se está construyendo una web server-rendered (templates de Django + HTMX, en español e inglés), según el [ADR 0002](./docs/adr/0002-server-rendered-web-frontend.md). Ya tiene la home en `/`, login con sesión y registro de pacientes; el catálogo de doctores y la reserva llegan en los pasos siguientes de [`SPRINT.md`](./SPRINT.md).
 
 ---
 
@@ -180,10 +180,24 @@ GET /api/v1/schedules/?day_of_week=0&is_active=true
 
 ---
 
+### Páginas web
+Server-rendered con sesión de Django (la API sigue con JWT). En español por defecto e inglés con el selector.
+
+| Método | Ruta | Descripción | Acceso |
+|---|---|---|---|
+| GET | `/` | Home | Público |
+| GET, POST | `/signup/` | Registro de pacientes; deja la sesión iniciada. Comparte el límite `register` de la API (10/hora por IP) | Anónimo |
+| GET, POST | `/login/` | Correo + contraseña. Comparte el límite `login` de la API (5/minuto por IP) | Anónimo |
+| POST | `/logout/` | Cerrar sesión | Con sesión |
+| GET | `/panel/` | Aviso para doctores y admins hasta que llegue su panel | Doctor, admin |
+| POST | `/i18n/setlang/` | Selector de idioma (guarda una cookie) | Público |
+
+---
+
 ## RBAC — Matriz de permisos
 
-| Clase de permiso | Regla |
-|---|---|
+Los chequeos de rol viven en `apps/core/roles.py` (`is_patient`, `is_doctor`, `is_admin`) y los comparten estas clases de DRF y los mixins de la web (`PatientRequiredMixin` / `StaffRequiredMixin`), así los dos caminos de RBAC no pueden divergir.
+
 **Cableadas a endpoints:**
 
 | Clase de permiso | Regla | Usada por |
@@ -221,26 +235,21 @@ pre-commit install
 ### 3. Variables de entorno
 ```bash
 cp .env.example .env
-# Editar .env — mínimo: DATABASE_URL y SECRET_KEY
 ```
 
-Ejemplo de `.env`:
-```env
-SECRET_KEY=dev-local-secret-key-cualquier-valor
-DEBUG=True
-DATABASE_URL=postgres://postgres:postgres@localhost:5432/medbook
-ALLOWED_HOSTS=localhost,127.0.0.1
-EMAIL_BACKEND=django.core.mail.backends.console.EmailBackend
+Completar los valores vacíos de `.env` (nunca se versiona): `SECRET_KEY`, `POSTGRES_PASSWORD`, `POSTGRES_TEST_PASSWORD` y `DATABASE_URL` (formato en `.env.example`, con el mismo password que `POSTGRES_PASSWORD`). Ningún password ni clave queda escrito en el repo, ni siquiera para desarrollo local; se generan:
+
+```bash
+python -c "import secrets; print(secrets.token_urlsafe(50))"   # SECRET_KEY
+python -c "import secrets; print(secrets.token_urlsafe(16))"   # passwords de la DB (seguros para URL)
 ```
+
+Si falta alguno, Django y `docker compose` se detienen con un error que nombra la variable.
 
 ### 4. Levantar PostgreSQL y migrar
 ```bash
-# Con Docker
-docker run -d --name medbook-db -p 5432:5432 \
-  -e POSTGRES_DB=medbook \
-  -e POSTGRES_USER=postgres \
-  -e POSTGRES_PASSWORD=postgres \
-  postgres:16-alpine
+# Postgres en el puerto 5435 con las credenciales de tu .env
+docker compose up -d db
 
 # Aplicar migraciones
 DJANGO_SETTINGS_MODULE=config.settings.local python manage.py migrate

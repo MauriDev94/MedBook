@@ -9,6 +9,8 @@ import pytest
 from django.conf import settings
 from django.core.cache import cache
 
+from tests.factories import random_password
+
 ME_URL = "/api/v1/users/me/"
 REGISTER_URL = "/api/v1/users/register/"
 NOT_AUTHENTICATED = "Authentication credentials were not provided."
@@ -36,6 +38,27 @@ class TestApiStaysInEnglish:
 
         assert response.status_code == 400
         assert response.json()["field_errors"]["email"] == [REQUIRED]
+
+    def test_duplicate_email_error_ignores_spanish_accept_language(
+        self, api_client, user_patient
+    ):
+        """The service message is translatable for the web, never for the API."""
+        response = api_client.post(
+            REGISTER_URL,
+            {
+                "email": user_patient.email,
+                "password": random_password(),
+                "first_name": "Ana",
+                "last_name": "Rojas",
+            },
+            format="json",
+            headers={"Accept-Language": "es"},
+        )
+
+        assert response.status_code == 400
+        assert response.json()["field_errors"]["email"] == [
+            "A user with this email already exists."
+        ]
 
     def test_api_ignores_web_language_cookie(self, api_client):
         api_client.cookies[settings.LANGUAGE_COOKIE_NAME] = "es"

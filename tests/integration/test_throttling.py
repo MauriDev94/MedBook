@@ -12,6 +12,8 @@ from django.core.cache import cache
 from rest_framework import status
 from rest_framework.test import APIClient
 
+from tests.factories import random_password
+
 
 @pytest.fixture(autouse=True)
 def clear_throttle_cache():
@@ -29,7 +31,7 @@ class TestLoginRateThrottle:
         # A single bad-credential request should return 401, not 429
         response = client.post(
             "/api/v1/token/",
-            {"email": "nobody@test.com", "password": "wrong"},
+            {"email": "nobody@test.com", "password": random_password()},
             format="json",
         )
         assert response.status_code == status.HTTP_401_UNAUTHORIZED
@@ -45,13 +47,13 @@ class TestLoginRateThrottle:
         for _ in range(3):
             client.post(
                 "/api/v1/token/",
-                {"email": "nobody@test.com", "password": "wrong"},
+                {"email": "nobody@test.com", "password": random_password()},
                 format="json",
             )
 
         response = client.post(
             "/api/v1/token/",
-            {"email": "nobody@test.com", "password": "wrong"},
+            {"email": "nobody@test.com", "password": random_password()},
             format="json",
         )
         assert response.status_code == status.HTTP_429_TOO_MANY_REQUESTS
@@ -66,13 +68,13 @@ class TestLoginRateThrottle:
         for _ in range(3):
             client.post(
                 "/api/v1/token/",
-                {"email": "nobody@test.com", "password": "wrong"},
+                {"email": "nobody@test.com", "password": random_password()},
                 format="json",
             )
 
         response = client.post(
             "/api/v1/token/",
-            {"email": "nobody@test.com", "password": "wrong"},
+            {"email": "nobody@test.com", "password": random_password()},
             format="json",
         )
         assert "Retry-After" in response
@@ -88,7 +90,7 @@ class TestLoginRateThrottle:
         for _ in range(4):
             client.post(
                 "/api/v1/token/",
-                {"email": "nobody@test.com", "password": "wrong"},
+                {"email": "nobody@test.com", "password": random_password()},
                 format="json",
             )
 
@@ -124,13 +126,13 @@ class TestGlobalAnonRateThrottle:
         for _ in range(3):
             client.post(
                 "/api/v1/token/",
-                {"email": "nobody@test.com", "password": "wrong"},
+                {"email": "nobody@test.com", "password": random_password()},
                 format="json",
             )
 
         response = client.post(
             "/api/v1/token/",
-            {"email": "nobody@test.com", "password": "wrong"},
+            {"email": "nobody@test.com", "password": random_password()},
             format="json",
         )
         assert response.status_code == status.HTTP_429_TOO_MANY_REQUESTS

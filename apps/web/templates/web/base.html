@@ -12,8 +12,21 @@
   <header class="border-b border-slate-200 bg-white">
     <nav class="mx-auto flex max-w-5xl items-center justify-between gap-4 px-4 py-3" aria-label="{% translate 'Main' %}">
       <a href="{% url 'web:home' %}" class="text-lg font-bold tracking-tight text-teal-700">MedBook</a>
-      <div class="flex items-center gap-4 text-sm">
+      <div class="flex flex-wrap items-center justify-end gap-x-4 gap-y-2 text-sm">
         <a href="{% url 'docs' %}" class="text-slate-600 hover:text-teal-700">{% translate "API docs" %}</a>
+        {% if user.is_authenticated %}
+          {% if user_is_doctor or user_is_admin %}
+            <a href="{% url 'web:panel' %}" class="text-slate-600 hover:text-teal-700">{% translate "Panel" %}</a>
+          {% endif %}
+          <span class="font-medium text-slate-900">{{ user.first_name|default:user.email }}</span>
+          <form action="{% url 'web:logout' %}" method="post">
+            {% csrf_token %}
+            <button type="submit" class="text-slate-600 hover:text-teal-700">{% translate "Log out" %}</button>
+          </form>
+        {% else %}
+          <a href="{% url 'web:login' %}" class="text-slate-600 hover:text-teal-700">{% translate "Log in" %}</a>
+          <a href="{% url 'web:signup' %}" class="rounded-md bg-teal-600 px-3 py-1.5 font-semibold text-white hover:bg-teal-700">{% translate "Sign up" %}</a>
+        {% endif %}
         {% include "web/includes/language_switcher.html" %}
       </div>
     </nav>
