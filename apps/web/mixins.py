@@ -1,9 +1,10 @@
-"""View mixins for the web UI: role checks and rate limiting."""
+"""View mixins for the web UI: role checks, HTMX fragments and rate limiting."""
 
 import math
 
 from django.contrib.auth.mixins import UserPassesTestMixin
 from django.shortcuts import render
+from django.utils.cache import patch_vary_headers
 
 from apps.core.roles import is_admin, is_doctor, is_patient
 
@@ -30,6 +31,28 @@ class StaffRequiredMixin(RoleRequiredMixin):
     """Doctors and admins."""
 
     role_predicates = (is_doctor, is_admin)
+
+
+class HtmxPartialMixin:
+    """Answer HTMX requests with `partial_template_name`, others with the page.
+
+    A history restore (HTMX re-fetching a page it has no snapshot of) gets
+    the full page, and responses vary on HX-Request so a cache never serves
+    the fragment in place of the page.
+    """
+
+    partial_template_name = None
+
+    def get_template_names(self):
+        htmx = self.request.htmx
+        if htmx and not htmx.history_restore_request:
+            return [self.partial_template_name]
+        return super().get_template_names()
+
+    def render_to_response(self, context, **response_kwargs):
+        response = super().render_to_response(context, **response_kwargs)
+        patch_vary_headers(response, ("HX-Request",))
+        return response
 
 
 class ThrottleMixin:

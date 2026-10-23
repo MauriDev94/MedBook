@@ -18,7 +18,7 @@ MedBook is a REST API for managing medical appointments. It covers the full book
 
 The goal is to demonstrate real-world Django competency: complex ORM queries, RBAC permissions, atomic transactions, TDD, custom admin, and clean architecture — the kind of things that come up in senior backend interviews.
 
-A server-rendered web UI (Django templates + HTMX, Spanish/English) is being built on top of the same service layer ([ADR 0002](./docs/adr/0002-server-rendered-web-frontend.md)). It already has the home page at `/` and session login and patient sign-up; the doctor catalog and booking arrive in the following steps of [`SPRINT.md`](./SPRINT.md).
+A server-rendered web UI (Django templates + HTMX, Spanish/English) is being built on top of the same service layer ([ADR 0002](./docs/adr/0002-server-rendered-web-frontend.md)). It already has the home page at `/`, session login, patient sign-up and the doctor catalog with available slots; booking and "my appointments" arrive in the following steps of [`SPRINT.md`](./SPRINT.md).
 
 ---
 
@@ -190,6 +190,8 @@ Server-rendered with session auth (the API keeps JWT). Spanish by default, Engli
 | GET, POST | `/login/` | Email + password. Shares the API's `login` rate limit (5/minute per IP) | Anonymous |
 | POST | `/logout/` | Log out | Signed in |
 | GET | `/panel/` | Notice for doctors and admins until their panel ships | Doctor, admin |
+| GET | `/doctors/` | Doctor catalog, `?specialty=<slug>` filter (HTMX swaps only the list), 10 per page | Patient |
+| GET | `/doctors/<id>/` | Doctor profile and one week of available, future slots in Chilean time; `?week=0–3` (HTMX swaps only the week) | Patient |
 | POST | `/i18n/setlang/` | Language switcher (sets a cookie) | Public |
 
 ---
@@ -320,11 +322,11 @@ The build runs `tailwind build` before `collectstatic`, because the manifest sto
 
 ### Slot generation in production
 
-The Render free plan has no cron jobs, so `startCommand` runs `python manage.py generate_slots --days=14` on every boot. Free instances sleep after 15 minutes without traffic and boot again on the next request and on every deploy, so slots get topped up whenever the API is in use.
+The Render free plan has no cron jobs, so `startCommand` runs `python manage.py generate_slots --days=28` on every boot. Free instances sleep after 15 minutes without traffic and boot again on the next request and on every deploy, so slots get topped up whenever the API is in use.
 
 - The command is idempotent: it only inserts missing slots and reports `0 new slots` on a rerun.
 - It runs in a subshell. If it fails, a `WARNING` line is logged and gunicorn starts anyway, while a failing `migrate` or `ensure_superuser` still blocks the boot.
-- On a paid plan, replace it with a Render cron job (`type: cron`, daily `python manage.py generate_slots --days=14`; minimum USD 1/month) and remove it from `startCommand`.
+- On a paid plan, replace it with a Render cron job (`type: cron`, daily `python manage.py generate_slots --days=28`; minimum USD 1/month) and remove it from `startCommand`.
 
 A multi-stage [`Dockerfile`](./Dockerfile) is also included as a **portable alternative** to run the same app anywhere Docker runs (it does not replace the Render deploy):
 

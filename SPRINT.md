@@ -141,15 +141,16 @@
 |------|-------------|-------|----|--------|
 | 23 | Horarios en hora de Chile (`TIME_ZONE`, generación de slots, data migration) | #133 | #143 | ✅ |
 | 24 | Base web: `apps/web`, layout, Tailwind (`django-tailwind-cli`), HTMX, i18n es/en; Dockerfile Alpine | #134 | #148 | ✅ |
-| 25 | Login, logout y registro web con sesión; RBAC web compartido con DRF | #135 | #149 | ⏳ |
-| 26 | Catálogo de doctores y slots disponibles (HTMX) | #136 | — | ⬜ |
-| 30 | **Bug**: re-reservar un slot liberado por cancelación (`OneToOne` → FK + unique parcial). Va antes del 27 | #142 | — | ⬜ |
+| 25 | Login, logout y registro web con sesión; RBAC web compartido con DRF | #135 | #149 | ✅ |
+| 26 | Catálogo de doctores y slots disponibles (HTMX) | #136 | #150 | ⏳ |
+| 30 | **Bug**: re-reservar un slot liberado por cancelación (`OneToOne` → FK + unique parcial) y rechazar slots que ya empezaron. Va antes del 27 | #142 | — | ⬜ |
 | 31 | Render como Blueprint: `render.yaml` adopta el servicio `MedBook` (auto-sync). Va antes de mergear el 23 | #144 | #146 | ✅ |
 | 32 | Producción en Docker Alpine (servicio nuevo vía Blueprint). Va después del 24 | #145 | — | ⬜ |
 | 33 | Datos demo: comando `seed_demo` idempotente (doctores y horarios), activado en Render con `MEDBOOK_DEMO_DATA`. Va antes del 29 | #147 | — | ⬜ |
 | 27 | Reservar cita (services de booking, manejo de conflictos) | #137 | — | ⬜ |
 | 28 | Mis citas y cancelación; selector de visibilidad compartido con la API | #138 | — | ⬜ |
 | 29 | Páginas de error, accesibilidad, docs y verificación en Render | #139 | — | ⬜ |
+| 34 | **Bug**: email sin distinguir mayúsculas en el login (API y web) y unicidad case-insensitive en la DB. Independiente | #151 | — | ⬜ |
 
 ---
 
@@ -175,8 +176,12 @@
 - Django no desactiva el idioma que activó un request, así que se filtraba entre tests del mismo hilo. `tests/conftest.py` lo resetea antes y después de cada test (Paso 25).
 - El login web y el de la API comparten presupuesto por IP: `ThrottleMixin` usa las mismas clases DRF (`LoginRateThrottle`, `RegisterRateThrottle`), con el mismo scope y la misma cache key (Paso 25).
 - GitGuardian marcó passwords escritos en los tests del PR #149 (3 valores, 7 ocurrencias). Se reescribió la rama para sacarlos y se limpió el repo entero: los tests generan passwords con `tests.factories.random_password()`, CI y el Dockerfile generan su `SECRET_KEY`, y compose y `local.py` leen todo desde `.env` sin defaults. Regla en `CLAUDE.md`: nunca escribir un password ni un secreto, ni siquiera uno falso.
+- Las especialidades sembradas por `0003_data_specialties` están en inglés en la DB. La web muestra `Specialty.display_name` (`gettext` del nombre; los msgids se marcan con `gettext_noop` en `apps/doctors/models.py`) y la API mantiene el nombre guardado. Una especialidad creada en el admin se ve tal cual hasta que se agregue su traducción (Paso 26).
+- El `TransactionTestCase` de la concurrencia de reservas vacía las tablas, así que con `--reuse-db` los datos de las data migrations (las especialidades) pueden no estar. Los tests crean lo que usan (Paso 26).
+- El endpoint `available-slots` de la API filtra por fecha y devuelve también los slots de hoy que ya empezaron. La web (`get_available_slots_week`) filtra por `start_datetime > now` (Paso 26). La API y la validación de reservas se corrigen en el Paso 30 (#142).
+- La web deja navegar 4 semanas de slots (`BOOKING_WEEKS_AHEAD`), así que el arranque en Render pasa de `generate_slots --days=14` a `--days=28`. `tests/unit/test_render_blueprint.py` falla si `render.yaml` vuelve a quedar por debajo (Paso 26).
 
 ### Pendientes por decidir
 
 - **Idioma de la API**: hoy responde siempre en inglés (`EnglishApiMiddleware`, ADR 0002). Definir más adelante si se mantiene así, si pasa a español o si respeta `Accept-Language`. No es prioritario.
-- **Email sensible a mayúsculas en el login**: `normalize_email` solo baja a minúsculas el dominio y el login busca el email exacto, así que quien se registró como `Ana@example.com` no entra con `ana@example.com` (ni en la API ni en la web). La unicidad sí es case-insensitive. Viene de antes del sprint.
+- **Email sensible a mayúsculas en el login**: `normalize_email` solo baja a minúsculas el dominio y el login busca el email exacto, así que quien se registró como `Ana@example.com` no entra con `ana@example.com` (ni en la API ni en la web). La unicidad sí es case-insensitive. Viene de antes del sprint. Decidido: no distinguir mayúsculas, se corrige en el Paso 34 (#151).

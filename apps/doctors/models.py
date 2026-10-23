@@ -1,8 +1,19 @@
 from django.conf import settings
 from django.db import models
+from django.utils.translation import gettext, gettext_noop
 
 from apps.core.models import BaseModel
 from apps.core.utils import get_display_name
+
+# The names 0003_data_specialties seeds, marked for makemessages. The web
+# shows Specialty.display_name; the API keeps the stored English name.
+SEEDED_SPECIALTY_NAMES = (
+    gettext_noop("Cardiology"),
+    gettext_noop("Dermatology"),
+    gettext_noop("General Practice"),
+    gettext_noop("Neurology"),
+    gettext_noop("Pediatrics"),
+)
 
 
 class Specialty(BaseModel):
@@ -21,6 +32,11 @@ class Specialty(BaseModel):
 
     def __str__(self) -> str:
         return self.name
+
+    @property
+    def display_name(self) -> str:
+        """The name in the active language, or as stored if it has no translation."""
+        return gettext(self.name)
 
 
 class Doctor(BaseModel):

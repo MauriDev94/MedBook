@@ -1,0 +1,28 @@
+{% extends "web/base.html" %}
+{% load i18n %}
+
+{% block title %}{% translate "Find a doctor" %} · MedBook{% endblock %}
+
+{% block content %}
+  <section class="mx-auto max-w-5xl px-4 py-10">
+    <h1 class="text-2xl font-bold tracking-tight text-slate-900">{% translate "Find a doctor" %}</h1>
+    {# HTMX swaps only the list when the specialty changes; without JavaScript the button submits the form. #}
+    <form method="get" action="{% url 'web:doctor_list' %}" class="mt-6 flex flex-wrap items-end gap-3"
+          hx-get="{% url 'web:doctor_list' %}" hx-trigger="change" hx-target="#doctor-list" hx-swap="outerHTML" hx-push-url="true">
+      <div>
+        <label for="specialty" class="block text-sm font-medium text-slate-700">{% translate "Specialty" %}</label>
+        <select id="specialty" name="specialty" class="mt-1 block rounded-md border border-slate-300 bg-white px-3 py-2 text-sm shadow-sm focus:border-teal-600 focus:ring-1 focus:ring-teal-600 focus:outline-none">
+          <option value="">{% translate "All specialties" %}</option>
+          {% for specialty in specialties %}
+            <option value="{{ specialty.slug }}"{% if specialty.slug == selected_specialty %} selected{% endif %}>{{ specialty.display_name }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <noscript>
+        <button type="submit" class="rounded-md bg-teal-600 px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-teal-700">{% translate "Filter" %}</button>
+      </noscript>
+    </form>
+
+    {% include "web/doctors/partials/doctor_list.html" %}
+  </section>
+{% endblock %}
