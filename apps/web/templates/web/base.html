@@ -15,6 +15,9 @@
       <div class="flex flex-wrap items-center justify-end gap-x-4 gap-y-2 text-sm">
         <a href="{% url 'docs' %}" class="text-slate-600 hover:text-teal-700">{% translate "API docs" %}</a>
         {% if user.is_authenticated %}
+          {% if user_is_patient %}
+            <a href="{% url 'web:doctor_list' %}" class="text-slate-600 hover:text-teal-700">{% translate "Doctors" %}</a>
+          {% endif %}
           {% if user_is_doctor or user_is_admin %}
             <a href="{% url 'web:panel' %}" class="text-slate-600 hover:text-teal-700">{% translate "Panel" %}</a>
           {% endif %}

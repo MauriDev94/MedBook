@@ -1,0 +1,31 @@
+{% load i18n %}
+{# One week of available slots; the week links swap only this fragment (HTMX). #}
+<div id="week-slots" class="mt-4 rounded-lg border border-slate-200 bg-white p-5">
+  <div class="flex flex-wrap items-center justify-between gap-3">
+    <p class="font-medium text-slate-900">{{ week.start|date:"MONTH_DAY_FORMAT" }} – {{ week.end|date:"MONTH_DAY_FORMAT" }}</p>
+    <nav class="flex gap-4 text-sm" aria-label="{% translate 'Weeks' %}"
+         hx-boost="true" hx-target="#week-slots" hx-swap="outerHTML">
+      {% if week.has_previous %}
+        <a href="?week={{ week.previous_index }}" class="font-semibold text-teal-700 hover:underline">← {% translate "Previous week" %}</a>
+      {% endif %}
+      {% if week.has_next %}
+        <a href="?week={{ week.next_index }}" class="font-semibold text-teal-700 hover:underline">{% translate "Next week" %} →</a>
+      {% endif %}
+    </nav>
+  </div>
+
+  {% for day, slots in week.days %}
+    <section class="mt-5">
+      <h3 class="text-sm font-semibold text-slate-700">{{ day|date:"l"|capfirst }}, {{ day|date:"MONTH_DAY_FORMAT" }}</h3>
+      <ul class="mt-2 flex flex-wrap gap-2">
+        {% for slot in slots %}
+          <li class="rounded-md border border-teal-200 bg-teal-50 px-3 py-1.5 text-sm font-medium text-teal-800">
+            <time datetime="{{ slot.start_datetime|date:'c' }}">{{ slot.start_datetime|time:"H:i" }}</time>
+          </li>
+        {% endfor %}
+      </ul>
+    </section>
+  {% empty %}
+    <p class="mt-5 text-sm text-slate-600">{% translate "No available times this week." %}</p>
+  {% endfor %}
+</div>

@@ -9,7 +9,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: MedBook\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2026-10-23 03:12-0300\n"
+"POT-Creation-Date: 2026-10-23 19:22-0300\n"
 "PO-Revision-Date: 2026-10-23 02:20-0300\n"
 "Last-Translator: \n"
 "Language-Team: Spanish\n"
@@ -19,6 +19,21 @@ msgstr ""
 "Content-Transfer-Encoding: 8bit\n"
 "Plural-Forms: nplurals=3; plural=n == 1 ? 0 : n != 0 && n % 1000000 == 0 ? "
 "1 : 2;\n"
+
+msgid "Cardiology"
+msgstr "Cardiología"
+
+msgid "Dermatology"
+msgstr "Dermatología"
+
+msgid "General Practice"
+msgstr "Medicina general"
+
+msgid "Neurology"
+msgstr "Neurología"
+
+msgid "Pediatrics"
+msgstr "Pediatría"
 
 msgid "A user with this email already exists."
 msgstr "Ya existe un usuario con este correo."
@@ -68,6 +83,9 @@ msgstr "Principal"
 msgid "API docs"
 msgstr "Documentación API"
 
+msgid "Doctors"
+msgstr "Médicos"
+
 msgid "Panel"
 msgstr "Panel"
 
@@ -81,6 +99,68 @@ msgstr ""
 "MedBook es un proyecto de portafolio: una app de reserva de horas médicas "
 "hecha con Django."
 
+msgid "Back to doctors"
+msgstr "Volver a los médicos"
+
+#, python-format
+msgid "%(minutes)s-minute appointments"
+msgstr "Consultas de %(minutes)s minutos"
+
+msgid "Available times"
+msgstr "Horas disponibles"
+
+msgid "Times are shown in Chilean time."
+msgstr "Las horas se muestran en hora de Chile."
+
+msgid "Online booking for patients is coming soon."
+msgstr "La reserva en línea para pacientes estará disponible pronto."
+
+msgid "Find a doctor"
+msgstr "Busca un médico"
+
+msgid "Specialty"
+msgstr "Especialidad"
+
+msgid "All specialties"
+msgstr "Todas las especialidades"
+
+msgid "Filter"
+msgstr "Filtrar"
+
+msgid "See available times"
+msgstr "Ver horas disponibles"
+
+msgid "Pagination"
+msgstr "Paginación"
+
+msgid "Previous"
+msgstr "Anterior"
+
+#, python-format
+msgid "Page %(number)s of %(total)s"
+msgstr "Página %(number)s de %(total)s"
+
+msgid "Next"
+msgstr "Siguiente"
+
+msgid "There are no doctors for this specialty."
+msgstr "No hay médicos para esta especialidad."
+
+msgid "There are no doctors yet."
+msgstr "Todavía no hay médicos."
+
+msgid "Weeks"
+msgstr "Semanas"
+
+msgid "Previous week"
+msgstr "Semana anterior"
+
+msgid "Next week"
+msgstr "Semana siguiente"
+
+msgid "No available times this week."
+msgstr "No hay horas disponibles esta semana."
+
 msgid "Book your medical appointment"
 msgstr "Reserva tu hora médica"
 
@@ -93,9 +173,6 @@ msgstr ""
 
 msgid "Explore the API"
 msgstr "Explorar la API"
-
-msgid "Online booking for patients is coming soon."
-msgstr "La reserva en línea para pacientes estará disponible pronto."
 
 msgid "Doctors by specialty"
 msgstr "Médicos por especialidad"
