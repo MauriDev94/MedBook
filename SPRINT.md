@@ -140,7 +140,7 @@
 | Paso | Descripción | Issue | PR | Estado |
 |------|-------------|-------|----|--------|
 | 23 | Horarios en hora de Chile (`TIME_ZONE`, generación de slots, data migration) | #133 | #143 | ✅ |
-| 24 | Base web: `apps/web`, layout, Tailwind (`django-tailwind-cli`), HTMX, i18n es/en; Dockerfile Alpine | #134 | — | ⏳ |
+| 24 | Base web: `apps/web`, layout, Tailwind (`django-tailwind-cli`), HTMX, i18n es/en; Dockerfile Alpine | #134 | #148 | ⏳ |
 | 25 | Login, logout y registro web con sesión; RBAC web compartido con DRF | #135 | — | ⬜ |
 | 26 | Catálogo de doctores y slots disponibles (HTMX) | #136 | — | ⬜ |
 | 30 | **Bug**: re-reservar un slot liberado por cancelación (`OneToOne` → FK + unique parcial). Va antes del 27 | #142 | — | ⬜ |
