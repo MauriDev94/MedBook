@@ -32,9 +32,9 @@ jobs:
 
     # Same settings and build steps as Render: production storage (manifest +
     # WhiteNoise) fails collectstatic if the compiled CSS is missing.
+    # SECRET_KEY comes from setup-django (random per run).
     env:
       DJANGO_SETTINGS_MODULE: config.settings.production
-      SECRET_KEY: ci-build-only-not-a-secret
       ALLOWED_HOSTS: localhost
       DATABASE_URL: sqlite:////tmp/ci-build.sqlite3
 
@@ -86,9 +86,9 @@ jobs:
           --health-timeout 5s
           --health-retries 5
 
+    # SECRET_KEY comes from setup-django (random per run).
     env:
       DJANGO_SETTINGS_MODULE: config.settings.test
-      SECRET_KEY: ci-secret-key-not-for-production
       DATABASE_URL: postgres://postgres:${{ secrets.POSTGRES_CI_PASSWORD }}@localhost:5432/medbook_test
 
     steps:
