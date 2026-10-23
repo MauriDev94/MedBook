@@ -3,7 +3,7 @@
 > REST API for medical appointment booking — Django 5.2 LTS + DRF 3.18  
 > Portfolio project built with TDD: appointment state machine, object-level RBAC and race-safe booking.
 
-[![Tests](https://img.shields.io/badge/tests-367%20passing-brightgreen)](./tests)
+[![Tests](https://img.shields.io/badge/tests-430%20passing-brightgreen)](./tests)
 [![Coverage](https://img.shields.io/badge/branch%20coverage-99.4%25-brightgreen)](./tests)
 [![Python](https://img.shields.io/badge/python-3.12-blue)](https://python.org)
 [![Django](https://img.shields.io/badge/django-5.2%20LTS-green)](https://djangoproject.com)
@@ -18,7 +18,7 @@ MedBook is a REST API for managing medical appointments. It covers the full book
 
 The goal is to demonstrate real-world Django competency: complex ORM queries, RBAC permissions, atomic transactions, TDD, custom admin, and clean architecture — the kind of things that come up in senior backend interviews.
 
-A server-rendered web UI (Django templates + HTMX, Spanish/English) is being built on top of the same service layer ([ADR 0002](./docs/adr/0002-server-rendered-web-frontend.md)). Its home page is served at `/`; the patient flows (sign-up, doctor catalog, booking) arrive in the following steps of [`SPRINT.md`](./SPRINT.md).
+A server-rendered web UI (Django templates + HTMX, Spanish/English) is being built on top of the same service layer ([ADR 0002](./docs/adr/0002-server-rendered-web-frontend.md)). It already has the home page at `/` and session login and patient sign-up; the doctor catalog and booking arrive in the following steps of [`SPRINT.md`](./SPRINT.md).
 
 ---
 
@@ -180,7 +180,23 @@ GET /api/v1/schedules/?day_of_week=0&is_active=true
 
 ---
 
+### Web UI pages
+Server-rendered with session auth (the API keeps JWT). Spanish by default, English through the switcher.
+
+| Method | Path | Description | Access |
+|---|---|---|---|
+| GET | `/` | Home | Public |
+| GET, POST | `/signup/` | Patient sign-up; logs the new patient in. Shares the API's `register` rate limit (10/hour per IP) | Anonymous |
+| GET, POST | `/login/` | Email + password. Shares the API's `login` rate limit (5/minute per IP) | Anonymous |
+| POST | `/logout/` | Log out | Signed in |
+| GET | `/panel/` | Notice for doctors and admins until their panel ships | Doctor, admin |
+| POST | `/i18n/setlang/` | Language switcher (sets a cookie) | Public |
+
+---
+
 ## RBAC — Permission matrix
+
+Role checks live in `apps/core/roles.py` (`is_patient`, `is_doctor`, `is_admin`) and are shared by these DRF classes and the web UI's `PatientRequiredMixin` / `StaffRequiredMixin`, so the two RBAC paths cannot drift.
 
 **Wired to endpoints:**
 
@@ -219,26 +235,21 @@ pre-commit install
 ### 3. Environment variables
 ```bash
 cp .env.example .env
-# Edit .env — at minimum set DATABASE_URL and SECRET_KEY
 ```
 
-`.env` example:
-```env
-SECRET_KEY=dev-local-secret-key-any-value-works
-DEBUG=True
-DATABASE_URL=postgres://postgres:postgres@localhost:5432/medbook
-ALLOWED_HOSTS=localhost,127.0.0.1
-EMAIL_BACKEND=django.core.mail.backends.console.EmailBackend
+Fill in the empty values of `.env` (it is never committed): `SECRET_KEY`, `POSTGRES_PASSWORD`, `POSTGRES_TEST_PASSWORD` and `DATABASE_URL` (format in `.env.example`, with the same password as `POSTGRES_PASSWORD`). No password or key is written anywhere in the repo, not even for local development; generate them:
+
+```bash
+python -c "import secrets; print(secrets.token_urlsafe(50))"   # SECRET_KEY
+python -c "import secrets; print(secrets.token_urlsafe(16))"   # database passwords (URL-safe)
 ```
+
+Without them, Django and `docker compose` stop with an error naming the missing variable.
 
 ### 4. Start PostgreSQL and run migrations
 ```bash
-# With Docker
-docker run -d --name medbook-db -p 5432:5432 \
-  -e POSTGRES_DB=medbook \
-  -e POSTGRES_USER=postgres \
-  -e POSTGRES_PASSWORD=postgres \
-  postgres:16-alpine
+# Postgres on port 5435 with the credentials from your .env
+docker compose up -d db
 
 # Apply migrations
 DJANGO_SETTINGS_MODULE=config.settings.local python manage.py migrate
@@ -291,9 +302,10 @@ starts it alongside the `db` (Postgres 16) service. Notes:
 - Static files (admin and web UI CSS) are not served in this stack: it runs
   `gunicorn` with local settings, which have no WhiteNoise. Use `runserver`
   for UI work.
-- All `web` env vars (`SECRET_KEY`, `DATABASE_URL`, etc.) are dev-only
-  placeholders hardcoded in `docker-compose.yml` for a true one-command
-  `up` — do not reuse them anywhere outside local development.
+- Secrets (`SECRET_KEY`, `POSTGRES_PASSWORD`) come from your `.env`;
+  nothing secret is written in `docker-compose.yml`, and `up` stops with a
+  clear message if one is missing. `DATABASE_URL` for `web` is built from
+  the same variables.
 - `medbook_pgdata` is a regular (non-`external`) named volume, so
   `docker compose up` works out of the box without pre-creating it by hand.
   Run `docker compose down -v` to drop it if you want a clean database.
@@ -319,15 +331,15 @@ A multi-stage [`Dockerfile`](./Dockerfile) is also included as a **portable alte
 ```bash
 docker build -t medbook:latest .
 docker run --rm -p 8000:8000 \
-  -e SECRET_KEY=... \
+  -e SECRET_KEY="<your-secret-key>" \
   -e ALLOWED_HOSTS=localhost,127.0.0.1 \
-  -e DATABASE_URL=postgres://user:pass@host:5432/medbook \
+  -e DATABASE_URL="postgres://<user>:<password>@<host>:5432/medbook" \
   medbook:latest
 ```
 
 The image is built on **Alpine** in two stages. The builder installs the dependencies (all of them ship musllinux wheels), fetches the musl build of the Tailwind CLI (checked against the release sha256, because django-tailwind-cli does not detect musl), compiles the CSS and runs `collectstatic`. The runtime stage has no build tools and serves the app as a non-root user. Production moves to this image in Paso 32 ([#145](https://github.com/MauriDev94/MedBook/issues/145)).
 
-`docker-compose.yml` (see [Local setup](#alternative-one-command-dev-stack-with-docker-compose-up)) wraps this same `Dockerfile` for **local development only** — it hardcodes dev credentials and `DEBUG=True`, and is not used for the Render deploy.
+`docker-compose.yml` (see [Local setup](#alternative-one-command-dev-stack-with-docker-compose-up)) wraps this same `Dockerfile` for **local development only** — it reads its credentials from your `.env`, runs with `DEBUG=True`, and is not used for the Render deploy.
 
 ---
 

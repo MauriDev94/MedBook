@@ -140,8 +140,8 @@
 | Paso | Descripción | Issue | PR | Estado |
 |------|-------------|-------|----|--------|
 | 23 | Horarios en hora de Chile (`TIME_ZONE`, generación de slots, data migration) | #133 | #143 | ✅ |
-| 24 | Base web: `apps/web`, layout, Tailwind (`django-tailwind-cli`), HTMX, i18n es/en; Dockerfile Alpine | #134 | #148 | ⏳ |
-| 25 | Login, logout y registro web con sesión; RBAC web compartido con DRF | #135 | — | ⬜ |
+| 24 | Base web: `apps/web`, layout, Tailwind (`django-tailwind-cli`), HTMX, i18n es/en; Dockerfile Alpine | #134 | #148 | ✅ |
+| 25 | Login, logout y registro web con sesión; RBAC web compartido con DRF | #135 | #149 | ⏳ |
 | 26 | Catálogo de doctores y slots disponibles (HTMX) | #136 | — | ⬜ |
 | 30 | **Bug**: re-reservar un slot liberado por cancelación (`OneToOne` → FK + unique parcial). Va antes del 27 | #142 | — | ⬜ |
 | 31 | Render como Blueprint: `render.yaml` adopta el servicio `MedBook` (auto-sync). Va antes de mergear el 23 | #144 | #146 | ✅ |
@@ -159,7 +159,7 @@
 - [ ] Flujo completo en la web: registro → login → doctores → reserva → mis citas → cancelación
 - [x] UI en español por defecto y en inglés con el selector; la API sigue respondiendo en inglés
 - [ ] Ninguna view web accede al ORM: todo pasa por services o selectors
-- [ ] Build de Tailwind en Render, Docker y CI; `.mo` al día (chequeo en CI)
+- [x] Build de Tailwind en Render, Docker y CI; `.mo` al día (chequeo en CI)
 - [ ] Gate de coverage ≥ 95% branch se mantiene
 
 ---
@@ -172,3 +172,11 @@
 - `production.py` redefinía `MIDDLEWARE` completo: `LocaleMiddleware` y `HtmxMiddleware` no habrían llegado a producción. Ahora inserta WhiteNoise en la lista de `base.py` (test en `tests/unit/test_production_settings.py`).
 - El stack de `docker compose up` corre gunicorn con settings locales y sin WhiteNoise, así que no sirve estáticos (ni el CSS de la web ni el del admin). Se resuelve en el Paso 32, cuando la imagen pase a ser la de producción.
 - El servicio de Render se creó a mano (sin Blueprint), así que `render.yaml` se ignoraba. El Paso 31 lo convierte en Blueprint (adopción por nombre: misma URL y mismos secretos) y desde ahí manda el archivo.
+- Django no desactiva el idioma que activó un request, así que se filtraba entre tests del mismo hilo. `tests/conftest.py` lo resetea antes y después de cada test (Paso 25).
+- El login web y el de la API comparten presupuesto por IP: `ThrottleMixin` usa las mismas clases DRF (`LoginRateThrottle`, `RegisterRateThrottle`), con el mismo scope y la misma cache key (Paso 25).
+- GitGuardian marcó passwords escritos en los tests del PR #149 (3 valores, 7 ocurrencias). Se reescribió la rama para sacarlos y se limpió el repo entero: los tests generan passwords con `tests.factories.random_password()`, CI y el Dockerfile generan su `SECRET_KEY`, y compose y `local.py` leen todo desde `.env` sin defaults. Regla en `CLAUDE.md`: nunca escribir un password ni un secreto, ni siquiera uno falso.
+
+### Pendientes por decidir
+
+- **Idioma de la API**: hoy responde siempre en inglés (`EnglishApiMiddleware`, ADR 0002). Definir más adelante si se mantiene así, si pasa a español o si respeta `Accept-Language`. No es prioritario.
+- **Email sensible a mayúsculas en el login**: `normalize_email` solo baja a minúsculas el dominio y el login busca el email exacto, así que quien se registró como `Ana@example.com` no entra con `ana@example.com` (ni en la API ni en la web). La unicidad sí es case-insensitive. Viene de antes del sprint.
