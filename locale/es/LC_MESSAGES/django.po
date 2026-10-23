@@ -1,0 +1,73 @@
+# Spanish translation of the MedBook web UI.
+#
+# Update with:
+#   python manage.py makemessages -l es --no-location --no-obsolete
+#   python manage.py compilemessages -l es --ignore=.venv
+# Commit both django.po and django.mo: production has no gettext.
+#
+msgid ""
+msgstr ""
+"Project-Id-Version: MedBook\n"
+"Report-Msgid-Bugs-To: \n"
+"POT-Creation-Date: 2026-10-23 02:16-0300\n"
+"PO-Revision-Date: 2026-10-23 02:20-0300\n"
+"Last-Translator: \n"
+"Language-Team: Spanish\n"
+"Language: es\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Plural-Forms: nplurals=3; plural=n == 1 ? 0 : n != 0 && n % 1000000 == 0 ? "
+"1 : 2;\n"
+
+msgid "Main"
+msgstr "Principal"
+
+msgid "API docs"
+msgstr "Documentación API"
+
+msgid ""
+"MedBook is a portfolio project: a medical appointment booking app built with "
+"Django."
+msgstr ""
+"MedBook es un proyecto de portafolio: una app de reserva de horas médicas "
+"hecha con Django."
+
+msgid "Book your medical appointment"
+msgstr "Reserva tu hora médica"
+
+msgid ""
+"Find a doctor by specialty, pick an available time and manage your "
+"appointments online."
+msgstr ""
+"Busca un médico por especialidad, elige una hora disponible y administra tus "
+"citas en línea."
+
+msgid "Explore the API"
+msgstr "Explorar la API"
+
+msgid "Online booking for patients is coming soon."
+msgstr "La reserva en línea para pacientes estará disponible pronto."
+
+msgid "Doctors by specialty"
+msgstr "Médicos por especialidad"
+
+msgid "Browse the clinic's doctors and their specialties."
+msgstr "Revisa los médicos de la clínica y sus especialidades."
+
+msgid "Real availability"
+msgstr "Disponibilidad real"
+
+msgid "Times are shown in Chilean time and update as patients book."
+msgstr ""
+"Las horas se muestran en hora de Chile y se actualizan a medida que los "
+"pacientes reservan."
+
+msgid "Your appointments"
+msgstr "Tus citas"
+
+msgid "Check or cancel your appointments from one place."
+msgstr "Revisa o cancela tus citas desde un solo lugar."
+
+msgid "Language"
+msgstr "Idioma"

@@ -3,7 +3,6 @@
 from django.conf import settings
 from django.contrib import admin
 from django.urls import include, path
-from django.views.generic.base import RedirectView
 from drf_spectacular.views import SpectacularAPIView, SpectacularSwaggerView
 from rest_framework.routers import DefaultRouter
 
@@ -24,8 +23,6 @@ notes_list = MedicalNoteViewSet.as_view({"get": "list", "post": "create"})
 notes_detail = MedicalNoteViewSet.as_view({"get": "retrieve"})
 
 urlpatterns = [
-    # Root → Swagger docs (public deployment URL lands on interactive docs, not 404)
-    path("", RedirectView.as_view(url="/api/docs/", permanent=False), name="root"),
     # Infrastructure
     path("health/", health_check, name="health-check"),
     # Admin — path is configurable via DJANGO_ADMIN_URL to reduce brute-force surface
@@ -48,4 +45,8 @@ urlpatterns = [
     ),
     # User / Auth endpoints
     path("api/v1/", include("apps.users.urls")),
+    # Web UI language switcher (POST /i18n/setlang/ sets the language cookie)
+    path("i18n/", include("django.conf.urls.i18n")),
+    # Web UI (ADR 0002) — owns "/"; Swagger stays at /api/docs/
+    path("", include("apps.web.urls")),
 ]
