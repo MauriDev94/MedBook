@@ -109,6 +109,7 @@ Layer responsibilities:
   - Tests use `tests.factories.random_password()`, `short_password()` (fails the minimum length) and `UserFactory().raw_password`; a wrong password is just another `random_password()`.
   - CI gets a random `SECRET_KEY` from `.github/actions/setup-django`, and the Dockerfile generates its build-time key inside the `RUN`.
   - `docker-compose*.yml` and `config/settings/local.py` read `SECRET_KEY`, `POSTGRES_PASSWORD`, `POSTGRES_TEST_PASSWORD` and `DATABASE_URL` from `.env`, with no defaults.
+  - GitGuardian also flags a custom message in compose's `${VAR:?message}` and any `${...}` in the password slot of a connection URL. Use a bare `${VAR:?}`, and pass the DB password to the `web` service as `PGPASSWORD`, which libpq reads.
   - Docs use `<placeholders>` or shell-generated values.
 
 ## Testing
