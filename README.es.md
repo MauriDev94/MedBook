@@ -192,14 +192,17 @@ Server-rendered con sesión de Django (la API sigue con JWT). En español por de
 | GET | `/panel/` | Aviso para doctores y admins hasta que llegue su panel | Doctor, admin |
 | GET | `/doctors/` | Catálogo de doctores, filtro `?specialty=<slug>` (HTMX cambia solo la lista), 10 por página | Paciente |
 | GET | `/doctors/<id>/` | Perfil del doctor y una semana de slots disponibles y futuros en hora de Chile; `?week=0–3` (HTMX cambia solo la semana) | Paciente |
-| GET, POST | `/slots/<id>/book/` | Confirmar y reservar un slot con un motivo opcional. HTMX lo carga en un modal; sin JS es una página completa. Al reservar vuelve al perfil del doctor, en la semana del slot | Paciente |
+| GET, POST | `/slots/<id>/book/` | Confirmar y reservar un slot con un motivo opcional. HTMX lo carga en un modal; sin JS es una página completa. Al reservar lleva a Mis citas; si el slot ya no se puede reservar, vuelve al perfil del doctor, en la semana del slot | Paciente |
+| GET | `/appointments/` | Mis citas: `?tab=upcoming` (por defecto: las que no han empezado, en cualquier estado) o `?tab=past`, 10 por página, badge de estado traducido (HTMX cambia solo la lista) | Paciente |
+| GET | `/appointments/<id>/` | Una cita del paciente: doctor, fecha, hora, estado y motivo. La de otro paciente da 404 | Paciente |
+| GET, POST | `/appointments/<id>/cancel/` | Confirmar y cancelar: libera el slot y avisa por correo. Con HTMX es un modal y el estado se actualiza en su lugar; sin JS, una página completa que después lleva a la cita | Paciente |
 | POST | `/i18n/setlang/` | Selector de idioma (guarda una cookie) | Público |
 
 ---
 
 ## RBAC — Matriz de permisos
 
-Los chequeos de rol viven en `apps/core/roles.py` (`is_patient`, `is_doctor`, `is_admin`) y los comparten estas clases de DRF y los mixins de la web (`PatientRequiredMixin` / `StaffRequiredMixin`), así los dos caminos de RBAC no pueden divergir.
+Los chequeos de rol viven en `apps/core/roles.py` (`is_patient`, `is_doctor`, `is_admin`) y los comparten estas clases de DRF y los mixins de la web (`PatientRequiredMixin` / `StaffRequiredMixin`), así los dos caminos de RBAC no pueden divergir. Qué citas ve cada usuario también es una sola regla: `appointments_visible_to(user)` en `apps/appointments/services.py` (el paciente las suyas, el doctor las suyas, el admin todas, nadie más ninguna), que usan el `AppointmentViewSet` de la API y Mis citas en la web.
 
 **Cableadas a endpoints:**
 

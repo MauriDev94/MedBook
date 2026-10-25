@@ -192,14 +192,17 @@ Server-rendered with session auth (the API keeps JWT). Spanish by default, Engli
 | GET | `/panel/` | Notice for doctors and admins until their panel ships | Doctor, admin |
 | GET | `/doctors/` | Doctor catalog, `?specialty=<slug>` filter (HTMX swaps only the list), 10 per page | Patient |
 | GET | `/doctors/<id>/` | Doctor profile and one week of available, future slots in Chilean time; `?week=0–3` (HTMX swaps only the week) | Patient |
-| GET, POST | `/slots/<id>/book/` | Confirm and book a slot with an optional reason. HTMX loads it into a modal dialog; without JS it is a full page. Success goes back to the doctor's page on the slot's week | Patient |
+| GET, POST | `/slots/<id>/book/` | Confirm and book a slot with an optional reason. HTMX loads it into a modal dialog; without JS it is a full page. Success goes to My appointments; a slot that can no longer be booked goes back to the doctor's page on the slot's week | Patient |
+| GET | `/appointments/` | My appointments: `?tab=upcoming` (default: not started yet, any status) or `?tab=past`, 10 per page, translated status badges (HTMX swaps only the list) | Patient |
+| GET | `/appointments/<id>/` | One of the patient's appointments: doctor, date, time, status, reason. Another patient's is a 404 | Patient |
+| GET, POST | `/appointments/<id>/cancel/` | Confirm and cancel: frees the slot and emails the patient. HTMX: a modal dialog, then the status updates in place; without JS: a full page, then the appointment's page | Patient |
 | POST | `/i18n/setlang/` | Language switcher (sets a cookie) | Public |
 
 ---
 
 ## RBAC — Permission matrix
 
-Role checks live in `apps/core/roles.py` (`is_patient`, `is_doctor`, `is_admin`) and are shared by these DRF classes and the web UI's `PatientRequiredMixin` / `StaffRequiredMixin`, so the two RBAC paths cannot drift.
+Role checks live in `apps/core/roles.py` (`is_patient`, `is_doctor`, `is_admin`) and are shared by these DRF classes and the web UI's `PatientRequiredMixin` / `StaffRequiredMixin`, so the two RBAC paths cannot drift. Which appointments a user sees is one rule too: `appointments_visible_to(user)` in `apps/appointments/services.py` (patients theirs, doctors theirs, admins all, anyone else none), used by the API's `AppointmentViewSet` and by the web's My appointments.
 
 **Wired to endpoints:**
 

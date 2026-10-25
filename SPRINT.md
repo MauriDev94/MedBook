@@ -147,8 +147,8 @@
 | 31 | Render como Blueprint: `render.yaml` adopta el servicio `MedBook` (auto-sync). Va antes de mergear el 23 | #144 | #146 | ✅ |
 | 32 | Producción en Docker Alpine (servicio nuevo vía Blueprint). Va después del 24 | #145 | — | ⬜ |
 | 33 | Datos demo: comando `seed_demo` idempotente (doctores y horarios), activado en Render con `MEDBOOK_DEMO_DATA`. Va antes del 29 | #147 | — | ⬜ |
-| 27 | Reservar cita (services de booking, manejo de conflictos) | #137 | #153 | ⏳ |
-| 28 | Mis citas y cancelación; selector de visibilidad compartido con la API | #138 | — | ⬜ |
+| 27 | Reservar cita (services de booking, manejo de conflictos) | #137 | #153 | ✅ |
+| 28 | Mis citas y cancelación; selector de visibilidad compartido con la API | #138 | — | ⏳ |
 | 29 | Páginas de error, accesibilidad, docs y verificación en Render | #139 | — | ⬜ |
 | 34 | **Bug**: email sin distinguir mayúsculas en el login (API y web) y unicidad case-insensitive en la DB. Independiente | #151 | — | ⬜ |
 
@@ -186,6 +186,10 @@
 - La confirmación de la reserva es un `<dialog>` nativo: el slot lo carga con HTMX y `web/js/booking-dialog.js` (un listener de 6 líneas) llama a `showModal()` en `htmx:afterSwap`. Cerrar no necesita JS: Esc y los `<form method="dialog">`. El preflight de Tailwind le quita el `margin: auto` al `<dialog>`, por eso lleva `m-auto`. "Cancelar" usa `form="booking-dialog-cancel"` porque un `<form method="dialog">` dentro del formulario de la reserva sería un form anidado. Sin JS, el mismo link abre la página completa de confirmación (Paso 27).
 - Los errores de `validate_appointment_booking` eran strings en inglés. Ahora son `gettext_lazy`: la web los muestra en español y la API sigue en inglés gracias a `EnglishApiMiddleware` (test en `test_api_language.py`). Un error en el modal lo vuelve a renderizar con el mensaje y refresca la semana de atrás con `hx-swap-oob`; una reserva exitosa responde `HX-Redirect` a la semana del slot (Paso 27).
 - `ScheduleFactory` (lunes) dispara la señal que genera 7 días de slots. Si el test corre un domingo, "mañana 10:00" ya existe y un `TimeSlotFactory` a esa hora choca con `unique_slot_per_schedule_start`. `test_web_booking.py` usa `bare_schedule()`, que borra los slots de la señal (Paso 27).
+- "Mis citas" separa por fecha: Próximas son las que no han empezado, en cualquier estado, y Pasadas las que ya empezaron. Una cita cancelada sigue en Próximas con su badge, también si la canceló el médico. Reservar ahora lleva a "Mis citas"; en el Paso 27 volvía al médico porque la página no existía (Paso 28).
+- El filtrado por rol del `AppointmentViewSet` pasó a `appointments_visible_to(user)`, que comparten la API y la web. Con los tres roles la API responde igual (sus tests no cambiaron); un usuario anónimo o con un rol desconocido ya no ve todas las citas, no ve ninguna (Paso 28).
+- Al cancelar con HTMX, la respuesta reemplaza el bloque de estado (`#appointment-<pk>-status`: badge y botón), que está en la fila de la lista y en el detalle, vía `HX-Retarget`. El mensaje entra fuera de banda a `#messages`, que ahora siempre está en la página (región `role="status"`). `booking-dialog.js` pasó a ser `dialog.js`: abre el `<dialog>` cuando HTMX le pone contenido y lo cierra cuando un form de adentro actualiza algo de afuera. `htmx:afterSwap` se dispara sobre el target, no sobre el form, así que el script usa `event.detail.requestConfig.elt` (Paso 28).
+- Las etiquetas de `Appointment.Status` son `gettext_lazy`, sin migración (`makemigrations --check` limpio). `/api/schema/` sigue en inglés gracias a `EnglishApiMiddleware`; `manage.py spectacular` desde la consola no tiene request y describe los estados en español (`LANGUAGE_CODE`) (Paso 28).
 
 ### Pendientes por decidir
 
@@ -195,3 +199,5 @@
 - **Sesión expirada con el modal de reserva abierto** (detectado en el Paso 27): HTMX sigue el redirect al login y metería la página de login dentro del modal. Propuesta: que `RoleRequiredMixin` responda `HX-Redirect` al login cuando el request es HTMX. Va en el Paso 29.
 - **Paciente sin perfil** (detectado en el Paso 27): un usuario con rol paciente creado desde el admin sin su `Patient` da 500 al reservar, en la web y en la API (`request.user.patient_profile`). El registro público siempre crea el perfil. Propuesta: crearlo también desde el admin, o responder un error claro. Va en el Paso 29.
 - **"Dr." para todas las médicas** (detectado en el Paso 27): `Doctor.__str__` antepone "Dr." siempre, así que la web muestra "Dr. Carla Soto"; los correos hacen lo mismo. El modelo no guarda cómo tratar a cada médico. Propuesta: un campo de tratamiento (Dr./Dra.) traducible, o mostrar solo el nombre. Sin paso asignado.
+- **Cancelar una cita que ya pasó** (detectado en el Paso 28): `cancel_appointment` solo revisa el estado, así que la API (y la URL de cancelar de la web) dejan cancelar una cita `pending` o `confirmed` que ya ocurrió, y liberan un slot del pasado. La web oculta el botón en las citas que ya empezaron. Propuesta: que el paciente solo pueda cancelar antes de la hora, y el médico siempre. Sin paso asignado.
+- **Foco después de cancelar** (detectado en el Paso 28): al cerrarse el modal, el link que lo abrió ya no existe y el foco queda en `<body>`. El mensaje se anuncia (región `role="status"`), pero conviene mover el foco al estado de la cita. Va en el Paso 29 (accesibilidad).
