@@ -1,0 +1,26 @@
+{% extends "web/base.html" %}
+{% load i18n %}
+
+{% block title %}{% translate "Cancel this appointment?" %} · MedBook{% endblock %}
+
+{% block content %}
+  {# Without JavaScript the cancel link opens this page; with it, the dialog. #}
+  <section class="mx-auto max-w-5xl px-4 py-10">
+    <a href="{% url 'web:appointment_detail' appointment.pk %}" class="text-sm font-semibold text-teal-700 hover:underline">← {% translate "Back to the appointment" %}</a>
+
+    <div class="max-w-xl">
+      <h1 class="mt-4 text-2xl font-bold tracking-tight text-slate-900">{% translate "Cancel this appointment?" %}</h1>
+
+      <div class="mt-6 rounded-lg border border-slate-200 bg-white p-5">
+        {% include "web/booking/partials/summary.html" with doctor=appointment.doctor slot=appointment.slot %}
+      </div>
+      <p class="mt-4 text-sm text-slate-600">{% translate "The time will be free for other patients to book." %}</p>
+
+      <form method="post" action="{% url 'web:cancel_appointment' appointment.pk %}" class="mt-6 flex flex-wrap items-center gap-4">
+        {% csrf_token %}
+        <button type="submit" class="min-h-11 rounded-md bg-red-600 px-5 text-sm font-semibold text-white hover:bg-red-700">{% translate "Cancel appointment" %}</button>
+        <a href="{% url 'web:appointment_detail' appointment.pk %}" class="text-sm font-semibold text-teal-700 hover:underline">{% translate "Go back" %}</a>
+      </form>
+    </div>
+  </section>
+{% endblock %}

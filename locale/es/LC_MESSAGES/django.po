@@ -9,7 +9,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: MedBook\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2026-10-25 00:14-0300\n"
+"POT-Creation-Date: 2026-10-25 02:28-0300\n"
 "PO-Revision-Date: 2026-10-23 02:20-0300\n"
 "Last-Translator: \n"
 "Language-Team: Spanish\n"
@@ -19,6 +19,21 @@ msgstr ""
 "Content-Transfer-Encoding: 8bit\n"
 "Plural-Forms: nplurals=3; plural=n == 1 ? 0 : n != 0 && n % 1000000 == 0 ? "
 "1 : 2;\n"
+
+msgid "Pending"
+msgstr "Pendiente"
+
+msgid "Confirmed"
+msgstr "Confirmada"
+
+msgid "Cancelled"
+msgstr "Cancelada"
+
+msgid "Completed"
+msgstr "Completada"
+
+msgid "No Show"
+msgstr "No asistió"
 
 msgid "This time slot is no longer available."
 msgstr "Esta hora ya no está disponible."
@@ -74,6 +89,82 @@ msgstr "Motivo de la consulta (opcional)"
 msgid "For example: a yearly check-up or a symptom you want to discuss."
 msgstr "Por ejemplo: un control anual o un síntoma que quieras comentar."
 
+msgid "Cancel this appointment?"
+msgstr "¿Cancelar esta cita?"
+
+msgid "Back to the appointment"
+msgstr "Volver a la cita"
+
+msgid "The time will be free for other patients to book."
+msgstr "La hora quedará libre para que otro paciente la reserve."
+
+msgid "Cancel appointment"
+msgstr "Cancelar cita"
+
+msgid "Go back"
+msgstr "Volver"
+
+msgid "Appointment details"
+msgstr "Detalle de la cita"
+
+msgid "Back to my appointments"
+msgstr "Volver a mis citas"
+
+msgid "Status"
+msgstr "Estado"
+
+msgid "Reason"
+msgstr "Motivo"
+
+msgid "No reason given."
+msgstr "Sin motivo."
+
+msgid "Booked on"
+msgstr "Reservada el"
+
+msgid "My appointments"
+msgstr "Mis citas"
+
+msgid "Times are shown in Chilean time."
+msgstr "Las horas se muestran en hora de Chile."
+
+msgid "Appointments"
+msgstr "Citas"
+
+msgid "Upcoming"
+msgstr "Próximas"
+
+msgid "Past"
+msgstr "Pasadas"
+
+msgid "Pagination"
+msgstr "Paginación"
+
+msgid "Previous"
+msgstr "Anterior"
+
+#, python-format
+msgid "Page %(number)s of %(total)s"
+msgstr "Página %(number)s de %(total)s"
+
+msgid "Next"
+msgstr "Siguiente"
+
+msgid "You have no past appointments yet."
+msgstr "Todavía no tienes citas pasadas."
+
+msgid "You have no upcoming appointments."
+msgstr "No tienes citas próximas."
+
+msgid "Find a doctor"
+msgstr "Busca un médico"
+
+msgid "Cancel"
+msgstr "Cancelar"
+
+msgid "Close"
+msgstr "Cerrar"
+
 msgid "Log in"
 msgstr "Ingresar"
 
@@ -124,12 +215,6 @@ msgstr "Volver a %(name)s"
 msgid "Confirm booking"
 msgstr "Confirmar reserva"
 
-msgid "Cancel"
-msgstr "Cancelar"
-
-msgid "Close"
-msgstr "Cerrar"
-
 msgid "Choose another time"
 msgstr "Elegir otra hora"
 
@@ -155,14 +240,8 @@ msgstr "Consultas de %(minutes)s minutos"
 msgid "Available times"
 msgstr "Horas disponibles"
 
-msgid "Times are shown in Chilean time."
-msgstr "Las horas se muestran en hora de Chile."
-
 msgid "Choose a time to book it."
 msgstr "Elige una hora para reservarla."
-
-msgid "Find a doctor"
-msgstr "Busca un médico"
 
 msgid "Specialty"
 msgstr "Especialidad"
@@ -175,19 +254,6 @@ msgstr "Filtrar"
 
 msgid "See available times"
 msgstr "Ver horas disponibles"
-
-msgid "Pagination"
-msgstr "Paginación"
-
-msgid "Previous"
-msgstr "Anterior"
-
-#, python-format
-msgid "Page %(number)s of %(total)s"
-msgstr "Página %(number)s de %(total)s"
-
-msgid "Next"
-msgstr "Siguiente"
 
 msgid "There are no doctors for this specialty."
 msgstr "No hay médicos para esta especialidad."
@@ -297,3 +363,10 @@ msgid ""
 msgstr ""
 "Reservaste tu hora del %(weekday)s %(date)s a las %(time)s. Te enviamos un "
 "correo con el detalle."
+
+msgid "This appointment can no longer be cancelled."
+msgstr "Esta cita ya no se puede cancelar."
+
+#, python-format
+msgid "Your appointment on %(weekday)s, %(date)s at %(time)s is cancelled."
+msgstr "Cancelaste tu cita del %(weekday)s %(date)s a las %(time)s."

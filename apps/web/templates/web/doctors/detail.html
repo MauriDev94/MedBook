@@ -32,10 +32,10 @@
     {% include "web/doctors/partials/week_slots.html" %}
   </section>
 
-  {# A slot link fills it with the booking form (HTMX) and booking-dialog.js opens it #}
+  {# A slot link fills it with the booking form (HTMX) and dialog.js opens it #}
   <dialog id="booking-dialog" aria-labelledby="booking-dialog-title" class="m-auto w-[calc(100%-2rem)] max-w-lg rounded-xl bg-white p-6 text-slate-800 shadow-xl backdrop:bg-slate-900/50"></dialog>
 {% endblock %}
 
 {% block scripts %}
-  <script src="{% static 'web/js/booking-dialog.js' %}" defer></script>
+  <script src="{% static 'web/js/dialog.js' %}" defer></script>
 {% endblock %}

@@ -1,0 +1,20 @@
+{% extends "web/base.html" %}
+{% load i18n static %}
+
+{% block title %}{% translate "My appointments" %} · MedBook{% endblock %}
+
+{% block content %}
+  <section class="mx-auto max-w-5xl px-4 py-10">
+    <h1 class="text-2xl font-bold tracking-tight text-slate-900">{% translate "My appointments" %}</h1>
+    <p class="mt-1 text-sm text-slate-500">{% translate "Times are shown in Chilean time." %}</p>
+
+    {% include "web/appointments/partials/appointment_list.html" %}
+  </section>
+
+  {# A cancel link fills it with the confirmation (HTMX) and dialog.js opens it #}
+  <dialog id="cancel-dialog" aria-labelledby="cancel-dialog-title" class="m-auto w-[calc(100%-2rem)] max-w-lg rounded-xl bg-white p-6 text-slate-800 shadow-xl backdrop:bg-slate-900/50"></dialog>
+{% endblock %}
+
+{% block scripts %}
+  <script src="{% static 'web/js/dialog.js' %}" defer></script>
+{% endblock %}

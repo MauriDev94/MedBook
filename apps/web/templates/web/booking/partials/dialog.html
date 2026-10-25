@@ -1,6 +1,6 @@
 {% load i18n %}
 {# Content of <dialog id="booking-dialog"> on the doctor's page, loaded by HTMX. #}
-{# web/js/booking-dialog.js opens it; Esc and the method="dialog" forms close it. #}
+{# web/js/dialog.js opens it; Esc and the method="dialog" forms close it. #}
 <div class="flex items-start justify-between gap-4">
   <h2 id="booking-dialog-title" class="text-lg font-semibold text-slate-900">{% translate "Confirm your appointment" %}</h2>
   <form method="dialog">
