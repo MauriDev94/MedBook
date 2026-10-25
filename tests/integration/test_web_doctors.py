@@ -304,7 +304,7 @@ class TestDoctorDetail:
         html = patient_client.get(detail_url(schedule.doctor)).content.decode()
 
         assert '<dialog id="booking-dialog"' in html
-        assert "web/js/booking-dialog.js" in html
+        assert "web/js/dialog.js" in html
         assert "Elige una hora para reservarla." in html
 
     def test_week_without_slots_shows_empty_state(self, patient_client, schedule):

@@ -3,10 +3,11 @@
 A slot on the doctor's page opens a dialog that HTMX fills with the booking
 form; without JavaScript the same URL is a full confirmation page. Booking
 calls the same services as the API (validate_appointment_booking, then
-create_appointment with its atomic reservation). Success goes back to the
-doctor's page, on the slot's week, with a message. A slot that can no longer
-be booked never causes a 500: the full page goes back to the doctor with the
-reason, and the dialog shows it and refreshes the week behind it.
+create_appointment with its atomic reservation). Success goes to "My
+appointments" with a message (Paso 28). A slot that can no longer be booked
+never causes a 500: the full page goes back to the doctor's page, on the
+slot's week, with the reason, and the dialog shows it and refreshes the week
+behind it.
 """
 
 import datetime
@@ -33,6 +34,7 @@ from tests.factories import (
 
 PAGE_TEMPLATE = "web/booking/confirm.html"
 DIALOG_PARTIAL = "web/booking/partials/dialog.html"
+MY_APPOINTMENTS = "/appointments/"
 HTMX = {"HX-Request": "true"}
 ENGLISH = {"Accept-Language": "en"}
 CHILE = ZoneInfo("America/Santiago")
@@ -243,7 +245,7 @@ class TestBooking:
         appointment = Appointment.objects.get(slot=slot)
         slot.refresh_from_db()
         assert response.status_code == 302
-        assert response["Location"] == doctor_url(slot)
+        assert response["Location"] == MY_APPOINTMENTS
         assert appointment.patient == patient
         assert appointment.doctor == slot.schedule.doctor
         assert appointment.status == Appointment.Status.PENDING
@@ -271,25 +273,25 @@ class TestBooking:
 
         assert "at 10:00 is booked." in response.content.decode()
 
-    def test_booked_slot_leaves_the_doctors_page(self, patient_client, slot):
+    def test_lands_on_my_appointments_with_the_new_one(self, patient_client, slot):
         response = patient_client.post(book_url(slot), follow=True)
 
-        assert book_url(slot) not in response.content.decode()
+        appointment = Appointment.objects.get(slot=slot)
+        assert response.redirect_chain == [(MY_APPOINTMENTS, 302)]
+        assert f"/appointments/{appointment.pk}/" in response.content.decode()
 
-    def test_returns_to_the_week_of_the_slot(self, patient_client, schedule):
-        next_week = TimeSlotFactory(
-            schedule=schedule, start_datetime=days_ahead_at(8, 10)
-        )
+    def test_booked_slot_leaves_the_doctors_page(self, patient_client, slot):
+        patient_client.post(book_url(slot))
 
-        response = patient_client.post(book_url(next_week))
+        html = patient_client.get(doctor_url(slot)).content.decode()
 
-        assert response["Location"] == doctor_url(next_week, week=1)
+        assert book_url(slot) not in html
 
-    def test_htmx_success_reloads_the_doctors_page(self, patient_client, slot):
+    def test_htmx_success_loads_my_appointments(self, patient_client, slot):
         response = patient_client.post(book_url(slot), headers=HTMX)
 
         assert response.status_code == 200
-        assert response["HX-Redirect"] == doctor_url(slot)
+        assert response["HX-Redirect"] == MY_APPOINTMENTS
         assert Appointment.objects.filter(slot=slot).exists()
 
 
@@ -305,6 +307,16 @@ class TestBookingFailures:
         assert response.redirect_chain == [(doctor_url(slot), 302)]
         assert UNAVAILABLE in response.content.decode()
         assert not Appointment.objects.exists()
+
+    def test_failure_returns_to_the_week_of_the_slot(self, patient_client, schedule):
+        next_week = TimeSlotFactory(
+            schedule=schedule, start_datetime=days_ahead_at(8, 10)
+        )
+        reserve(next_week)
+
+        response = patient_client.post(book_url(next_week))
+
+        assert response["Location"] == doctor_url(next_week, week=1)
 
     def test_slot_that_already_started(self, patient_client, schedule):
         started = TimeSlotFactory(

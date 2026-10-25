@@ -12,6 +12,7 @@ import datetime
 import threading
 
 import pytest
+from django.contrib.auth.models import AnonymousUser
 from django.core.exceptions import ValidationError
 from django.db import IntegrityError, connection
 from django.test import TransactionTestCase
@@ -198,6 +199,133 @@ class TestListTimeSlots:
             loaded = services.list_time_slots().get(pk=slot.pk)
             assert loaded.schedule.doctor.user.email
             assert len(loaded.schedule.doctor.specialties.all()) == 1
+
+
+# ---------------------------------------------------------------------------
+# appointments_visible_to, list_upcoming_appointments, list_past_appointments
+# ---------------------------------------------------------------------------
+
+
+def appointment_starting_in(patient=None, **delta):
+    """An appointment whose slot starts `delta` from now (negative: started).
+
+    timezone.now() keeps its microseconds, so the slot never lands on one the
+    schedule's post_save signal generated.
+    """
+    slot = TimeSlotFactory(start_datetime=timezone.now() + datetime.timedelta(**delta))
+    extra = {"patient": patient} if patient else {}
+    return AppointmentFactory(slot=slot, doctor=slot.schedule.doctor, **extra)
+
+
+@pytest.mark.django_db
+class TestAppointmentsVisibleTo:
+    """The visibility rule the API and the web share (Paso 28)."""
+
+    def test_patient_sees_only_their_appointments(self):
+        own = AppointmentFactory()
+        AppointmentFactory()
+
+        assert list(services.appointments_visible_to(own.patient.user)) == [own]
+
+    def test_doctor_sees_only_their_appointments(self):
+        own = AppointmentFactory()
+        AppointmentFactory()
+
+        assert list(services.appointments_visible_to(own.doctor.user)) == [own]
+
+    def test_admin_sees_every_appointment(self):
+        appointments = AppointmentFactory.create_batch(2)
+        admin = UserFactory(role=Role.ADMIN)
+
+        assert set(services.appointments_visible_to(admin)) == set(appointments)
+
+    def test_anonymous_user_sees_nothing(self):
+        AppointmentFactory()
+
+        assert not services.appointments_visible_to(AnonymousUser()).exists()
+
+    def test_loads_patient_doctor_and_slot_in_one_query(
+        self, django_assert_num_queries
+    ):
+        appointment = AppointmentFactory()
+
+        with django_assert_num_queries(1):
+            loaded = services.appointments_visible_to(appointment.patient.user).get()
+            assert loaded.patient.user.email
+            assert loaded.doctor.user.email
+            assert loaded.slot.schedule.day_of_week is not None
+
+
+@pytest.mark.django_db
+class TestListUpcomingAppointments:
+    """Upcoming tab of "My appointments": not started yet, any status."""
+
+    def test_lists_appointments_that_have_not_started_soonest_first(self):
+        patient = PatientFactory()
+        later = appointment_starting_in(patient, days=3)
+        sooner = appointment_starting_in(patient, days=1)
+        appointment_starting_in(patient, minutes=-1)
+
+        upcoming = services.list_upcoming_appointments(patient.user)
+
+        assert list(upcoming) == [sooner, later]
+
+    def test_keeps_cancelled_appointments(self):
+        """A cancelled appointment stays visible with its status."""
+        patient = PatientFactory()
+        cancelled = appointment_starting_in(patient, days=1)
+        services.cancel_appointment(cancelled, cancelled_by=cancelled.doctor.user)
+
+        upcoming = services.list_upcoming_appointments(patient.user)
+
+        assert list(upcoming) == [cancelled]
+
+    def test_lists_only_the_users_appointments(self):
+        patient = PatientFactory()
+        appointment_starting_in(days=1)
+
+        assert not services.list_upcoming_appointments(patient.user).exists()
+
+    def test_loads_doctor_specialties_up_front(self, django_assert_num_queries):
+        patient = PatientFactory()
+        for _ in range(3):
+            appointment = appointment_starting_in(patient, days=1)
+            appointment.doctor.specialties.add(SpecialtyFactory())
+
+        with django_assert_num_queries(2):
+            for appointment in services.list_upcoming_appointments(patient.user):
+                assert len(appointment.doctor.specialties.all()) == 1
+
+
+@pytest.mark.django_db
+class TestListPastAppointments:
+    """Past tab of "My appointments": already started, latest first."""
+
+    def test_lists_appointments_that_already_started_latest_first(self):
+        patient = PatientFactory()
+        older = appointment_starting_in(patient, days=-3)
+        recent = appointment_starting_in(patient, minutes=-1)
+        appointment_starting_in(patient, days=1)
+
+        past = services.list_past_appointments(patient.user)
+
+        assert list(past) == [recent, older]
+
+    def test_lists_only_the_users_appointments(self):
+        patient = PatientFactory()
+        appointment_starting_in(days=-1)
+
+        assert not services.list_past_appointments(patient.user).exists()
+
+    def test_loads_doctor_specialties_up_front(self, django_assert_num_queries):
+        patient = PatientFactory()
+        for _ in range(3):
+            appointment = appointment_starting_in(patient, days=-1)
+            appointment.doctor.specialties.add(SpecialtyFactory())
+
+        with django_assert_num_queries(2):
+            for appointment in services.list_past_appointments(patient.user):
+                assert len(appointment.doctor.specialties.all()) == 1
 
 
 class TestConfirmAppointment:
