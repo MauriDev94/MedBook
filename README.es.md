@@ -286,6 +286,20 @@ Abrir **http://localhost:8000/** para la web y **http://localhost:8000/api/docs/
   python manage.py compilemessages -l es --ignore=.venv
   ```
 
+### Datos demo
+
+`python manage.py seed_demo` crea seis doctores ficticios que cubren las cinco especialidades, con horario de lunes a viernes en hora de Chile. Solo actúa con `MEDBOOK_DEMO_DATA=true`; si no, avisa y no hace nada. Para llenar una base local:
+
+```bash
+MEDBOOK_DEMO_DATA=true python manage.py seed_demo   # o definirla en .env
+python manage.py generate_slots --days=28           # las cuatro semanas que muestra la web
+```
+
+- Los datos están en [`apps/doctors/demo.py`](./apps/doctors/demo.py): emails en el dominio reservado `medbook.example` y licencias `DEMO-`.
+- Los doctores demo no tienen contraseña utilizable, así que no pueden iniciar sesión (el panel del doctor llega en un sprint posterior). No se crea ni se versiona ninguna credencial.
+- No crea pacientes: quien prueba la demo se registra en la web, que es justo el flujo a mostrar.
+- Es idempotente. Un doctor demo ya existe si su email (sin importar mayúsculas) o su licencia están usados, y las filas que ya existen nunca se modifican, así que lo editado en el admin se mantiene.
+
 ---
 
 ## Deploy
@@ -303,6 +317,8 @@ El plan free de Render no tiene cron jobs, así que el `startCommand` corre `pyt
 - El comando es idempotente: solo inserta los slots que faltan y en una segunda corrida reporta `0 new slots`.
 - Corre en un subshell. Si falla, deja una línea `WARNING` en el log y gunicorn arranca igual; en cambio, si falla `migrate` o `ensure_superuser`, el arranque se detiene.
 - En un plan pago, reemplazarlo por un cron job de Render (`type: cron`, diario, `python manage.py generate_slots --days=28`; mínimo USD 1/mes) y sacarlo del `startCommand`.
+
+Producción es también la demo del portfolio: `render.yaml` define `MEDBOOK_DEMO_DATA=true`, así que el `startCommand` corre `seed_demo` justo antes de `generate_slots`, en su propio subshell. El primer arranque crea los [doctores demo](#datos-demo) y los siguientes reportan `Done. 0 demo doctor(s) created.`
 
 ---
 
@@ -358,6 +374,9 @@ ruff check . && ruff format --check .
 
 # Generar slots para los próximos 30 días
 python manage.py generate_slots --days=30
+
+# Crear los doctores demo (requiere MEDBOOK_DEMO_DATA=true)
+python manage.py seed_demo
 
 # Validar schema OpenAPI
 PYTHONIOENCODING=utf-8 python manage.py spectacular --validate --fail-on-warn

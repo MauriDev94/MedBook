@@ -146,9 +146,9 @@
 | 30 | **Bug**: re-reservar un slot liberado por cancelación (`OneToOne` → FK + unique parcial) y rechazar slots que ya empezaron. Va antes del 27 | #142 | #152 | ✅ |
 | 31 | Render como Blueprint: `render.yaml` adopta el servicio `MedBook` (auto-sync). Va antes de mergear el 23 | #144 | #146 | ✅ |
 | 32 | Producción en Docker Alpine (servicio nuevo vía Blueprint). Va después del 24 | #145 | — | ⬜ |
-| 33 | Datos demo: comando `seed_demo` idempotente (doctores y horarios), activado en Render con `MEDBOOK_DEMO_DATA`. Va antes del 29 | #147 | — | ⬜ |
+| 33 | Datos demo: comando `seed_demo` idempotente (doctores y horarios), activado en Render con `MEDBOOK_DEMO_DATA`. Va antes del 29 | #147 | — | ⏳ |
 | 27 | Reservar cita (services de booking, manejo de conflictos) | #137 | #153 | ✅ |
-| 28 | Mis citas y cancelación; selector de visibilidad compartido con la API | #138 | #154 | ⏳ |
+| 28 | Mis citas y cancelación; selector de visibilidad compartido con la API | #138 | #154 | ✅ |
 | 29 | Páginas de error, accesibilidad, docs y verificación en Render | #139 | — | ⬜ |
 | 34 | **Bug**: email sin distinguir mayúsculas en el login (API y web) y unicidad case-insensitive en la DB. Independiente | #151 | — | ⬜ |
 
@@ -190,6 +190,8 @@
 - El filtrado por rol del `AppointmentViewSet` pasó a `appointments_visible_to(user)`, que comparten la API y la web. Con los tres roles la API responde igual (sus tests no cambiaron); un usuario anónimo o con un rol desconocido ya no ve todas las citas, no ve ninguna (Paso 28).
 - Al cancelar con HTMX, la respuesta reemplaza el bloque de estado (`#appointment-<pk>-status`: badge y botón), que está en la fila de la lista y en el detalle, vía `HX-Retarget`. El mensaje entra fuera de banda a `#messages`, que ahora siempre está en la página (región `role="status"`). `booking-dialog.js` pasó a ser `dialog.js`: abre el `<dialog>` cuando HTMX le pone contenido y lo cierra cuando un form de adentro actualiza algo de afuera. `htmx:afterSwap` se dispara sobre el target, no sobre el form, así que el script usa `event.detail.requestConfig.elt` (Paso 28).
 - Las etiquetas de `Appointment.Status` son `gettext_lazy`, sin migración (`makemigrations --check` limpio). `/api/schema/` sigue en inglés gracias a `EnglishApiMiddleware`; `manage.py spectacular` desde la consola no tiene request y describe los estados en español (`LANGUAGE_CODE`) (Paso 28).
+- `seed_demo` crea los 6 doctores de `apps/doctors/demo.py` solo con `MEDBOOK_DEMO_DATA=true`, que `render.yaml` define para producción. Un doctor demo cuenta como existente si su email (sin importar mayúsculas) o su licencia ya están usados, y las filas existentes nunca se modifican. Así un doctor parecido creado en el admin no lo hace fallar, y en la DB de dev (los 6 del Paso 27 ya tienen `DEMO-001`…`DEMO-006`) no crea nada. `create_user()` sin contraseña guarda una inutilizable, sin escribir ninguna credencial. El horario sabatino de Felipe Araya en dev pasó en la demo a martes y jueves de 15:00 a 18:00, para quedar de lunes a viernes como pedía el #147 (Paso 33).
+- `test_render_blueprint.py` ahora lee `render.yaml` con PyYAML en vez de buscar con regex en el texto, y verifica que `seed_demo` corra antes de `generate_slots` y en su subshell. PyYAML venía solo como dependencia de drf-spectacular; ahora está declarado en `requirements/local.txt` (Paso 33).
 
 ### Pendientes por decidir
 
