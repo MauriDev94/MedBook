@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 MedBook is a medical appointment booking REST API (portfolio project) built with Django + DRF (versions pinned in `requirements/base.txt`), PostgreSQL 16, Python 3.12. Default branch: `master`.
 
-The JSON API is complete. Sprint "Semana 5" in `SPRINT.md` (Pasos 23–29, issues #133–#139) builds the patient-facing web UI. Done so far: the base (Paso 24: layout, Tailwind, HTMX, es/en i18n), session auth (Paso 25: login, logout, patient sign-up) and the doctor catalog (Paso 26). Booking flows come next. Its decisions are recorded in two ADRs:
+The JSON API is complete. Sprint "Semana 5" in `SPRINT.md` (Pasos 23–29, issues #133–#139) builds the patient-facing web UI. Done so far: the base (Paso 24: layout, Tailwind, HTMX, es/en i18n), session auth (Paso 25: login, logout, patient sign-up), the doctor catalog (Paso 26) and the fix that makes cancelled slots bookable again (Paso 30, `docs/adr/0004-slot-appointment-history.md`). Booking flows come next. The sprint's web decisions are recorded in two ADRs:
 - `docs/adr/0002-server-rendered-web-frontend.md`: Django templates + HTMX in a new `apps/web` app, session auth reusing the service layer, Tailwind 4 via `django-tailwind-cli` (no Node), Spanish/English i18n with the JSON API kept in English, no Alpine.js.
 - `docs/adr/0003-clinic-time-zone.md`: schedules are interpreted in `America/Santiago` (`TIME_ZONE`), and slots are built with `make_aware` instead of hard-coded UTC. Implemented in Paso 23. The API serialises datetimes with the Chilean offset and `__date` filters use Chilean dates. Never hard-code UTC when combining dates with schedule times.
 
@@ -15,11 +15,14 @@ Sources of truth: `README.md` (endpoints, RBAC matrix, setup), `docs/architectur
 This project uses **pip + venv and `requirements/*.txt`**, not uv (unlike the workspace default).
 
 ```powershell
+& "$env:APPDATA\uv\python\cpython-3.12-windows-x86_64-none\python.exe" -m venv .venv   # once per clone
 .venv\Scripts\activate
 $env:DJANGO_SETTINGS_MODULE='config.settings.local'
 pip install -r requirements/local.txt   # once per clone
 pre-commit install                      # ruff --fix + ruff-format on commit
 ```
+
+Make the venv with the standard library's `venv` and Python 3.12, never `uv venv`: on this machine Windows Smart App Control blocks the unsigned `python.exe` launcher that uv writes into a venv (os error 4551, "Una directiva de Control de aplicaciones bloqueó este archivo"). The `python` on the PATH is 3.13, so the block above calls uv's 3.12 interpreter by its path; Smart App Control allows that one.
 
 Never use `Start-Process` to launch Django on Windows — run `python manage.py runserver` in a dedicated terminal with env vars already set.
 
@@ -79,7 +82,7 @@ Apps under `apps/`: `core` (shared base model, permissions, exception handler, p
 Key flows that span multiple apps:
 
 - **Slot generation**: creating a `Schedule` fires a `post_save` signal (`apps/doctors/signals.py`) that calls `appointments.services.generate_slots_for_schedule` (7 days ahead). The service skips slots that already exist and returns only the ones it inserted; `bulk_create(ignore_conflicts=True)` only guards concurrent runs, and its return value cannot be trusted as "created". In production the `generate_slots --days=28` command runs on every Render boot (`startCommand`, inside a subshell so a failure never blocks gunicorn), since the free plan has no cron jobs. 28 days are the four weeks patients can browse on the web (`BOOKING_WEEKS_AHEAD`); `tests/unit/test_render_blueprint.py` keeps the two in step. The signal swallows errors so the Schedule save always succeeds. `TimeSlot` deliberately lives in `appointments` and is imported lazily from `doctors` to avoid a circular import — see `docs/adr/0001-timeslot-boundary.md`.
-- **Booking**: `AppointmentCreateSerializer.validate()` calls `validate_appointment_booking` (slot available, no overlapping patient appointment via `Q`/range filters → 400). `create_appointment` then reserves the slot with an atomic conditional `UPDATE ... WHERE status=available`; losing the race raises `SlotConflict` (409). The doctor is always derived from `slot.schedule.doctor`.
+- **Booking**: `AppointmentCreateSerializer.validate()` calls `validate_appointment_booking` (slot available and not started yet, no overlapping patient appointment via `Q`/range filters → 400). `create_appointment` then reserves the slot with an atomic conditional `UPDATE ... WHERE status=available`; losing the race raises `SlotConflict` (409). The doctor is always derived from `slot.schedule.doctor`. `Appointment.slot` is a `ForeignKey`: a slot keeps its cancelled and completed appointments (`slot.appointments`), and the partial unique index `one_active_appointment_per_slot` allows one pending or confirmed appointment per slot. An insert that hits it also becomes `SlotConflict`, and any other `IntegrityError` propagates (`docs/adr/0004-slot-appointment-history.md`). Slot listings (`get_available_slots`, `get_available_slots_week`) skip slots that already started.
 - **State machine**: transition methods live on `Appointment` (`confirm()`, `cancel()`, `complete()`, `mark_no_show()`) and raise `InvalidTransition` on illegal moves. Service functions wrap them in `@transaction.atomic`, write an audit line to the `medbook.audit` logger, free the slot on cancel, and send emails via `transaction.on_commit` (never inline).
 - **Errors**: `apps/core/exceptions.custom_exception_handler` normalises every error to `{detail, code, field_errors?}` and maps Django `ValidationError` / `InvalidTransition` to 400. Keep this shape when adding errors.
 - **Routing**: everything is under `/api/v1/` (`config/urls.py`); JWT at `/api/v1/token/`, `token/refresh/`, `token/blacklist/`; medical notes are nested manually at `/api/v1/appointments/<id>/notes/`. Swagger at `/api/docs/`, `/health/` for Render. Admin path comes from `DJANGO_ADMIN_URL`. The web UI owns `/` (`apps.web.urls`, included last) and `/i18n/setlang/` switches its language.
@@ -119,6 +122,7 @@ Strict TDD (red → green → refactor): write the failing test before the imple
 - `tests/unit/` — models, services, permissions, commands, signals (DB allowed via `@pytest.mark.django_db`, no HTTP).
 - `tests/integration/` — full HTTP stack: `APIClient` for the API, pytest-django's `client` for the web UI (`headers={"Accept-Language": ...}`, `{"HX-Request": "true"}`, `client.force_login(user)`).
 - All test data via `factory_boy` (`tests/factories.py`); no JSON/YAML fixtures. Shared fixtures (`api_client`, `user_patient`, `user_doctor`, `user_admin`, `doctor_profile`, …) are in `tests/conftest.py`, which also resets `mail.outbox` and the active language before each test. Django never deactivates the language a request activated, so without that reset a request in one test would decide the language of the next one. With no request, messages come out in Spanish (`LANGUAGE_CODE`); use `translation.override("en")` to assert English.
+- Data migrations are tested by calling their forward function with the historical app registry (`MigrationLoader(None, ignore_no_migrations=True).project_state((app, migration)).apps`), the models `migrate` hands them. The live registry drifts as models change; see `tests/unit/test_migrations.py`.
 - Throttled endpoints (API or web) need `cache.clear()` around each test; see `tests/integration/test_throttling.py` and `test_web_auth.py`.
 - Every permission class and every web role mixin needs a positive and a negative test.
 - Coverage targets: models + services 90%, views + serializers 80%, permissions 100%, management commands 70%; the global branch-coverage gate is 95%.

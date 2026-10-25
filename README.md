@@ -89,7 +89,7 @@ User (AbstractBaseUser)
  │        └──── Schedule (weekly availability)
  │                   └──── TimeSlot (concrete bookable slots)
  └── Patient
-           └──── Appointment ──── TimeSlot (OneToOne)
+           └──── Appointment ──── TimeSlot (FK: history, one active appointment)
                       └──── MedicalNote
 ```
 
@@ -139,7 +139,7 @@ Datetimes: ISO 8601 in Chilean time with its offset, e.g. `2026-01-14T09:00:00-0
 |---|---|---|---|
 | GET | `/api/v1/doctors/` | List doctors (filter: `?specialty=cardiology`) | Any |
 | GET | `/api/v1/doctors/{id}/` | Doctor detail with specialties | Any |
-| GET | `/api/v1/doctors/{id}/available-slots/` | Available time slots | Any |
+| GET | `/api/v1/doctors/{id}/available-slots/` | Available time slots that have not started | Any |
 
 ### Schedules
 | Method | Endpoint | Description | Auth |
@@ -391,6 +391,7 @@ Quick summary:
 - **Custom `AbstractBaseUser`** instead of Django's default — email as username, explicit `role` field, no unused fields
 - **Services layer** for all business logic — ViewSets are thin HTTP handlers, services own the rules
 - **`@transaction.atomic` + atomic UPDATE** to prevent race conditions on slot booking
+- **Partial unique index** (`one_active_appointment_per_slot`): a slot keeps its cancelled appointments and can be booked again, but never holds two active ones ([ADR 0004](./docs/adr/0004-slot-appointment-history.md))
 - **State machine on the model** — transition methods (`confirm()`, `cancel()`) with explicit `ValueError` guards
 - **`select_related` everywhere** — zero N+1 queries by convention
 - **factory_boy** for all test data — zero JSON/YAML fixtures

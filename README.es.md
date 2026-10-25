@@ -89,7 +89,7 @@ User (AbstractBaseUser)
  │        └──── Schedule (disponibilidad semanal)
  │                   └──── TimeSlot (slots concretos reservables)
  └── Patient
-           └──── Appointment ──── TimeSlot (OneToOne)
+           └──── Appointment ──── TimeSlot (FK: historial, una cita activa)
                       └──── MedicalNote
 ```
 
@@ -139,7 +139,7 @@ Fechas: ISO 8601 en hora de Chile con su desfase, por ejemplo `2026-01-14T09:00:
 |---|---|---|---|
 | GET | `/api/v1/doctors/` | Listar doctores (filtro: `?specialty=cardiology`) | Cualquiera |
 | GET | `/api/v1/doctors/{id}/` | Detalle con specialties | Cualquiera |
-| GET | `/api/v1/doctors/{id}/available-slots/` | Slots disponibles | Cualquiera |
+| GET | `/api/v1/doctors/{id}/available-slots/` | Slots disponibles que no han empezado | Cualquiera |
 
 ### Schedules (Horarios)
 | Método | Endpoint | Descripción | Auth |
@@ -336,6 +336,7 @@ Resumen rápido:
 - **`AbstractBaseUser` custom** — email como username, campo `role` explícito, sin campos innecesarios
 - **Capa de services** para toda la lógica de negocio — ViewSets son handlers HTTP delgados
 - **`@transaction.atomic` + UPDATE atómico** para prevenir race conditions en reserva de slots
+- **Índice único parcial** (`one_active_appointment_per_slot`): un slot guarda sus citas canceladas y se puede volver a reservar, pero nunca tiene dos activas ([ADR 0004](./docs/adr/0004-slot-appointment-history.md))
 - **Máquina de estados en el modelo** — métodos de transición con guardas `ValueError` explícitos
 - **`select_related` en todos lados** — cero queries N+1 por convención
 - **factory_boy** para todos los datos de test — cero fixtures JSON/YAML
