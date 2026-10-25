@@ -192,6 +192,7 @@ Server-rendered con sesión de Django (la API sigue con JWT). En español por de
 | GET | `/panel/` | Aviso para doctores y admins hasta que llegue su panel | Doctor, admin |
 | GET | `/doctors/` | Catálogo de doctores, filtro `?specialty=<slug>` (HTMX cambia solo la lista), 10 por página | Paciente |
 | GET | `/doctors/<id>/` | Perfil del doctor y una semana de slots disponibles y futuros en hora de Chile; `?week=0–3` (HTMX cambia solo la semana) | Paciente |
+| GET, POST | `/slots/<id>/book/` | Confirmar y reservar un slot con un motivo opcional. HTMX lo carga en un modal; sin JS es una página completa. Al reservar vuelve al perfil del doctor, en la semana del slot | Paciente |
 | POST | `/i18n/setlang/` | Selector de idioma (guarda una cookie) | Público |
 
 ---

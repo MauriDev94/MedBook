@@ -143,11 +143,11 @@
 | 24 | Base web: `apps/web`, layout, Tailwind (`django-tailwind-cli`), HTMX, i18n es/en; Dockerfile Alpine | #134 | #148 | ✅ |
 | 25 | Login, logout y registro web con sesión; RBAC web compartido con DRF | #135 | #149 | ✅ |
 | 26 | Catálogo de doctores y slots disponibles (HTMX) | #136 | #150 | ✅ |
-| 30 | **Bug**: re-reservar un slot liberado por cancelación (`OneToOne` → FK + unique parcial) y rechazar slots que ya empezaron. Va antes del 27 | #142 | #152 | ⏳ |
+| 30 | **Bug**: re-reservar un slot liberado por cancelación (`OneToOne` → FK + unique parcial) y rechazar slots que ya empezaron. Va antes del 27 | #142 | #152 | ✅ |
 | 31 | Render como Blueprint: `render.yaml` adopta el servicio `MedBook` (auto-sync). Va antes de mergear el 23 | #144 | #146 | ✅ |
 | 32 | Producción en Docker Alpine (servicio nuevo vía Blueprint). Va después del 24 | #145 | — | ⬜ |
 | 33 | Datos demo: comando `seed_demo` idempotente (doctores y horarios), activado en Render con `MEDBOOK_DEMO_DATA`. Va antes del 29 | #147 | — | ⬜ |
-| 27 | Reservar cita (services de booking, manejo de conflictos) | #137 | — | ⬜ |
+| 27 | Reservar cita (services de booking, manejo de conflictos) | #137 | — | ⏳ |
 | 28 | Mis citas y cancelación; selector de visibilidad compartido con la API | #138 | — | ⬜ |
 | 29 | Páginas de error, accesibilidad, docs y verificación en Render | #139 | — | ⬜ |
 | 34 | **Bug**: email sin distinguir mayúsculas en el login (API y web) y unicidad case-insensitive en la DB. Independiente | #151 | — | ⬜ |
@@ -183,8 +183,15 @@
 - Re-reservar un slot cancelado no daba 500 en la API, como decía el #142, sino 400 ("appointment with this slot already exists"): DRF agrega solo un `UniqueValidator` para un `OneToOneField`. Llamando al service, como lo hará la web, sí era un `IntegrityError` (500). Con el `ForeignKey` y el índice único parcial ya no hay validador automático: el service da 400 y un conflicto da 409 (Paso 30, ADR 0004).
 - Los tests de la data migration 0002 la llamaban con los modelos actuales, y se rompieron cuando `TimeSlot.appointment` pasó a `appointments`. Ahora usan el estado histórico de la migración, igual que `migrate` (Paso 30).
 - Desde el 2026-10-24, Smart App Control de Windows bloquea el `python.exe` sin firma que uv escribe dentro de un venv (os error 4551). El `.venv` se recrea con `python -m venv` y pip, que es lo que pide este repo de todos modos (Paso 30).
+- La confirmación de la reserva es un `<dialog>` nativo: el slot lo carga con HTMX y `web/js/booking-dialog.js` (un listener de 6 líneas) llama a `showModal()` en `htmx:afterSwap`. Cerrar no necesita JS: Esc y los `<form method="dialog">`. El preflight de Tailwind le quita el `margin: auto` al `<dialog>`, por eso lleva `m-auto`. "Cancelar" usa `form="booking-dialog-cancel"` porque un `<form method="dialog">` dentro del formulario de la reserva sería un form anidado. Sin JS, el mismo link abre la página completa de confirmación (Paso 27).
+- Los errores de `validate_appointment_booking` eran strings en inglés. Ahora son `gettext_lazy`: la web los muestra en español y la API sigue en inglés gracias a `EnglishApiMiddleware` (test en `test_api_language.py`). Un error en el modal lo vuelve a renderizar con el mensaje y refresca la semana de atrás con `hx-swap-oob`; una reserva exitosa responde `HX-Redirect` a la semana del slot (Paso 27).
+- `ScheduleFactory` (lunes) dispara la señal que genera 7 días de slots. Si el test corre un domingo, "mañana 10:00" ya existe y un `TimeSlotFactory` a esa hora choca con `unique_slot_per_schedule_start`. `test_web_booking.py` usa `bare_schedule()`, que borra los slots de la señal (Paso 27).
 
 ### Pendientes por decidir
 
 - **Idioma de la API**: decidido, se mantiene en inglés (`EnglishApiMiddleware`, ADR 0002). La API la consumen desarrolladores y clientes, y todo su contrato (rutas, campos, estados, `code`, Swagger) está en inglés. Los mensajes que ve el paciente salen de la web, que los traduce (por ejemplo, el login web dice "Correo o contraseña incorrectos." y `/api/v1/token/` responde el mensaje en inglés de SimpleJWT). Si aparece un cliente en español, se evalúa respetar `Accept-Language` con inglés por defecto.
 - **Email sensible a mayúsculas en el login**: `normalize_email` solo baja a minúsculas el dominio y el login busca el email exacto, así que quien se registró como `Ana@example.com` no entra con `ana@example.com` (ni en la API ni en la web). La unicidad sí es case-insensitive. Viene de antes del sprint. Decidido: no distinguir mayúsculas, se corrige en el Paso 34 (#151).
+- **Correo de confirmación en inglés y en UTC** (detectado en el Paso 27): `send_appointment_created` arma el texto en inglés y formatea la hora con `strftime("%Y-%m-%d %H:%M UTC")`, así que una hora de las 10:00 en Chile dice "13:00 UTC". Pasa lo mismo con los correos de confirmación y cancelación. Viene de antes de la web. Propuesta: correos en el idioma de la web (español por defecto) y con la hora de Chile. Sin paso asignado.
+- **Sesión expirada con el modal de reserva abierto** (detectado en el Paso 27): HTMX sigue el redirect al login y metería la página de login dentro del modal. Propuesta: que `RoleRequiredMixin` responda `HX-Redirect` al login cuando el request es HTMX. Va en el Paso 29.
+- **Paciente sin perfil** (detectado en el Paso 27): un usuario con rol paciente creado desde el admin sin su `Patient` da 500 al reservar, en la web y en la API (`request.user.patient_profile`). El registro público siempre crea el perfil. Propuesta: crearlo también desde el admin, o responder un error claro. Va en el Paso 29.
+- **"Dr." para todas las médicas** (detectado en el Paso 27): `Doctor.__str__` antepone "Dr." siempre, así que la web muestra "Dr. Carla Soto"; los correos hacen lo mismo. El modelo no guarda cómo tratar a cada médico. Propuesta: un campo de tratamiento (Dr./Dra.) traducible, o mostrar solo el nombre. Sin paso asignado.
