@@ -147,6 +147,9 @@ At the database level, `UPDATE ... WHERE status='available'` is atomic. Exactly 
 ### Why `@transaction.atomic` on top?
 The function creates two DB records: updates the slot AND creates the appointment. If the appointment creation fails for any reason, the slot update should also roll back. The decorator guarantees both operations succeed or both fail together.
 
+### Last guard: one active appointment per slot
+`Appointment.slot` is a `ForeignKey`, so a slot keeps its cancelled and completed appointments and can be booked again. A partial unique index (`one_active_appointment_per_slot`, `status IN ('pending', 'confirmed')`) stops two active appointments on one slot even when the slot status is wrong; `create_appointment` turns that `IntegrityError` into `SlotConflict` (409). See [ADR 0004](./adr/0004-slot-appointment-history.md).
+
 ---
 
 ## 6. State machine on the model

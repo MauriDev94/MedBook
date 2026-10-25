@@ -1,5 +1,6 @@
 import pytest
 from django.contrib.auth import get_user_model
+from django.db import IntegrityError, transaction
 from django.utils import translation
 
 from apps.appointments.models import Appointment, TimeSlot
@@ -220,6 +221,33 @@ class TestAppointmentModel:
         appt = AppointmentFactory()
         assert appt.id is not None
         assert appt.status == Appointment.Status.PENDING
+
+    @pytest.mark.parametrize(
+        "status", [Appointment.Status.PENDING, Appointment.Status.CONFIRMED]
+    )
+    def test_slot_holds_one_active_appointment_at_most(self, db, status):
+        """The DB rejects a second pending/confirmed appointment on a slot."""
+        active = AppointmentFactory(status=Appointment.Status.CONFIRMED)
+
+        with pytest.raises(IntegrityError), transaction.atomic():
+            AppointmentFactory(slot=active.slot, status=status)
+
+    @pytest.mark.parametrize(
+        "status",
+        [
+            Appointment.Status.CANCELLED,
+            Appointment.Status.COMPLETED,
+            Appointment.Status.NO_SHOW,
+        ],
+    )
+    def test_slot_keeps_the_history_of_inactive_appointments(self, db, status):
+        """Inactive appointments stay linked to the slot and do not hold it."""
+        old = AppointmentFactory(status=status)
+        another_old = AppointmentFactory(slot=old.slot, status=status)
+
+        new = AppointmentFactory(slot=old.slot, status=Appointment.Status.PENDING)
+
+        assert set(old.slot.appointments.all()) == {old, another_old, new}
 
     def test_appointment_str(self, db):
         """Test __str__ includes patient and doctor."""

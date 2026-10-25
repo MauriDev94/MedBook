@@ -15,6 +15,8 @@ BOOKING_WEEKS_AHEAD = 4
 def get_available_slots(doctor, days_ahead: int = 7):
     """Return available TimeSlots for a doctor over the next N days.
 
+    Slots that already started are left out, even when they are today's.
+
     Args:
         doctor: Doctor instance.
         days_ahead: Number of days ahead to look (clamped to 1–365).
@@ -30,6 +32,7 @@ def get_available_slots(doctor, days_ahead: int = 7):
         TimeSlot.objects.filter(
             schedule__doctor=doctor,
             status=TimeSlot.Status.AVAILABLE,
+            start_datetime__gt=timezone.now(),
             start_datetime__date__gte=today,
             start_datetime__date__lte=end_date,
         )

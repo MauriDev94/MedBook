@@ -1,14 +1,16 @@
 """Tests for data migrations.
 
 A data migration's forward function is tested by calling it directly with the
-live app registry, which matches the current models.
+historical app registry at that migration, the same models `migrate` hands it.
+The live registry drifts as models change: Paso 30 renamed TimeSlot's reverse
+accessor from `appointment` to `appointments`.
 """
 
 import datetime
 import importlib
 
 import pytest
-from django.apps import apps as django_apps
+from django.db.migrations.loader import MigrationLoader
 from django.utils import timezone
 
 from apps.appointments.models import Appointment, TimeSlot
@@ -24,7 +26,10 @@ def _in_days(days: int) -> datetime.datetime:
 
 
 def _run_migration() -> None:
-    rebuild_slots.delete_future_unbooked_slots(django_apps, schema_editor=None)
+    state = MigrationLoader(None, ignore_no_migrations=True).project_state(
+        ("appointments", "0002_rebuild_future_slots_in_local_time")
+    )
+    rebuild_slots.delete_future_unbooked_slots(state.apps, schema_editor=None)
 
 
 @pytest.mark.django_db

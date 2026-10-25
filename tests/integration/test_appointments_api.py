@@ -10,7 +10,10 @@ Coverage targets:
   apps/core/permissions.py        = 100%
 """
 
+import datetime
+
 import pytest
+from django.utils import timezone
 from rest_framework import status
 from rest_framework.test import APIClient
 
@@ -60,9 +63,13 @@ def doctor(db, doctor_user):
 def available_slot(db, doctor):
     """A future available slot linked to the test doctor."""
     schedule = ScheduleFactory(doctor=doctor)
-    # Use a slot from the signal-generated ones, or create directly
+    # Use a slot from the signal-generated ones, or create directly. On a
+    # Monday the signal also creates today's slots that already started,
+    # which cannot be booked.
     slot = TimeSlot.objects.filter(
-        schedule=schedule, status=TimeSlot.Status.AVAILABLE
+        schedule=schedule,
+        status=TimeSlot.Status.AVAILABLE,
+        start_datetime__gt=timezone.now(),
     ).first()
     if not slot:
         slot = TimeSlotFactory(schedule=schedule, status=TimeSlot.Status.AVAILABLE)
@@ -164,6 +171,33 @@ class TestAppointmentCreate:
             format="json",
         )
         assert response.status_code == status.HTTP_400_BAD_REQUEST
+
+    def test_slot_freed_by_cancellation_can_be_booked_again(
+        self, auth_client_patient, available_slot
+    ):
+        """Paso 30: the same slot, not another one at the same time."""
+        booking = {"slot": str(available_slot.id)}
+        first = auth_client_patient.post(self.url, booking, format="json")
+        auth_client_patient.post(f"/api/v1/appointments/{first.data['id']}/cancel/")
+
+        second = auth_client_patient.post(self.url, booking, format="json")
+
+        assert second.status_code == status.HTTP_201_CREATED
+        assert Appointment.objects.filter(slot=available_slot).count() == 2
+
+    def test_slot_that_already_started_returns_400(self, auth_client_patient, doctor):
+        schedule = ScheduleFactory(doctor=doctor)
+        started = TimeSlotFactory(
+            schedule=schedule,
+            start_datetime=timezone.now() - datetime.timedelta(minutes=5),
+        )
+
+        response = auth_client_patient.post(
+            self.url, {"slot": str(started.id)}, format="json"
+        )
+
+        assert response.status_code == status.HTTP_400_BAD_REQUEST
+        assert not Appointment.objects.filter(slot=started).exists()
 
     def test_real_slot_race_returns_409(
         self, auth_client_patient, available_slot, monkeypatch

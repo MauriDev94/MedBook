@@ -7,8 +7,10 @@ from apps.core.models import BaseModel
 class TimeSlot(BaseModel):
     """Concrete available slot generated from a doctor's Schedule.
 
-    One TimeSlot = one bookable block of time. Once reserved, the slot
-    is linked 1-to-1 with an Appointment and cannot be double-booked.
+    One TimeSlot = one bookable block of time. A slot keeps every
+    appointment ever booked on it (cancelled, completed, no-show), but at
+    most one active one (pending or confirmed), so it cannot be
+    double-booked. See docs/adr/0004-slot-appointment-history.md.
     """
 
     class Status(models.TextChoices):
@@ -45,6 +47,9 @@ class TimeSlot(BaseModel):
         return f"{self.schedule.doctor} | {self.start_datetime:%Y-%m-%d %H:%M} [{self.status}]"
 
 
+ONE_ACTIVE_APPOINTMENT_PER_SLOT = "one_active_appointment_per_slot"
+
+
 class InvalidTransition(ValueError):
     """Raised when an Appointment state transition is not allowed.
 
@@ -77,10 +82,10 @@ class Appointment(BaseModel):
         on_delete=models.PROTECT,
         related_name="appointments",
     )
-    slot = models.OneToOneField(
+    slot = models.ForeignKey(
         TimeSlot,
         on_delete=models.PROTECT,
-        related_name="appointment",
+        related_name="appointments",
     )
     reason = models.TextField(blank=True)
     status = models.CharField(
@@ -94,6 +99,14 @@ class Appointment(BaseModel):
         verbose_name = "Appointment"
         verbose_name_plural = "Appointments"
         ordering = ["-created_at"]
+        constraints = [
+            # A slot keeps its history but holds one active appointment at most
+            models.UniqueConstraint(
+                fields=["slot"],
+                condition=models.Q(status__in=["pending", "confirmed"]),
+                name=ONE_ACTIVE_APPOINTMENT_PER_SLOT,
+            )
+        ]
 
     def __str__(self) -> str:
         return f"{self.patient} → {self.doctor} [{self.status}]"
