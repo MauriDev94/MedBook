@@ -8,12 +8,14 @@ Pattern: each service function gets tests for:
   - side effects (slot status, DB persistence)
 """
 
+import datetime
 import threading
 
 import pytest
 from django.core.exceptions import ValidationError
-from django.db import connection
+from django.db import IntegrityError, connection
 from django.test import TransactionTestCase
+from django.utils import timezone
 
 from apps.appointments import services
 from apps.appointments.models import Appointment, TimeSlot
@@ -129,6 +131,16 @@ class TestValidateAppointmentBooking:
         )
         # NO_SHOW is not PENDING/CONFIRMED → should not block
         services.validate_appointment_booking(patient, new_slot)
+
+    def test_slot_that_already_started_raises(self, db):
+        """An available slot whose start is in the past → ValidationError."""
+        patient = PatientFactory()
+        slot = TimeSlotFactory(
+            start_datetime=timezone.now() - datetime.timedelta(minutes=5),
+            status=TimeSlot.Status.AVAILABLE,
+        )
+        with pytest.raises(ValidationError, match="already started"):
+            services.validate_appointment_booking(patient, slot)
 
 
 # ---------------------------------------------------------------------------
@@ -563,6 +575,51 @@ class TestCreateAppointment:
 
         with pytest.raises(SlotConflict):
             services.create_appointment(patient, slot)
+
+    def test_slot_freed_by_cancellation_can_be_booked_again(self, db):
+        """Paso 30: the same slot, not another one at the same time."""
+        slot = TimeSlotFactory(status=TimeSlot.Status.AVAILABLE)
+        first = services.create_appointment(PatientFactory(), slot)
+        services.cancel_appointment(first, cancelled_by=first.patient.user)
+        slot.refresh_from_db()
+
+        second = services.create_appointment(PatientFactory(), slot)
+
+        slot.refresh_from_db()
+        assert slot.status == TimeSlot.Status.RESERVED
+        assert set(slot.appointments.all()) == {first, second}
+
+    def test_insert_clash_with_an_active_appointment_raises_slot_conflict(self, db):
+        """The partial unique constraint is the last guard against double-booking.
+
+        The slot is `available` while a confirmed appointment still holds it
+        (e.g. someone freed it by hand in the admin), so the atomic UPDATE
+        passes and the INSERT hits the constraint: 409, never a 500.
+        """
+        from apps.core.exceptions import SlotConflict
+
+        held = AppointmentFactory(status=Appointment.Status.CONFIRMED)
+        slot = held.slot
+        assert slot.status == TimeSlot.Status.AVAILABLE
+
+        with pytest.raises(SlotConflict):
+            services.create_appointment(PatientFactory(), slot)
+
+        slot.refresh_from_db()
+        assert slot.status == TimeSlot.Status.AVAILABLE
+        assert list(slot.appointments.all()) == [held]
+
+    def test_other_integrity_errors_are_not_masked(self, db, monkeypatch):
+        """Only the one-active-appointment constraint means a slot conflict."""
+        slot = TimeSlotFactory(status=TimeSlot.Status.AVAILABLE)
+
+        def fail(**kwargs):
+            raise IntegrityError("another constraint")
+
+        monkeypatch.setattr(Appointment.objects, "create", fail)
+
+        with pytest.raises(IntegrityError, match="another constraint"):
+            services.create_appointment(PatientFactory(), slot)
 
 
 # ---------------------------------------------------------------------------

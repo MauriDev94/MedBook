@@ -113,6 +113,19 @@ class TestListSpecialties:
 
 
 # ---------------------------------------------------------------------------
+# get_available_slots (API available-slots)
+# ---------------------------------------------------------------------------
+@pytest.mark.django_db
+class TestGetAvailableSlots:
+    def test_skips_slots_that_already_started(self, schedule):
+        """Paso 30: filtering by date alone kept today's started slots."""
+        slot_at(schedule, TODAY, 14, 30)
+        later_today = slot_at(schedule, TODAY, 15, 30)
+
+        assert list(services.get_available_slots(schedule.doctor)) == [later_today]
+
+
+# ---------------------------------------------------------------------------
 # get_available_slots_week
 # ---------------------------------------------------------------------------
 @pytest.mark.django_db
