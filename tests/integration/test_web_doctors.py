@@ -290,6 +290,23 @@ class TestDoctorDetail:
         ] == ([TimeSlot.objects.get(start_datetime=tomorrow_at(9, 0))])
         assert "10:00" not in response.content.decode()
 
+    def test_each_slot_opens_the_booking_dialog(self, patient_client, schedule):
+        """Paso 27: a link for browsers without JavaScript, hx-get for the rest."""
+        slot = TimeSlotFactory(schedule=schedule, start_datetime=tomorrow_at(9, 0))
+
+        html = patient_client.get(detail_url(schedule.doctor)).content.decode()
+
+        assert f'href="/slots/{slot.pk}/book/"' in html
+        assert f'hx-get="/slots/{slot.pk}/book/"' in html
+        assert 'hx-target="#booking-dialog"' in html
+
+    def test_page_has_the_booking_dialog_and_its_script(self, patient_client, schedule):
+        html = patient_client.get(detail_url(schedule.doctor)).content.decode()
+
+        assert '<dialog id="booking-dialog"' in html
+        assert "web/js/booking-dialog.js" in html
+        assert "Elige una hora para reservarla." in html
+
     def test_week_without_slots_shows_empty_state(self, patient_client, schedule):
         response = patient_client.get(detail_url(schedule.doctor))
 

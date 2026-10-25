@@ -15,15 +15,19 @@ import pytest
 from django.core.exceptions import ValidationError
 from django.db import IntegrityError, connection
 from django.test import TransactionTestCase
-from django.utils import timezone
+from django.utils import timezone, translation
 
 from apps.appointments import services
 from apps.appointments.models import Appointment, TimeSlot
+from apps.users.models import Role
 from tests.factories import (
     AppointmentFactory,
+    DoctorFactory,
     PatientFactory,
     ScheduleFactory,
+    SpecialtyFactory,
     TimeSlotFactory,
+    UserFactory,
 )
 
 
@@ -34,6 +38,28 @@ from tests.factories import (
 
 class TestValidateAppointmentBooking:
     """Validates business rules before creating an appointment."""
+
+    @pytest.fixture(autouse=True)
+    def in_english(self):
+        """The messages are translatable (Paso 27); these tests read them in English."""
+        with translation.override("en"):
+            yield
+
+    @pytest.mark.parametrize(
+        ("status", "message"),
+        [
+            (TimeSlot.Status.RESERVED, "Esta hora ya no está disponible."),
+            (TimeSlot.Status.BLOCKED, "Esta hora ya no está disponible."),
+        ],
+    )
+    def test_messages_follow_the_active_language(self, db, status, message):
+        """Spanish on the web; the API re-activates English for /api/."""
+        slot = TimeSlotFactory(status=status)
+
+        with translation.override("es"):
+            with pytest.raises(ValidationError) as exc_info:
+                services.validate_appointment_booking(PatientFactory(), slot)
+            assert exc_info.value.messages == [message]
 
     def test_available_slot_with_no_conflicts_passes(self, db):
         """Valid booking: slot is available and patient has no overlap."""
@@ -146,6 +172,32 @@ class TestValidateAppointmentBooking:
 # ---------------------------------------------------------------------------
 # confirm_appointment
 # ---------------------------------------------------------------------------
+
+
+@pytest.mark.django_db
+class TestListTimeSlots:
+    """The slots a booking page can look up by id (Paso 27)."""
+
+    def test_skips_slots_of_doctors_whose_account_is_inactive(self):
+        active = TimeSlotFactory()
+        inactive_doctor = DoctorFactory(
+            user=UserFactory(role=Role.DOCTOR, is_active=False)
+        )
+        TimeSlotFactory(schedule=ScheduleFactory(doctor=inactive_doctor))
+
+        assert active in services.list_time_slots()
+        assert not services.list_time_slots().filter(schedule__doctor=inactive_doctor)
+
+    def test_loads_doctor_user_and_specialties_in_two_queries(
+        self, django_assert_num_queries
+    ):
+        slot = TimeSlotFactory()
+        slot.schedule.doctor.specialties.add(SpecialtyFactory(slug="cardiology"))
+
+        with django_assert_num_queries(2):
+            loaded = services.list_time_slots().get(pk=slot.pk)
+            assert loaded.schedule.doctor.user.email
+            assert len(loaded.schedule.doctor.specialties.all()) == 1
 
 
 class TestConfirmAppointment:
