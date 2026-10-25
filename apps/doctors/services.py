@@ -3,10 +3,13 @@
 import datetime
 from dataclasses import dataclass
 
+from django.db import transaction
 from django.utils import timezone
 
 from apps.appointments.models import TimeSlot
-from apps.doctors.models import Doctor, Specialty
+from apps.doctors.demo import DEMO_DOCTORS, DemoDoctor
+from apps.doctors.models import Doctor, Schedule, Specialty
+from apps.users.models import Role, User
 
 # Weeks of availability a patient can browse on the web, counting the current one
 BOOKING_WEEKS_AHEAD = 4
@@ -128,3 +131,50 @@ def get_available_slots_week(doctor, week: int = 0) -> SlotWeek:
     for slot in slots:
         days.setdefault(timezone.localdate(slot.start_datetime), []).append(slot)
     return SlotWeek(index=week, start=start, days=list(days.items()))
+
+
+@transaction.atomic
+def seed_demo_doctors() -> list[Doctor]:
+    """Create the demo doctors (apps.doctors.demo) that do not exist yet.
+
+    A demo doctor already exists when its email (in any case) or its
+    license number is taken. Existing rows are never changed, so every run
+    leaves the same state and edits made in the admin stay. Returns only
+    the doctors this call created.
+    """
+    created = []
+    for demo in DEMO_DOCTORS:
+        taken = (
+            User.objects.filter(email__iexact=demo.email).exists()
+            or Doctor.objects.filter(license_number=demo.license_number).exists()
+        )
+        if not taken:
+            created.append(create_demo_doctor(demo))
+    return created
+
+
+def create_demo_doctor(demo: DemoDoctor) -> Doctor:
+    """One demo doctor with its specialties and weekly schedules.
+
+    No password: create_user() stores an unusable one, so demo doctors
+    cannot log in. Each new Schedule fires the signal that generates its
+    first week of slots.
+    """
+    user = User.objects.create_user(
+        email=demo.email,
+        first_name=demo.first_name,
+        last_name=demo.last_name,
+        role=Role.DOCTOR,
+    )
+    doctor = Doctor.objects.create(
+        user=user,
+        license_number=demo.license_number,
+        bio=demo.bio,
+        consultation_duration=demo.consultation_duration,
+    )
+    doctor.specialties.set(Specialty.objects.filter(slug__in=demo.specialty_slugs))
+    for day, start, end in demo.hours:
+        Schedule.objects.create(
+            doctor=doctor, day_of_week=day, start_time=start, end_time=end
+        )
+    return doctor
