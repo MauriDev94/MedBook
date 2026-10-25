@@ -40,20 +40,10 @@ class AppointmentViewSet(viewsets.ModelViewSet):
     filterset_class = AppointmentFilter
 
     def get_queryset(self):
-        """Filter appointments by role — patients see only theirs, doctors see theirs."""
+        """Patients see theirs, doctors theirs, admins all (shared with the web)."""
         if getattr(self, "swagger_fake_view", False):
             return Appointment.objects.none()
-        user = self.request.user
-        qs = Appointment.objects.select_related(
-            "patient__user",
-            "doctor__user",
-            "slot__schedule",
-        )
-        if user.role == Role.PATIENT:
-            return qs.filter(patient__user=user)
-        if user.role == Role.DOCTOR:
-            return qs.filter(doctor__user=user)
-        return qs
+        return services.appointments_visible_to(self.request.user)
 
     def get_serializer_class(self):
         if self.action == "create":

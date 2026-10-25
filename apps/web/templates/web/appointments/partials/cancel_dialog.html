@@ -1,0 +1,32 @@
+{% load i18n %}
+{# Content of <dialog id="cancel-dialog"> in "My appointments", loaded by HTMX. #}
+{# web/js/dialog.js opens it, and closes it once the status behind it changes. #}
+<div class="flex items-start justify-between gap-4">
+  <h2 id="cancel-dialog-title" class="text-lg font-semibold text-slate-900">{% translate "Cancel this appointment?" %}</h2>
+  <form method="dialog">
+    <button type="submit" aria-label="{% translate 'Close' %}" class="-mt-2.5 -mr-2.5 flex size-11 items-center justify-center rounded-md text-slate-500 hover:bg-slate-100 hover:text-slate-900">
+      <svg class="size-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>
+    </button>
+  </form>
+</div>
+
+<div class="mt-4">
+  {% include "web/booking/partials/summary.html" with doctor=appointment.doctor slot=appointment.slot %}
+</div>
+
+{% if error %}
+  <p class="mt-5 rounded-md border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800" role="alert">{{ error }}</p>
+  <form method="dialog" class="mt-6 flex justify-end">
+    <button type="submit" class="min-h-11 rounded-md bg-teal-600 px-5 text-sm font-semibold text-white hover:bg-teal-700">{% translate "Close" %}</button>
+  </form>
+  {# Cancelled or closed elsewhere: show the current status behind the dialog #}
+  {% include "web/appointments/partials/appointment_status.html" with oob=True %}
+{% else %}
+  <p class="mt-4 text-sm text-slate-600">{% translate "The time will be free for other patients to book." %}</p>
+  <form method="post" action="{% url 'web:cancel_appointment' appointment.pk %}" hx-post="{% url 'web:cancel_appointment' appointment.pk %}" hx-target="#cancel-dialog" class="mt-6 flex flex-wrap justify-end gap-3">
+    {% csrf_token %}
+    <button type="submit" form="cancel-dialog-back" class="min-h-11 rounded-md border border-slate-300 bg-white px-4 text-sm font-semibold text-slate-700 hover:bg-slate-50">{% translate "Go back" %}</button>
+    <button type="submit" class="min-h-11 rounded-md bg-red-600 px-5 text-sm font-semibold text-white hover:bg-red-700">{% translate "Cancel appointment" %}</button>
+  </form>
+  <form id="cancel-dialog-back" method="dialog"></form>
+{% endif %}

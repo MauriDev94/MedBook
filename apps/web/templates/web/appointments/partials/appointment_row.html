@@ -1,0 +1,13 @@
+{% load i18n %}
+{# One appointment in "My appointments": when, with whom, and its status. #}
+<li class="flex flex-col gap-4 rounded-lg border border-slate-200 bg-white p-5 sm:flex-row sm:items-center sm:justify-between">
+  <div class="min-w-0">
+    <p class="font-semibold text-slate-900">
+      <a href="{% url 'web:appointment_detail' appointment.pk %}" class="hover:text-teal-700 hover:underline">{{ appointment.slot.start_datetime|date:"l"|capfirst }}, {{ appointment.slot.start_datetime|date:"MONTH_DAY_FORMAT" }}</a>
+    </p>
+    <p class="mt-1 text-sm text-slate-600">
+      {{ appointment.slot.start_datetime|time:"H:i" }} – {{ appointment.slot.end_datetime|time:"H:i" }} · {{ appointment.doctor }}{% for specialty in appointment.doctor.specialties.all %} · {{ specialty.display_name }}{% endfor %}
+    </p>
+  </div>
+  {% include "web/appointments/partials/appointment_status.html" %}
+</li>

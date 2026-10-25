@@ -1,0 +1,33 @@
+{% extends "web/base.html" %}
+{% load i18n static %}
+
+{% block title %}{% translate "Appointment details" %} · MedBook{% endblock %}
+
+{% block content %}
+  <section class="mx-auto max-w-5xl px-4 py-10">
+    <a href="{% url 'web:appointment_list' %}" class="text-sm font-semibold text-teal-700 hover:underline">← {% translate "Back to my appointments" %}</a>
+
+    <div class="max-w-xl">
+      <h1 class="mt-4 text-2xl font-bold tracking-tight text-slate-900">{% translate "Appointment details" %}</h1>
+
+      <div class="mt-6 space-y-3 rounded-lg border border-slate-200 bg-white p-5">
+        {% include "web/booking/partials/summary.html" with doctor=appointment.doctor slot=appointment.slot %}
+        <dl class="grid grid-cols-[6rem_minmax(0,1fr)] items-center gap-x-4 gap-y-3 text-sm">
+          <dt class="text-slate-500">{% translate "Status" %}</dt>
+          <dd>{% include "web/appointments/partials/appointment_status.html" %}</dd>
+          <dt class="text-slate-500">{% translate "Reason" %}</dt>
+          <dd class="text-slate-900">{{ appointment.reason|default:_("No reason given.") }}</dd>
+          <dt class="text-slate-500">{% translate "Booked on" %}</dt>
+          <dd class="text-slate-900">{{ appointment.created_at|date:"DATE_FORMAT" }}</dd>
+        </dl>
+      </div>
+    </div>
+  </section>
+
+  {# The cancel link fills it with the confirmation (HTMX) and dialog.js opens it #}
+  <dialog id="cancel-dialog" aria-labelledby="cancel-dialog-title" class="m-auto w-[calc(100%-2rem)] max-w-lg rounded-xl bg-white p-6 text-slate-800 shadow-xl backdrop:bg-slate-900/50"></dialog>
+{% endblock %}
+
+{% block scripts %}
+  <script src="{% static 'web/js/dialog.js' %}" defer></script>
+{% endblock %}

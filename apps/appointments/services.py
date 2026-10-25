@@ -22,6 +22,7 @@ from apps.appointments.models import (
     TimeSlot,
 )
 from apps.core.exceptions import SlotConflict
+from apps.core.roles import is_admin, is_doctor, is_patient
 
 audit_logger = logging.getLogger("medbook.audit")
 
@@ -142,6 +143,49 @@ def list_time_slots():
         TimeSlot.objects.filter(schedule__doctor__user__is_active=True)
         .select_related("schedule__doctor__user")
         .prefetch_related("schedule__doctor__specialties")
+    )
+
+
+def appointments_visible_to(user):
+    """Return the appointments `user` may see: the one rule for API and web.
+
+    Patients see theirs, doctors the ones assigned to them, admins all of
+    them, anyone else none. Patient, doctor and slot come in the same query.
+    """
+    appointments = Appointment.objects.select_related(
+        "patient__user",
+        "doctor__user",
+        "slot__schedule",
+    )
+    if is_patient(user):
+        return appointments.filter(patient__user=user)
+    if is_doctor(user):
+        return appointments.filter(doctor__user=user)
+    if is_admin(user):
+        return appointments
+    return appointments.none()
+
+
+def list_upcoming_appointments(user):
+    """Visible appointments that have not started yet, soonest first.
+
+    Any status: a cancelled appointment stays in the list with its badge.
+    """
+    return (
+        appointments_visible_to(user)
+        .filter(slot__start_datetime__gt=timezone.now())
+        .prefetch_related("doctor__specialties")
+        .order_by("slot__start_datetime")
+    )
+
+
+def list_past_appointments(user):
+    """Visible appointments that already started, latest first."""
+    return (
+        appointments_visible_to(user)
+        .filter(slot__start_datetime__lte=timezone.now())
+        .prefetch_related("doctor__specialties")
+        .order_by("-slot__start_datetime")
     )
 
 

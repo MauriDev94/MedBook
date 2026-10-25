@@ -1,7 +1,9 @@
+import datetime
+
 import pytest
 from django.contrib.auth import get_user_model
 from django.db import IntegrityError, transaction
-from django.utils import translation
+from django.utils import timezone, translation
 
 from apps.appointments.models import Appointment, TimeSlot
 from apps.doctors.models import Specialty
@@ -212,6 +214,19 @@ class TestTimeSlotModel:
                 status=TimeSlot.Status.AVAILABLE,
             )
 
+    @pytest.mark.parametrize(
+        ("minutes", "started"),
+        [(-1, True), (1, False)],
+        ids=["a-minute-ago", "in-a-minute"],
+    )
+    def test_has_started(self, db, minutes, started):
+        """A slot has started once its start time is not in the future."""
+        slot = TimeSlotFactory(
+            start_datetime=timezone.now() + datetime.timedelta(minutes=minutes)
+        )
+
+        assert slot.has_started is started
+
 
 class TestAppointmentModel:
     """Test Appointment model and state machine."""
@@ -248,6 +263,26 @@ class TestAppointmentModel:
         new = AppointmentFactory(slot=old.slot, status=Appointment.Status.PENDING)
 
         assert set(old.slot.appointments.all()) == {old, another_old, new}
+
+    @pytest.mark.parametrize(
+        ("status", "spanish", "english"),
+        [
+            (Appointment.Status.PENDING, "Pendiente", "Pending"),
+            (Appointment.Status.CONFIRMED, "Confirmada", "Confirmed"),
+            (Appointment.Status.CANCELLED, "Cancelada", "Cancelled"),
+            (Appointment.Status.COMPLETED, "Completada", "Completed"),
+            (Appointment.Status.NO_SHOW, "No asistió", "No Show"),
+        ],
+    )
+    def test_status_label_follows_the_active_language(
+        self, db, status, spanish, english
+    ):
+        """The web shows the status translated; the stored value never changes."""
+        appt = AppointmentFactory(status=status)
+
+        assert appt.get_status_display() == spanish
+        with translation.override("en"):
+            assert appt.get_status_display() == english
 
     def test_appointment_str(self, db):
         """Test __str__ includes patient and doctor."""

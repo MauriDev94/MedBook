@@ -1,5 +1,7 @@
 from django.conf import settings
 from django.db import models
+from django.utils import timezone
+from django.utils.translation import gettext_lazy as _
 
 from apps.core.models import BaseModel
 
@@ -46,6 +48,10 @@ class TimeSlot(BaseModel):
     def __str__(self) -> str:
         return f"{self.schedule.doctor} | {self.start_datetime:%Y-%m-%d %H:%M} [{self.status}]"
 
+    @property
+    def has_started(self) -> bool:
+        return self.start_datetime <= timezone.now()
+
 
 ONE_ACTIVE_APPOINTMENT_PER_SLOT = "one_active_appointment_per_slot"
 
@@ -65,12 +71,13 @@ class Appointment(BaseModel):
     methods. Invalid transitions raise ValueError.
     """
 
+    # Lazy labels: the web shows them translated; the API sends the values
     class Status(models.TextChoices):
-        PENDING = "pending", "Pending"
-        CONFIRMED = "confirmed", "Confirmed"
-        CANCELLED = "cancelled", "Cancelled"
-        COMPLETED = "completed", "Completed"
-        NO_SHOW = "no_show", "No Show"
+        PENDING = "pending", _("Pending")
+        CONFIRMED = "confirmed", _("Confirmed")
+        CANCELLED = "cancelled", _("Cancelled")
+        COMPLETED = "completed", _("Completed")
+        NO_SHOW = "no_show", _("No Show")
 
     patient = models.ForeignKey(
         "patients.Patient",

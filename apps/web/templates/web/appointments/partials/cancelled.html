@@ -1,0 +1,4 @@
+{# HTMX answer to a cancellation: the new status (HX-Retarget points at it) #}
+{# and the message, swapped into the messages region out of band.          #}
+{% include "web/appointments/partials/appointment_status.html" %}
+{% include "web/includes/messages.html" with oob=True %}

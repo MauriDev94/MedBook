@@ -1,10 +1,13 @@
-{# django.contrib.messages, one box per message coloured by level. #}
-{% if messages %}
-  <div class="mx-auto max-w-5xl space-y-2 px-4 pt-4" role="status">
-    {% for message in messages %}
-      <div class="rounded-md border px-4 py-3 text-sm {% if message.level_tag == 'error' %}border-red-200 bg-red-50 text-red-800{% elif message.level_tag == 'warning' %}border-amber-200 bg-amber-50 text-amber-800{% elif message.level_tag == 'success' %}border-emerald-200 bg-emerald-50 text-emerald-800{% else %}border-sky-200 bg-sky-50 text-sky-800{% endif %}">
-        {{ message }}
-      </div>
-    {% endfor %}
-  </div>
-{% endif %}
+{# django.contrib.messages, one box per message coloured by level. The region is #}
+{# always on the page, so an HTMX response can swap a message into it (oob=True). #}
+<div id="messages"{% if oob %} hx-swap-oob="true"{% endif %} role="status">
+  {% if messages %}
+    <div class="mx-auto max-w-5xl space-y-2 px-4 pt-4">
+      {% for message in messages %}
+        <div class="rounded-md border px-4 py-3 text-sm {% if message.level_tag == 'error' %}border-red-200 bg-red-50 text-red-800{% elif message.level_tag == 'warning' %}border-amber-200 bg-amber-50 text-amber-800{% elif message.level_tag == 'success' %}border-emerald-200 bg-emerald-50 text-emerald-800{% else %}border-sky-200 bg-sky-50 text-sky-800{% endif %}">
+          {{ message }}
+        </div>
+      {% endfor %}
+    </div>
+  {% endif %}
+</div>

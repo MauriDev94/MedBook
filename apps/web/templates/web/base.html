@@ -17,6 +17,7 @@
         {% if user.is_authenticated %}
           {% if user_is_patient %}
             <a href="{% url 'web:doctor_list' %}" class="text-slate-600 hover:text-teal-700">{% translate "Doctors" %}</a>
+            <a href="{% url 'web:appointment_list' %}" class="text-slate-600 hover:text-teal-700">{% translate "My appointments" %}</a>
           {% endif %}
           {% if user_is_doctor or user_is_admin %}
             <a href="{% url 'web:panel' %}" class="text-slate-600 hover:text-teal-700">{% translate "Panel" %}</a>

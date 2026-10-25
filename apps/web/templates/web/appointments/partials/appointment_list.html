@@ -1,0 +1,43 @@
+{% load i18n %}
+{# The fragment the tabs and the pagination links swap (HTMX). #}
+<div id="appointment-list" class="mt-6">
+  <nav class="flex gap-6 border-b border-slate-200 text-sm font-semibold" aria-label="{% translate 'Appointments' %}"
+       hx-boost="true" hx-target="#appointment-list" hx-swap="outerHTML">
+    <a href="{% url 'web:appointment_list' %}" class="-mb-px border-b-2 px-1 py-3 {% if tab == 'upcoming' %}border-teal-600 text-teal-700{% else %}border-transparent text-slate-500 hover:text-slate-800{% endif %}"{% if tab == 'upcoming' %} aria-current="page"{% endif %}>{% translate "Upcoming" %}</a>
+    <a href="{% url 'web:appointment_list' %}?tab=past" class="-mb-px border-b-2 px-1 py-3 {% if tab == 'past' %}border-teal-600 text-teal-700{% else %}border-transparent text-slate-500 hover:text-slate-800{% endif %}"{% if tab == 'past' %} aria-current="page"{% endif %}>{% translate "Past" %}</a>
+  </nav>
+
+  {% if appointments %}
+    <ul class="mt-6 space-y-3">
+      {% for appointment in appointments %}
+        {% include "web/appointments/partials/appointment_row.html" %}
+      {% endfor %}
+    </ul>
+
+    {% if is_paginated %}
+      <nav class="mt-6 flex items-center justify-between gap-4 text-sm" aria-label="{% translate 'Pagination' %}"
+           hx-boost="true" hx-target="#appointment-list" hx-swap="outerHTML">
+        <div>
+          {% if page_obj.has_previous %}
+            <a href="?{% if tab == 'past' %}tab=past&amp;{% endif %}page={{ page_obj.previous_page_number }}" class="font-semibold text-teal-700 hover:underline">{% translate "Previous" %}</a>
+          {% endif %}
+        </div>
+        <p class="text-slate-500">
+          {% blocktranslate with number=page_obj.number total=page_obj.paginator.num_pages %}Page {{ number }} of {{ total }}{% endblocktranslate %}
+        </p>
+        <div>
+          {% if page_obj.has_next %}
+            <a href="?{% if tab == 'past' %}tab=past&amp;{% endif %}page={{ page_obj.next_page_number }}" class="font-semibold text-teal-700 hover:underline">{% translate "Next" %}</a>
+          {% endif %}
+        </div>
+      </nav>
+    {% endif %}
+  {% elif tab == "past" %}
+    <p class="mt-6 rounded-lg border border-slate-200 bg-white p-5 text-sm text-slate-600">{% translate "You have no past appointments yet." %}</p>
+  {% else %}
+    <div class="mt-6 rounded-lg border border-slate-200 bg-white p-5">
+      <p class="text-sm text-slate-600">{% translate "You have no upcoming appointments." %}</p>
+      <a href="{% url 'web:doctor_list' %}" class="mt-4 inline-flex min-h-11 items-center rounded-md bg-teal-600 px-5 text-sm font-semibold text-white hover:bg-teal-700">{% translate "Find a doctor" %}</a>
+    </div>
+  {% endif %}
+</div>
