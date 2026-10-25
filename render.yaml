@@ -35,11 +35,15 @@ services:
     # Slots se (re)generan en cada arranque: el plan free no tiene cron jobs,
     # pero la instancia duerme tras 15 min sin tráfico y arranca en el
     # siguiente request y en cada deploy. generate_slots es idempotente.
-    # Va en un subshell: si falla solo deja un WARNING y gunicorn arranca
-    # igual (migrate y ensure_superuser sí siguen bloqueando el arranque).
+    # Antes, seed_demo crea los doctores demo que falten (MEDBOOK_DEMO_DATA),
+    # también idempotente. Los dos van en un subshell: si fallan solo dejan
+    # un WARNING y gunicorn arranca igual (migrate y ensure_superuser sí
+    # siguen bloqueando el arranque).
     startCommand: >-
       python manage.py migrate --noinput &&
       python manage.py ensure_superuser &&
+      (python manage.py seed_demo ||
+      echo "WARNING: seed_demo failed, starting without demo data") &&
       (python manage.py generate_slots --days=28 ||
       echo "WARNING: generate_slots failed, starting without new slots") &&
       gunicorn config.wsgi:application
@@ -62,3 +66,8 @@ services:
       # Emails van a los logs de Render — sin SMTP real
       - key: EMAIL_BACKEND
         value: django.core.mail.backends.console.EmailBackend
+
+      # Producción es la demo del portfolio: seed_demo crea los doctores demo
+      # (apps/doctors/demo.py, sin contraseña utilizable). No es secreta.
+      - key: MEDBOOK_DEMO_DATA
+        value: "true"

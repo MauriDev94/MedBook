@@ -25,6 +25,10 @@ DJANGO_ADMIN_URL = config("DJANGO_ADMIN_URL", default="admin/")
 if not DJANGO_ADMIN_URL.endswith("/"):
     DJANGO_ADMIN_URL += "/"
 
+# True = `seed_demo` creates the demo doctors (apps/doctors/demo.py). Only
+# demo environments set it; render.yaml does for production.
+DEMO_DATA = config("MEDBOOK_DEMO_DATA", default=False, cast=bool)
+
 # ---------------------------------------------------------------------------
 # Application definition
 # ---------------------------------------------------------------------------

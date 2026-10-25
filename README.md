@@ -286,6 +286,20 @@ Open **http://localhost:8000/** for the web UI and **http://localhost:8000/api/d
   python manage.py compilemessages -l es --ignore=.venv
   ```
 
+### Demo data
+
+`python manage.py seed_demo` creates six fictional doctors that cover all five specialties, with Monday-to-Friday hours in Chilean time. It only runs when `MEDBOOK_DEMO_DATA=true` and otherwise skips with a warning. To fill a local database:
+
+```bash
+MEDBOOK_DEMO_DATA=true python manage.py seed_demo   # or set it in .env
+python manage.py generate_slots --days=28           # the four weeks the web shows
+```
+
+- The data lives in [`apps/doctors/demo.py`](./apps/doctors/demo.py): emails on the reserved `medbook.example` domain and `DEMO-` license numbers.
+- Demo doctors have no usable password, so they cannot log in (the doctor panel comes in a later sprint). No credential is created or committed.
+- It creates no patients: sign up on the web, which is the flow the demo shows.
+- It is idempotent. A demo doctor counts as existing when its email (in any case) or its license number is taken, and existing rows are never changed, so edits made in the admin stay.
+
 ### Alternative: one-command dev stack with `docker compose up`
 
 `docker-compose.yml` now unifies **app + DB** in a single stack — no manual
@@ -331,6 +345,8 @@ The Render free plan has no cron jobs, so `startCommand` runs `python manage.py 
 - The command is idempotent: it only inserts missing slots and reports `0 new slots` on a rerun.
 - It runs in a subshell. If it fails, a `WARNING` line is logged and gunicorn starts anyway, while a failing `migrate` or `ensure_superuser` still blocks the boot.
 - On a paid plan, replace it with a Render cron job (`type: cron`, daily `python manage.py generate_slots --days=28`; minimum USD 1/month) and remove it from `startCommand`.
+
+Production doubles as the portfolio demo: `render.yaml` sets `MEDBOOK_DEMO_DATA=true`, so `startCommand` runs `seed_demo` right before `generate_slots`, in its own subshell. The first boot creates the [demo doctors](#demo-data) and every later one reports `Done. 0 demo doctor(s) created.`
 
 A multi-stage [`Dockerfile`](./Dockerfile) is also included as a **portable alternative** to run the same app anywhere Docker runs (it does not replace the Render deploy):
 
@@ -413,6 +429,9 @@ ruff check . && ruff format --check .
 
 # Generate slots for next 30 days
 python manage.py generate_slots --days=30
+
+# Create the demo doctors (needs MEDBOOK_DEMO_DATA=true)
+python manage.py seed_demo
 
 # Validate OpenAPI schema
 PYTHONIOENCODING=utf-8 python manage.py spectacular --validate --fail-on-warn
