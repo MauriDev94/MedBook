@@ -9,7 +9,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: MedBook\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2026-10-23 19:22-0300\n"
+"POT-Creation-Date: 2026-10-25 00:14-0300\n"
 "PO-Revision-Date: 2026-10-23 02:20-0300\n"
 "Last-Translator: \n"
 "Language-Team: Spanish\n"
@@ -19,6 +19,15 @@ msgstr ""
 "Content-Transfer-Encoding: 8bit\n"
 "Plural-Forms: nplurals=3; plural=n == 1 ? 0 : n != 0 && n % 1000000 == 0 ? "
 "1 : 2;\n"
+
+msgid "This time slot is no longer available."
+msgstr "Esta hora ya no está disponible."
+
+msgid "This time slot has already started."
+msgstr "Esta hora ya empezó."
+
+msgid "You already have an appointment at this time."
+msgstr "Ya tienes una cita que se cruza con esta hora."
 
 msgid "Cardiology"
 msgstr "Cardiología"
@@ -58,6 +67,12 @@ msgstr "Confirmar contraseña"
 
 msgid "The passwords do not match."
 msgstr "Las contraseñas no coinciden."
+
+msgid "Reason for the visit (optional)"
+msgstr "Motivo de la consulta (opcional)"
+
+msgid "For example: a yearly check-up or a symptom you want to discuss."
+msgstr "Por ejemplo: un control anual o un síntoma que quieras comentar."
 
 msgid "Log in"
 msgstr "Ingresar"
@@ -99,6 +114,37 @@ msgstr ""
 "MedBook es un proyecto de portafolio: una app de reserva de horas médicas "
 "hecha con Django."
 
+msgid "Confirm your appointment"
+msgstr "Confirma tu hora"
+
+#, python-format
+msgid "Back to %(name)s"
+msgstr "Volver a %(name)s"
+
+msgid "Confirm booking"
+msgstr "Confirmar reserva"
+
+msgid "Cancel"
+msgstr "Cancelar"
+
+msgid "Close"
+msgstr "Cerrar"
+
+msgid "Choose another time"
+msgstr "Elegir otra hora"
+
+msgid "Doctor"
+msgstr "Médico"
+
+msgid "Date"
+msgstr "Fecha"
+
+msgid "Time"
+msgstr "Hora"
+
+msgid "Chilean time"
+msgstr "hora de Chile"
+
 msgid "Back to doctors"
 msgstr "Volver a los médicos"
 
@@ -112,8 +158,8 @@ msgstr "Horas disponibles"
 msgid "Times are shown in Chilean time."
 msgstr "Las horas se muestran en hora de Chile."
 
-msgid "Online booking for patients is coming soon."
-msgstr "La reserva en línea para pacientes estará disponible pronto."
+msgid "Choose a time to book it."
+msgstr "Elige una hora para reservarla."
 
 msgid "Find a doctor"
 msgstr "Busca un médico"
@@ -240,3 +286,14 @@ msgstr "Cerraste sesión."
 
 msgid "Welcome to MedBook! Your account is ready."
 msgstr "¡Bienvenido a MedBook! Tu cuenta está lista."
+
+msgid "Another patient just booked this time."
+msgstr "Otro paciente acaba de reservar esta hora."
+
+#, python-format
+msgid ""
+"Your appointment on %(weekday)s, %(date)s at %(time)s is booked. We sent you "
+"an email with the details."
+msgstr ""
+"Reservaste tu hora del %(weekday)s %(date)s a las %(time)s. Te enviamos un "
+"correo con el detalle."

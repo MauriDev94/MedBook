@@ -1,6 +1,7 @@
 {% load i18n %}
 {# One week of available slots; the week links swap only this fragment (HTMX). #}
-<div id="week-slots" class="mt-4 rounded-lg border border-slate-200 bg-white p-5">
+{# Each slot opens the booking dialog. With oob, the booking dialog response also replaces it. #}
+<div id="week-slots"{% if oob %} hx-swap-oob="true"{% endif %} class="mt-4 rounded-lg border border-slate-200 bg-white p-5">
   <div class="flex flex-wrap items-center justify-between gap-3">
     <p class="font-medium text-slate-900">{{ week.start|date:"MONTH_DAY_FORMAT" }} – {{ week.end|date:"MONTH_DAY_FORMAT" }}</p>
     <nav class="flex gap-4 text-sm" aria-label="{% translate 'Weeks' %}"
@@ -19,8 +20,11 @@
       <h3 class="text-sm font-semibold text-slate-700">{{ day|date:"l"|capfirst }}, {{ day|date:"MONTH_DAY_FORMAT" }}</h3>
       <ul class="mt-2 flex flex-wrap gap-2">
         {% for slot in slots %}
-          <li class="rounded-md border border-teal-200 bg-teal-50 px-3 py-1.5 text-sm font-medium text-teal-800">
-            <time datetime="{{ slot.start_datetime|date:'c' }}">{{ slot.start_datetime|time:"H:i" }}</time>
+          <li>
+            <a href="{% url 'web:book_slot' slot.pk %}" hx-get="{% url 'web:book_slot' slot.pk %}" hx-target="#booking-dialog"
+               class="flex min-h-11 items-center rounded-md border border-teal-200 bg-teal-50 px-4 text-sm font-medium text-teal-800 hover:bg-teal-100">
+              <time datetime="{{ slot.start_datetime|date:'c' }}">{{ slot.start_datetime|time:"H:i" }}</time>
+            </a>
           </li>
         {% endfor %}
       </ul>

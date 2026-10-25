@@ -1,6 +1,7 @@
 from django.urls import path
 
 from apps.web.views import (
+    BookSlotView,
     DoctorDetailView,
     DoctorListView,
     HomeView,
@@ -20,4 +21,5 @@ urlpatterns = [
     path("panel/", PanelView.as_view(), name="panel"),
     path("doctors/", DoctorListView.as_view(), name="doctor_list"),
     path("doctors/<uuid:pk>/", DoctorDetailView.as_view(), name="doctor_detail"),
+    path("slots/<uuid:pk>/book/", BookSlotView.as_view(), name="book_slot"),
 ]
