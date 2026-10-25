@@ -12,10 +12,14 @@ import datetime
 import logging
 
 from django.core.exceptions import ValidationError
-from django.db import transaction
+from django.db import IntegrityError, transaction
 from django.utils import timezone
 
-from apps.appointments.models import Appointment, TimeSlot
+from apps.appointments.models import (
+    ONE_ACTIVE_APPOINTMENT_PER_SLOT,
+    Appointment,
+    TimeSlot,
+)
 from apps.core.exceptions import SlotConflict
 
 audit_logger = logging.getLogger("medbook.audit")
@@ -35,6 +39,12 @@ def _log_transition(action: str, appointment: Appointment, actor) -> None:
         actor.id,
         actor.email,
     )
+
+
+def _violated_constraint(exc: IntegrityError) -> str | None:
+    """Name of the constraint or unique index PostgreSQL reported, if any."""
+    diag = getattr(exc.__cause__, "diag", None)
+    return getattr(diag, "constraint_name", None)
 
 
 @transaction.atomic
@@ -58,7 +68,9 @@ def create_appointment(patient, slot: TimeSlot, reason: str = "") -> Appointment
         The created Appointment instance.
 
     Raises:
-        SlotConflict: if the slot was taken between validation and creation.
+        SlotConflict: if the slot was taken between validation and creation,
+            or another active appointment still holds it (the
+            one-active-appointment-per-slot constraint).
     """
     updated = TimeSlot.objects.filter(
         id=slot.id, status=TimeSlot.Status.AVAILABLE
@@ -68,12 +80,18 @@ def create_appointment(patient, slot: TimeSlot, reason: str = "") -> Appointment
         raise SlotConflict()
 
     slot.refresh_from_db()
-    appointment = Appointment.objects.create(
-        patient=patient,
-        doctor=slot.schedule.doctor,
-        slot=slot,
-        reason=reason,
-    )
+    try:
+        appointment = Appointment.objects.create(
+            patient=patient,
+            doctor=slot.schedule.doctor,
+            slot=slot,
+            reason=reason,
+        )
+    except IntegrityError as exc:
+        # The exception leaves this atomic block, so the slot UPDATE rolls back
+        if _violated_constraint(exc) != ONE_ACTIVE_APPOINTMENT_PER_SLOT:
+            raise
+        raise SlotConflict() from exc
 
     from apps.notifications.services import send_appointment_created
 
@@ -85,13 +103,17 @@ def validate_appointment_booking(patient, slot: TimeSlot) -> None:
     """Validate business rules before creating an appointment.
 
     Raises:
-        ValidationError: if the slot is unavailable or the patient
-                         already has a conflicting active appointment.
+        ValidationError: if the slot is unavailable or already started, or
+                         the patient already has a conflicting active
+                         appointment.
 
     Called by: AppointmentCreateSerializer.validate()
     """
     if slot.status != TimeSlot.Status.AVAILABLE:
         raise ValidationError("This time slot is no longer available.")
+
+    if slot.start_datetime <= timezone.now():
+        raise ValidationError("This time slot has already started.")
 
     has_conflict = Appointment.objects.filter(
         patient=patient,
