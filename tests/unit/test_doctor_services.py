@@ -126,6 +126,27 @@ class TestGetAvailableSlots:
 
 
 # ---------------------------------------------------------------------------
+# week_of
+# ---------------------------------------------------------------------------
+class TestWeekOf:
+    """The booking week that holds a date (Paso 27: back to the slot's week)."""
+
+    @pytest.mark.parametrize(
+        ("days", "expected"),
+        [
+            pytest.param(0, 0, id="today"),
+            pytest.param(6, 0, id="last-day-of-current-week"),
+            pytest.param(7, 1, id="first-day-of-next-week"),
+            pytest.param(20, 2, id="third-week"),
+            pytest.param(60, services.BOOKING_WEEKS_AHEAD - 1, id="past-horizon"),
+            pytest.param(-3, 0, id="past-date"),
+        ],
+    )
+    def test_counts_weeks_from_today(self, frozen_now, days, expected):
+        assert services.week_of(days_after_today(days)) == expected
+
+
+# ---------------------------------------------------------------------------
 # get_available_slots_week
 # ---------------------------------------------------------------------------
 @pytest.mark.django_db

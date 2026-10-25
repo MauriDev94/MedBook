@@ -5,11 +5,14 @@ contract: they must not change with Accept-Language or the web's language
 cookie.
 """
 
+import datetime
+
 import pytest
 from django.conf import settings
 from django.core.cache import cache
+from django.utils import timezone
 
-from tests.factories import random_password
+from tests.factories import PatientFactory, TimeSlotFactory, random_password
 
 ME_URL = "/api/v1/users/me/"
 REGISTER_URL = "/api/v1/users/register/"
@@ -59,6 +62,24 @@ class TestApiStaysInEnglish:
         assert response.json()["field_errors"]["email"] == [
             "A user with this email already exists."
         ]
+
+    def test_booking_error_ignores_spanish_accept_language(self, api_client):
+        """Booking messages are translatable for the web (Paso 27), never for the API."""
+        patient = PatientFactory()
+        started = TimeSlotFactory(
+            start_datetime=timezone.now() - datetime.timedelta(minutes=5)
+        )
+        api_client.force_authenticate(user=patient.user)
+
+        response = api_client.post(
+            "/api/v1/appointments/",
+            {"slot": str(started.id)},
+            format="json",
+            headers={"Accept-Language": "es"},
+        )
+
+        assert response.status_code == 400
+        assert response.json()["detail"] == "This time slot has already started."
 
     def test_api_ignores_web_language_cookie(self, api_client):
         api_client.cookies[settings.LANGUAGE_COOKIE_NAME] = "es"

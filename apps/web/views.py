@@ -4,22 +4,34 @@ from django.contrib import messages
 from django.contrib.auth import login
 from django.contrib.auth.views import LoginView, LogoutView
 from django.core.exceptions import ValidationError
-from django.shortcuts import redirect
+from django.shortcuts import redirect, render
 from django.urls import reverse
+from django.utils import formats, timezone
+from django.utils.cache import patch_vary_headers
 from django.utils.decorators import method_decorator
 from django.utils.translation import gettext as _
+from django.utils.translation import gettext_lazy
 from django.views.decorators.debug import sensitive_post_parameters
 from django.views.generic import DetailView, FormView, ListView, TemplateView
+from django.views.generic.detail import SingleObjectMixin
+from django_htmx.http import HttpResponseClientRedirect
 
+from apps.appointments.services import (
+    create_appointment,
+    list_time_slots,
+    validate_appointment_booking,
+)
+from apps.core.exceptions import SlotConflict
 from apps.core.roles import is_admin, is_doctor
 from apps.core.throttling import LoginRateThrottle, RegisterRateThrottle
 from apps.doctors.services import (
     get_available_slots_week,
     list_doctors,
     list_specialties,
+    week_of,
 )
 from apps.users.services import register_patient
-from apps.web.forms import LoginForm, SignupForm
+from apps.web.forms import BookingForm, LoginForm, SignupForm
 from apps.web.mixins import (
     HtmxPartialMixin,
     PatientRequiredMixin,
@@ -144,3 +156,111 @@ class DoctorDetailView(PatientRequiredMixin, HtmxPartialMixin, DetailView):
             return int(self.request.GET.get("week", 0))
         except ValueError:
             return 0
+
+
+# The API answers SlotConflict with its own detail; the web says what happened
+SLOT_TAKEN_MESSAGE = gettext_lazy("Another patient just booked this time.")
+
+
+def booked_message(slot) -> str:
+    """The success message, with the day and time in Chilean time."""
+    start = timezone.localtime(slot.start_datetime)
+    return _(
+        "Your appointment on %(weekday)s, %(date)s at %(time)s is booked. "
+        "We sent you an email with the details."
+    ) % {
+        "weekday": formats.date_format(start, "l"),
+        "date": formats.date_format(start, "MONTH_DAY_FORMAT"),
+        "time": formats.time_format(start, "H:i"),
+    }
+
+
+class BookSlotView(PatientRequiredMixin, HtmxPartialMixin, SingleObjectMixin, FormView):
+    """GET/POST /slots/<id>/book/ — confirm and book one slot.
+
+    A slot on the doctor's page loads this form into the booking dialog
+    (HTMX); any other request gets a full page, so booking also works
+    without JavaScript. Booking goes back to the doctor's page on the slot's
+    week. A slot that can no longer be booked sends the page back there with
+    the reason; the dialog shows it and refreshes the week behind it.
+    """
+
+    template_name = "web/booking/confirm.html"
+    partial_template_name = "web/booking/partials/dialog.html"
+    form_class = BookingForm
+    context_object_name = "slot"
+
+    def get_queryset(self):
+        return list_time_slots()
+
+    @property
+    def patient(self):
+        return self.request.user.patient_profile
+
+    @property
+    def doctor(self):
+        return self.object.schedule.doctor
+
+    @property
+    def slot_week(self) -> int:
+        return week_of(timezone.localdate(self.object.start_datetime))
+
+    def get(self, request, *args, **kwargs):
+        self.object = self.get_object()
+        try:
+            validate_appointment_booking(self.patient, self.object)
+        except ValidationError as exc:
+            return self.booking_failed(exc.messages[0])
+        return super().get(request, *args, **kwargs)
+
+    def post(self, request, *args, **kwargs):
+        self.object = self.get_object()
+        return super().post(request, *args, **kwargs)
+
+    def get_form_kwargs(self):
+        return {
+            **super().get_form_kwargs(),
+            "patient": self.patient,
+            "slot": self.object,
+        }
+
+    def get_context_data(self, **kwargs):
+        return super().get_context_data(doctor=self.doctor, **kwargs)
+
+    def form_valid(self, form):
+        try:
+            create_appointment(
+                patient=self.patient,
+                slot=self.object,
+                reason=form.cleaned_data["reason"],
+            )
+        except SlotConflict:
+            return self.booking_failed(SLOT_TAKEN_MESSAGE)
+        messages.success(self.request, booked_message(self.object))
+        return self.back_to_doctor()
+
+    def form_invalid(self, form):
+        # The only field is optional: an invalid form is a booking rule that failed
+        return self.booking_failed(form.non_field_errors()[0])
+
+    def booking_failed(self, message):
+        if self.request.htmx:
+            context = {
+                "slot": self.object,
+                "doctor": self.doctor,
+                "error": message,
+                "week": get_available_slots_week(self.doctor, self.slot_week),
+            }
+            response = render(self.request, self.partial_template_name, context)
+            patch_vary_headers(response, ("HX-Request",))
+            return response
+        messages.error(self.request, message)
+        return self.back_to_doctor()
+
+    def back_to_doctor(self):
+        url = reverse("web:doctor_detail", args=[self.doctor.pk])
+        url = f"{url}?week={self.slot_week}"
+        if self.request.htmx:
+            # A full page load: the message shows and the dialog goes away
+            return HttpResponseClientRedirect(url)
+        return redirect(url)

@@ -6,6 +6,7 @@ from django.contrib.auth.password_validation import password_validators_help_tex
 from django.core.exceptions import ValidationError
 from django.utils.translation import gettext_lazy as _
 
+from apps.appointments.services import validate_appointment_booking
 from apps.users.services import validate_patient_registration
 
 # Tailwind only scans apps/web, so widget classes must be written out here.
@@ -95,3 +96,32 @@ class SignupForm(StyledFormMixin, forms.Form):
         """The cleaned fields register_patient() takes (no confirmation)."""
         fields = ("first_name", "last_name", "email", "password")
         return {field: self.cleaned_data.get(field, "") for field in fields}
+
+
+class BookingForm(StyledFormMixin, forms.Form):
+    """Book `slot` for `patient`. Rules come from validate_appointment_booking().
+
+    Its errors (slot taken, already started, overlapping appointment) are
+    form-wide. The view still calls create_appointment(), whose atomic
+    reservation catches a slot taken after this check.
+    """
+
+    reason = forms.CharField(
+        label=_("Reason for the visit (optional)"),
+        required=False,
+        widget=forms.Textarea(attrs={"rows": 3}),
+        help_text=_("For example: a yearly check-up or a symptom you want to discuss."),
+    )
+
+    def __init__(self, *args, patient, slot, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.patient = patient
+        self.slot = slot
+
+    def clean(self):
+        cleaned_data = super().clean()
+        try:
+            validate_appointment_booking(self.patient, self.slot)
+        except ValidationError as exc:
+            self.add_error(None, exc)
+        return cleaned_data

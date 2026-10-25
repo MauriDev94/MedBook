@@ -97,6 +97,15 @@ class SlotWeek:
         return self.index + 1
 
 
+def week_of(day: datetime.date) -> int:
+    """Index of the booking week that holds `day` (0 = the week starting today).
+
+    Clamped to 0..BOOKING_WEEKS_AHEAD - 1, like get_available_slots_week.
+    """
+    weeks = (day - timezone.localdate()).days // 7
+    return min(max(weeks, 0), BOOKING_WEEKS_AHEAD - 1)
+
+
 def get_available_slots_week(doctor, week: int = 0) -> SlotWeek:
     """Return one week of a doctor's bookable slots.
 

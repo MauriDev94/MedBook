@@ -192,6 +192,7 @@ Server-rendered with session auth (the API keeps JWT). Spanish by default, Engli
 | GET | `/panel/` | Notice for doctors and admins until their panel ships | Doctor, admin |
 | GET | `/doctors/` | Doctor catalog, `?specialty=<slug>` filter (HTMX swaps only the list), 10 per page | Patient |
 | GET | `/doctors/<id>/` | Doctor profile and one week of available, future slots in Chilean time; `?week=0–3` (HTMX swaps only the week) | Patient |
+| GET, POST | `/slots/<id>/book/` | Confirm and book a slot with an optional reason. HTMX loads it into a modal dialog; without JS it is a full page. Success goes back to the doctor's page on the slot's week | Patient |
 | POST | `/i18n/setlang/` | Language switcher (sets a cookie) | Public |
 
 ---

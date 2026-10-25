@@ -1,5 +1,5 @@
 {% extends "web/base.html" %}
-{% load i18n %}
+{% load i18n static %}
 
 {% block title %}{{ doctor }} · MedBook{% endblock %}
 
@@ -26,9 +26,16 @@
 
     <h2 class="mt-10 text-lg font-semibold text-slate-900">{% translate "Available times" %}</h2>
     <p class="mt-1 text-sm text-slate-500">
-      {% translate "Times are shown in Chilean time." %} {% translate "Online booking for patients is coming soon." %}
+      {% translate "Times are shown in Chilean time." %} {% translate "Choose a time to book it." %}
     </p>
 
     {% include "web/doctors/partials/week_slots.html" %}
   </section>
+
+  {# A slot link fills it with the booking form (HTMX) and booking-dialog.js opens it #}
+  <dialog id="booking-dialog" aria-labelledby="booking-dialog-title" class="m-auto w-[calc(100%-2rem)] max-w-lg rounded-xl bg-white p-6 text-slate-800 shadow-xl backdrop:bg-slate-900/50"></dialog>
+{% endblock %}
+
+{% block scripts %}
+  <script src="{% static 'web/js/booking-dialog.js' %}" defer></script>
 {% endblock %}

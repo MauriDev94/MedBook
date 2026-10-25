@@ -14,6 +14,7 @@ import logging
 from django.core.exceptions import ValidationError
 from django.db import IntegrityError, transaction
 from django.utils import timezone
+from django.utils.translation import gettext_lazy as _
 
 from apps.appointments.models import (
     ONE_ACTIVE_APPOINTMENT_PER_SLOT,
@@ -23,6 +24,11 @@ from apps.appointments.models import (
 from apps.core.exceptions import SlotConflict
 
 audit_logger = logging.getLogger("medbook.audit")
+
+# Lazy: Spanish or English on the web, always English in the API
+SLOT_UNAVAILABLE_MESSAGE = _("This time slot is no longer available.")
+SLOT_STARTED_MESSAGE = _("This time slot has already started.")
+OVERLAPPING_APPOINTMENT_MESSAGE = _("You already have an appointment at this time.")
 
 
 def _log_transition(action: str, appointment: Appointment, actor) -> None:
@@ -110,10 +116,10 @@ def validate_appointment_booking(patient, slot: TimeSlot) -> None:
     Called by: AppointmentCreateSerializer.validate()
     """
     if slot.status != TimeSlot.Status.AVAILABLE:
-        raise ValidationError("This time slot is no longer available.")
+        raise ValidationError(SLOT_UNAVAILABLE_MESSAGE)
 
     if slot.start_datetime <= timezone.now():
-        raise ValidationError("This time slot has already started.")
+        raise ValidationError(SLOT_STARTED_MESSAGE)
 
     has_conflict = Appointment.objects.filter(
         patient=patient,
@@ -123,7 +129,20 @@ def validate_appointment_booking(patient, slot: TimeSlot) -> None:
     ).exists()
 
     if has_conflict:
-        raise ValidationError("You already have an appointment at this time.")
+        raise ValidationError(OVERLAPPING_APPOINTMENT_MESSAGE)
+
+
+def list_time_slots():
+    """Return the slots of doctors whose account is active, any status.
+
+    For pages that look one slot up by id, like the web booking page:
+    doctor, user and specialties are loaded up front.
+    """
+    return (
+        TimeSlot.objects.filter(schedule__doctor__user__is_active=True)
+        .select_related("schedule__doctor__user")
+        .prefetch_related("schedule__doctor__specialties")
+    )
 
 
 @transaction.atomic
