@@ -3,6 +3,13 @@ import uuid
 from django.contrib.auth.base_user import AbstractBaseUser, BaseUserManager
 from django.contrib.auth.models import PermissionsMixin
 from django.db import models
+from django.db.models.functions import Lower
+from django.utils.translation import gettext_lazy as _
+
+# Lazy: the web form shows it in the visitor's language; the API resolves
+# it while English is active (apps.core.middleware.EnglishApiMiddleware).
+# The admin shows it when unique_user_email_ci rejects an email.
+DUPLICATE_EMAIL_MESSAGE = _("A user with this email already exists.")
 
 
 class Role(models.TextChoices):
@@ -39,6 +46,14 @@ class UserManager(BaseUserManager):
 
         return self.create_user(email, password, **extra_fields)
 
+    def get_by_natural_key(self, email):
+        """Find the user logging in, whatever the case of the email.
+
+        ModelBackend calls this for the web login, the admin and the API's
+        token endpoint. unique_user_email_ci allows at most one match.
+        """
+        return self.get(email__iexact=email)
+
 
 class User(AbstractBaseUser, PermissionsMixin):
     """Custom user model with email as the unique identifier.
@@ -61,6 +76,17 @@ class User(AbstractBaseUser, PermissionsMixin):
 
     USERNAME_FIELD = "email"
     REQUIRED_FIELDS = []
+
+    class Meta:
+        constraints = [
+            # unique=True compares exact strings; this makes Ana@… and ana@…
+            # one account. The email itself is stored as typed.
+            models.UniqueConstraint(
+                Lower("email"),
+                name="unique_user_email_ci",
+                violation_error_message=DUPLICATE_EMAIL_MESSAGE,
+            ),
+        ]
 
     @property
     def full_name(self) -> str:
