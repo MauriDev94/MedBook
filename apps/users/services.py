@@ -17,6 +17,7 @@ from django.core.exceptions import ValidationError
 from django.db import IntegrityError, transaction
 from django.utils.translation import gettext_lazy as _
 
+from apps.core.roles import is_patient
 from apps.patients.models import Patient
 from apps.users.models import Role, User
 
@@ -101,3 +102,17 @@ def register_patient(
         emergency_contact=emergency_contact,
     )
     return user
+
+
+def ensure_patient_profile(user) -> Patient | None:
+    """Give a patient the Patient profile it lacks; other roles get none.
+
+    register_patient() creates the profile on sign-up, but a patient added
+    in the admin has none, and booking reads user.patient_profile. Every
+    Patient field is optional, so an empty profile is valid. An existing
+    profile is returned as it is.
+    """
+    if not is_patient(user):
+        return None
+    profile, _ = Patient.objects.get_or_create(user=user)
+    return profile

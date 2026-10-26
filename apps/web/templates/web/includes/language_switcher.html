@@ -6,6 +6,6 @@
   {% for code, name in LANGUAGES %}
     <button type="submit" name="language" value="{{ code }}" lang="{{ code }}" title="{{ name }}"
             {% if code == LANGUAGE_CODE %}aria-current="true"{% endif %}
-            class="rounded px-2 py-1 text-xs font-semibold uppercase {% if code == LANGUAGE_CODE %}bg-teal-600 text-white{% else %}text-slate-600 hover:bg-slate-100{% endif %}">{{ code }}</button>
+            class="rounded px-2 py-1 text-xs font-semibold uppercase {% if code == LANGUAGE_CODE %}bg-teal-700 text-white{% else %}text-slate-600 hover:bg-slate-100{% endif %}">{{ code }}</button>
   {% endfor %}
 </form>

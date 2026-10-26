@@ -17,7 +17,7 @@
 {% if error %}
   <p class="mt-5 rounded-md border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800" role="alert">{{ error }}</p>
   <form method="dialog" class="mt-6 flex justify-end">
-    <button type="submit" class="min-h-11 rounded-md bg-teal-600 px-5 text-sm font-semibold text-white hover:bg-teal-700">{% translate "Close" %}</button>
+    <button type="submit" class="min-h-11 rounded-md bg-teal-700 px-5 text-sm font-semibold text-white hover:bg-teal-800">{% translate "Close" %}</button>
   </form>
   {# Cancelled or closed elsewhere: show the current status behind the dialog #}
   {% include "web/appointments/partials/appointment_status.html" with oob=True %}

@@ -11,10 +11,10 @@
     <div class="mt-6 rounded-lg border border-sky-200 bg-sky-50 p-5 text-sm text-sky-900">
       {% if user_is_admin %}
         <p>{% translate "The admin panel arrives in an upcoming sprint. Meanwhile, manage the clinic from the Django admin." %}</p>
-        <a href="{% url 'admin:index' %}" class="mt-4 inline-block rounded-md bg-teal-600 px-4 py-2 font-semibold text-white hover:bg-teal-700">{% translate "Open the Django admin" %}</a>
+        <a href="{% url 'admin:index' %}" class="mt-4 inline-block rounded-md bg-teal-700 px-4 py-2 font-semibold text-white hover:bg-teal-800">{% translate "Open the Django admin" %}</a>
       {% else %}
         <p>{% translate "The doctor panel (schedules, appointments and medical notes) arrives in an upcoming sprint. Meanwhile, the API covers all of it." %}</p>
-        <a href="{% url 'docs' %}" class="mt-4 inline-block rounded-md bg-teal-600 px-4 py-2 font-semibold text-white hover:bg-teal-700">{% translate "Open the API docs" %}</a>
+        <a href="{% url 'docs' %}" class="mt-4 inline-block rounded-md bg-teal-700 px-4 py-2 font-semibold text-white hover:bg-teal-800">{% translate "Open the API docs" %}</a>
       {% endif %}
     </div>
   </section>

@@ -84,6 +84,10 @@ class SlotWeek:
         return self.start + datetime.timedelta(days=6)
 
     @property
+    def slot_count(self) -> int:
+        return sum(len(slots) for _, slots in self.days)
+
+    @property
     def has_previous(self) -> bool:
         return self.index > 0
 

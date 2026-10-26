@@ -2,6 +2,7 @@ from django.contrib import admin
 from django.contrib.auth.admin import UserAdmin as BaseUserAdmin
 
 from apps.users.models import User
+from apps.users.services import ensure_patient_profile
 
 
 @admin.register(User)
@@ -27,3 +28,8 @@ class UserAdmin(BaseUserAdmin):
             },
         ),
     )
+
+    def save_model(self, request, obj, form, change):
+        super().save_model(request, obj, form, change)
+        # Added as a patient, or switched to one: sign-up would have made the profile
+        ensure_patient_profile(obj)

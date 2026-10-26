@@ -1,0 +1,10 @@
+{% extends "web/error.html" %}
+{% load i18n %}
+{# Rendered without the request or a context (django.views.defaults.server_error), #}
+{# maybe because the database failed: no account links, which would need the user. #}
+
+{% block title %}{% translate "Something went wrong" %} · MedBook{% endblock %}
+{% block nav %}{% endblock %}
+{% block code %}500{% endblock %}
+{% block heading %}{% translate "Something went wrong" %}{% endblock %}
+{% block message %}{% translate "We could not complete your request. Please try again in a few minutes." %}{% endblock %}

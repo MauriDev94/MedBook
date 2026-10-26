@@ -7,10 +7,10 @@
     <nav class="flex gap-4 text-sm" aria-label="{% translate 'Weeks' %}"
          hx-boost="true" hx-target="#week-slots" hx-swap="outerHTML">
       {% if week.has_previous %}
-        <a href="?week={{ week.previous_index }}" class="font-semibold text-teal-700 hover:underline">← {% translate "Previous week" %}</a>
+        <a id="week-previous" href="?week={{ week.previous_index }}" class="font-semibold text-teal-700 hover:underline">← {% translate "Previous week" %}</a>
       {% endif %}
       {% if week.has_next %}
-        <a href="?week={{ week.next_index }}" class="font-semibold text-teal-700 hover:underline">{% translate "Next week" %} →</a>
+        <a id="week-next" href="?week={{ week.next_index }}" class="font-semibold text-teal-700 hover:underline">{% translate "Next week" %} →</a>
       {% endif %}
     </nav>
   </div>
@@ -23,7 +23,7 @@
           <li>
             <a href="{% url 'web:book_slot' slot.pk %}" hx-get="{% url 'web:book_slot' slot.pk %}" hx-target="#booking-dialog"
                class="flex min-h-11 items-center rounded-md border border-teal-200 bg-teal-50 px-4 text-sm font-medium text-teal-800 hover:bg-teal-100">
-              <time datetime="{{ slot.start_datetime|date:'c' }}">{{ slot.start_datetime|time:"H:i" }}</time>
+              <span class="sr-only">{{ day|date:"l" }} {{ day|date:"MONTH_DAY_FORMAT" }}, </span><time datetime="{{ slot.start_datetime|date:'c' }}">{{ slot.start_datetime|time:"H:i" }}</time>
             </a>
           </li>
         {% endfor %}
@@ -33,3 +33,6 @@
     <p class="mt-5 text-sm text-slate-600">{% translate "No available times this week." %}</p>
   {% endfor %}
 </div>
+{% if htmx_partial %}
+  <p id="live-status" hx-swap-oob="innerHTML">{{ week.start|date:"MONTH_DAY_FORMAT" }} – {{ week.end|date:"MONTH_DAY_FORMAT" }}: {% if week.slot_count %}{% blocktranslate count counter=week.slot_count %}{{ counter }} available time.{% plural %}{{ counter }} available times.{% endblocktranslate %}{% else %}{% translate "No available times this week." %}{% endif %}</p>
+{% endif %}

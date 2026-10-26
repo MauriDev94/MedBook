@@ -9,7 +9,7 @@
           <p class="mt-1 text-sm text-slate-600">
             {% for specialty in doctor.specialties.all %}{{ specialty.display_name }}{% if not forloop.last %} · {% endif %}{% endfor %}
           </p>
-          <a href="{% url 'web:doctor_detail' doctor.pk %}" class="mt-4 text-sm font-semibold text-teal-700 hover:underline">{% translate "See available times" %}</a>
+          <a href="{% url 'web:doctor_detail' doctor.pk %}" class="mt-4 text-sm font-semibold text-teal-700 hover:underline">{% translate "See available times" %}<span class="sr-only">: {{ doctor }}</span></a>
         </li>
       {% endfor %}
     </ul>
@@ -19,7 +19,7 @@
            hx-boost="true" hx-target="#doctor-list" hx-swap="outerHTML">
         <div>
           {% if page_obj.has_previous %}
-            <a href="?{% if selected_specialty %}specialty={{ selected_specialty|urlencode }}&amp;{% endif %}page={{ page_obj.previous_page_number }}" class="font-semibold text-teal-700 hover:underline">{% translate "Previous" %}</a>
+            <a id="doctors-previous" href="?{% if selected_specialty %}specialty={{ selected_specialty|urlencode }}&amp;{% endif %}page={{ page_obj.previous_page_number }}" class="font-semibold text-teal-700 hover:underline">{% translate "Previous" %}</a>
           {% endif %}
         </div>
         <p class="text-slate-500">
@@ -27,7 +27,7 @@
         </p>
         <div>
           {% if page_obj.has_next %}
-            <a href="?{% if selected_specialty %}specialty={{ selected_specialty|urlencode }}&amp;{% endif %}page={{ page_obj.next_page_number }}" class="font-semibold text-teal-700 hover:underline">{% translate "Next" %}</a>
+            <a id="doctors-next" href="?{% if selected_specialty %}specialty={{ selected_specialty|urlencode }}&amp;{% endif %}page={{ page_obj.next_page_number }}" class="font-semibold text-teal-700 hover:underline">{% translate "Next" %}</a>
           {% endif %}
         </div>
       </nav>
@@ -38,3 +38,6 @@
     <p class="rounded-lg border border-slate-200 bg-white p-5 text-sm text-slate-600">{% translate "There are no doctors yet." %}</p>
   {% endif %}
 </div>
+{% if htmx_partial %}
+  <p id="live-status" hx-swap-oob="innerHTML">{% blocktranslate count counter=paginator.count %}{{ counter }} doctor found.{% plural %}{{ counter }} doctors found.{% endblocktranslate %}{% if is_paginated %} {% blocktranslate with number=page_obj.number total=paginator.num_pages %}Page {{ number }} of {{ total }}{% endblocktranslate %}.{% endif %}</p>
+{% endif %}
