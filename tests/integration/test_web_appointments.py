@@ -66,16 +66,21 @@ def bare_schedule():
     return schedule
 
 
-def appointment_for(patient, days, hour=10, **kwargs):
-    """An appointment of `patient` `days` from today (negative: in the past)."""
+def appointment_at(patient, start, **kwargs):
+    """An appointment of `patient` whose slot starts at `start`."""
     slot = TimeSlotFactory(
         schedule=bare_schedule(),
-        start_datetime=days_ahead_at(days, hour),
+        start_datetime=start,
         status=TimeSlot.Status.RESERVED,
     )
     return AppointmentFactory(
         patient=patient, slot=slot, doctor=slot.schedule.doctor, **kwargs
     )
+
+
+def appointment_for(patient, days, hour=10, **kwargs):
+    """An appointment of `patient` `days` from today (negative: in the past)."""
+    return appointment_at(patient, days_ahead_at(days, hour), **kwargs)
 
 
 def weekday_of(appointment) -> str:
@@ -105,6 +110,12 @@ def upcoming(patient):
 def past(patient):
     """Completed, two days ago."""
     return appointment_for(patient, days=-2, status=Appointment.Status.COMPLETED)
+
+
+@pytest.fixture
+def started(patient):
+    """Pending, started ten minutes ago: nobody can cancel it (Paso 35)."""
+    return appointment_at(patient, timezone.now() - datetime.timedelta(minutes=10))
 
 
 # ---------------------------------------------------------------------------
@@ -396,6 +407,22 @@ class TestCancelConfirmation:
         assert CANNOT_CANCEL in html
         assert f'hx-post="{cancel_url(past)}"' not in html
 
+    def test_started_appointment_goes_back_to_its_page(self, patient_client, started):
+        response = patient_client.get(cancel_url(started), follow=True)
+
+        assert response.redirect_chain == [(detail_url(started), 302)]
+        assert CANNOT_CANCEL in response.content.decode()
+
+    def test_dialog_of_a_started_appointment_offers_no_cancel(
+        self, patient_client, started
+    ):
+        response = patient_client.get(cancel_url(started), headers=HTMX)
+        html = response.content.decode()
+
+        assertTemplateUsed(response, CANCEL_PARTIAL)
+        assert CANNOT_CANCEL in html
+        assert f'hx-post="{cancel_url(started)}"' not in html
+
 
 @pytest.mark.django_db
 class TestCancel:
@@ -468,6 +495,31 @@ class TestCancel:
         assert past.status == Appointment.Status.COMPLETED
         assert CANNOT_CANCEL in response.content.decode()
         assert len(mail.outbox) == 0
+
+    def test_started_appointment_is_not_cancelled(self, patient_client, started):
+        """The URL refuses it too, not only the hidden link (Paso 35)."""
+        response = patient_client.post(cancel_url(started), follow=True)
+
+        started.refresh_from_db()
+        started.slot.refresh_from_db()
+        assert response.redirect_chain == [(detail_url(started), 302)]
+        assert started.status == Appointment.Status.PENDING
+        assert started.slot.status == TimeSlot.Status.RESERVED
+        assert CANNOT_CANCEL in response.content.decode()
+        assert len(mail.outbox) == 0
+
+    def test_started_while_the_dialog_was_open(self, patient_client, started):
+        """The time passed before the click: say so and drop the cancel link."""
+        response = patient_client.post(cancel_url(started), headers=HTMX)
+        html = response.content.decode()
+
+        started.refresh_from_db()
+        assert response.status_code == 200
+        assertTemplateUsed(response, CANCEL_PARTIAL)
+        assert CANNOT_CANCEL in html
+        assert f'id="{status_id(started)}" hx-swap-oob="true"' in html
+        assert cancel_url(started) not in html
+        assert started.status == Appointment.Status.PENDING
 
     def test_already_cancelled_in_the_dialog(self, patient_client, upcoming):
         """Cancelled elsewhere while the dialog was open: say so, show the status."""

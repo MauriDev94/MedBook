@@ -19,7 +19,7 @@ from django.test import TransactionTestCase
 from django.utils import timezone, translation
 
 from apps.appointments import services
-from apps.appointments.models import Appointment, TimeSlot
+from apps.appointments.models import Appointment, InvalidTransition, TimeSlot
 from apps.users.models import Role
 from tests.factories import (
     AppointmentFactory,
@@ -418,6 +418,22 @@ class TestCancelAppointment:
         appt = AppointmentFactory(status=Appointment.Status.COMPLETED)
         with pytest.raises(ValueError):
             services.cancel_appointment(appt, cancelled_by=appt.patient.user)
+
+    @pytest.mark.parametrize("actor", ["patient", "doctor"])
+    def test_cancel_after_the_slot_started_raises_and_keeps_the_slot(self, db, actor):
+        """Nobody cancels a started appointment, so its slot stays reserved."""
+        appt = appointment_starting_in(minutes=-5)
+        appt.slot.status = TimeSlot.Status.RESERVED
+        appt.slot.save(update_fields=["status", "updated_at"])
+        user = getattr(appt, actor).user
+
+        with pytest.raises(InvalidTransition, match="already started"):
+            services.cancel_appointment(appt, cancelled_by=user)
+
+        appt.refresh_from_db()
+        appt.slot.refresh_from_db()
+        assert appt.status == Appointment.Status.PENDING
+        assert appt.slot.status == TimeSlot.Status.RESERVED
 
     def test_cancel_returns_appointment(self, db):
         """Service returns the updated appointment object."""
