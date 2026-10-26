@@ -122,7 +122,7 @@
 
 - [x] Django 5.2 LTS en producción, sin PRs de Dependabot pendientes
 - [x] `POST /api/v1/users/register/` crea User + Patient y permite login inmediato en `/api/v1/token/`
-- [ ] Cada arranque o deploy en Render deja slots disponibles para los próximos 14 días (pendiente: confirmar `Done. N new slots…` en los logs de Render)
+- [x] Cada arranque o deploy en Render deja slots disponibles para los próximos 14 días (28 desde el Paso 26). Confirmado en los logs de Render tras el Paso 33: `Done. 432 new slots generated across 17 schedule(s).`
 - [x] Gate de coverage ≥ 95% branch se mantiene (99.43%)
 
 ---
@@ -146,10 +146,10 @@
 | 30 | **Bug**: re-reservar un slot liberado por cancelación (`OneToOne` → FK + unique parcial) y rechazar slots que ya empezaron. Va antes del 27 | #142 | #152 | ✅ |
 | 31 | Render como Blueprint: `render.yaml` adopta el servicio `MedBook` (auto-sync). Va antes de mergear el 23 | #144 | #146 | ✅ |
 | 32 | Producción en Docker Alpine (servicio nuevo vía Blueprint). Va después del 24 | #145 | — | ⬜ |
-| 33 | Datos demo: comando `seed_demo` idempotente (doctores y horarios), activado en Render con `MEDBOOK_DEMO_DATA`. Va antes del 29 | #147 | #155 | ⏳ |
+| 33 | Datos demo: comando `seed_demo` idempotente (doctores y horarios), activado en Render con `MEDBOOK_DEMO_DATA`. Va antes del 29 | #147 | #155 | ✅ |
 | 27 | Reservar cita (services de booking, manejo de conflictos) | #137 | #153 | ✅ |
 | 28 | Mis citas y cancelación; selector de visibilidad compartido con la API | #138 | #154 | ✅ |
-| 29 | Páginas de error, accesibilidad, docs y verificación en Render | #139 | — | ⬜ |
+| 29 | Páginas de error, accesibilidad, docs y verificación en Render | #139 | — | ⏳ |
 | 34 | **Bug**: email sin distinguir mayúsculas en el login (API y web) y unicidad case-insensitive en la DB. Independiente | #151 | — | ⬜ |
 
 ---
@@ -157,11 +157,12 @@
 ## Checklist acumulativo — Semana 5
 
 - [x] Un horario de 09:00–17:00 se ve como 09:00–17:00 en Chile, en verano y en invierno
-- [ ] Flujo completo en la web: registro → login → doctores → reserva → mis citas → cancelación
+- [x] Flujo completo en la web: registro → login → doctores → reserva → mis citas → cancelación (verificado en local con Chrome en el Paso 29, con teclado y a 375 px, y en Render el 2026-10-26)
 - [x] UI en español por defecto y en inglés con el selector; la API sigue respondiendo en inglés
-- [ ] Ninguna view web accede al ORM: todo pasa por services o selectors
+- [x] Ninguna view web accede al ORM: todo pasa por services o selectors (revisado en el Paso 29: cada `get_queryset` de `apps/web/views.py` llama a un service)
 - [x] Build de Tailwind en Render, Docker y CI; `.mo` al día (chequeo en CI)
-- [ ] Gate de coverage ≥ 95% branch se mantiene
+- [x] Gate de coverage ≥ 95% branch se mantiene (99.6%)
+- [x] Páginas 403, 404 y 500 con el layout; navegación con teclado, foco en los modales y en los swaps, región viva para los lectores de pantalla y contraste AA en los botones (Paso 29)
 
 ---
 
@@ -192,14 +193,20 @@
 - Las etiquetas de `Appointment.Status` son `gettext_lazy`, sin migración (`makemigrations --check` limpio). `/api/schema/` sigue en inglés gracias a `EnglishApiMiddleware`; `manage.py spectacular` desde la consola no tiene request y describe los estados en español (`LANGUAGE_CODE`) (Paso 28).
 - `seed_demo` crea los 6 doctores de `apps/doctors/demo.py` solo con `MEDBOOK_DEMO_DATA=true`, que `render.yaml` define para producción. Un doctor demo cuenta como existente si su email (sin importar mayúsculas) o su licencia ya están usados, y las filas existentes nunca se modifican. Así un doctor parecido creado en el admin no lo hace fallar, y en la DB de dev (los 6 del Paso 27 ya tienen `DEMO-001`…`DEMO-006`) no crea nada. `create_user()` sin contraseña guarda una inutilizable, sin escribir ninguna credencial. El horario sabatino de Felipe Araya en dev pasó en la demo a martes y jueves de 15:00 a 18:00, para quedar de lunes a viernes como pedía el #147 (Paso 33).
 - `test_render_blueprint.py` ahora lee `render.yaml` con PyYAML en vez de buscar con regex en el texto, y verifica que `seed_demo` corra antes de `generate_slots` y en su subshell. PyYAML venía solo como dependencia de drf-spectacular; ahora está declarado en `requirements/local.txt` (Paso 33).
+- Un merge que cambia `render.yaml` dispara dos deploys en Render: primero el auto-deploy con la configuración anterior y después el del Blueprint con la nueva. Para confirmar un cambio de `startCommand`, hay que mirar el log del segundo (Paso 33).
+- La página 500 se renderiza sin contexto: no hay request, ni `user`, ni la variable `LANGUAGE_CODE` del context processor. `base.html` lee el idioma con `{% get_current_language %}` y `500.html` vacía el bloque `nav`. Con `DEBUG = True`, que es lo que usan `local.py` y `test.py`, Django muestra sus páginas de debug, así que `test_web_errors.py` pone `DEBUG = False` y sus tests de la 500 corren sin acceso a la DB (Paso 29).
+- `{% translate %}` no escapa el texto del template: el apóstrofo de "don't" sale tal cual, no como `&#x27;`. Un test que esperaba el escape falló en el GREEN y se corrigió el test (Paso 29).
+- `#messages` y `#live-status` se actualizan fuera de banda con `hx-swap-oob="innerHTML"`. Con `"true"` HTMX reemplazaba el nodo de la región viva, y muchos lectores de pantalla no anuncian una región recién insertada (Paso 29).
+- Los links de semana, pestañas y paginación están dentro del contenido que reemplazan. En Chrome, el foco caía a `<body>` al usarlos con teclado (el siguiente Tab seguía desde el bloque nuevo, pero el lector de pantalla no tenía dónde quedarse). htmx 2 devuelve el foco al elemento con el mismo `id` en el contenido nuevo, así que esos links ahora tienen un `id` fijo (`week-next`, `tab-past`, `doctors-next`…). Si el link desaparece (la última semana o la última página), el foco vuelve a caer al body. Se detectó al revisar la web en Chrome (Paso 29).
+- Las capturas de `docs/screenshots/` salen de la DB de dev con una paciente de prueba ficticia: 1088×735 en escritorio y 375×812 en móvil. La ventana de Chrome estaba maximizada y no se podía achicar, así que las de escritorio son un recorte del área del contenido y la de móvil, un iframe de 375 px del mismo origen. Ese iframe necesitó `X_FRAME_OPTIONS = "SAMEORIGIN"` en un settings temporal que no se versiona (Paso 29).
 
 ### Pendientes por decidir
 
 - **Idioma de la API**: decidido, se mantiene en inglés (`EnglishApiMiddleware`, ADR 0002). La API la consumen desarrolladores y clientes, y todo su contrato (rutas, campos, estados, `code`, Swagger) está en inglés. Los mensajes que ve el paciente salen de la web, que los traduce (por ejemplo, el login web dice "Correo o contraseña incorrectos." y `/api/v1/token/` responde el mensaje en inglés de SimpleJWT). Si aparece un cliente en español, se evalúa respetar `Accept-Language` con inglés por defecto.
 - **Email sensible a mayúsculas en el login**: `normalize_email` solo baja a minúsculas el dominio y el login busca el email exacto, así que quien se registró como `Ana@example.com` no entra con `ana@example.com` (ni en la API ni en la web). La unicidad sí es case-insensitive. Viene de antes del sprint. Decidido: no distinguir mayúsculas, se corrige en el Paso 34 (#151).
 - **Correo de confirmación en inglés y en UTC** (detectado en el Paso 27): `send_appointment_created` arma el texto en inglés y formatea la hora con `strftime("%Y-%m-%d %H:%M UTC")`, así que una hora de las 10:00 en Chile dice "13:00 UTC". Pasa lo mismo con los correos de confirmación y cancelación. Viene de antes de la web. Propuesta: correos en el idioma de la web (español por defecto) y con la hora de Chile. Sin paso asignado.
-- **Sesión expirada con el modal de reserva abierto** (detectado en el Paso 27): HTMX sigue el redirect al login y metería la página de login dentro del modal. Propuesta: que `RoleRequiredMixin` responda `HX-Redirect` al login cuando el request es HTMX. Va en el Paso 29.
-- **Paciente sin perfil** (detectado en el Paso 27): un usuario con rol paciente creado desde el admin sin su `Patient` da 500 al reservar, en la web y en la API (`request.user.patient_profile`). El registro público siempre crea el perfil. Propuesta: crearlo también desde el admin, o responder un error claro. Va en el Paso 29.
+- **Sesión expirada con el modal de reserva abierto** (detectado en el Paso 27): HTMX sigue el redirect al login y metería la página de login dentro del modal. Propuesta: que `RoleRequiredMixin` responda `HX-Redirect` al login cuando el request es HTMX. **Resuelto en el Paso 29**: un request HTMX anónimo recibe `HX-Redirect` a `/login/?next=<página donde estaba>`. La página sale de `HX-Current-URL`, y se ignora si es de otro origen.
+- **Paciente sin perfil** (detectado en el Paso 27): un usuario con rol paciente creado desde el admin sin su `Patient` da 500 al reservar, en la web y en la API (`request.user.patient_profile`). El registro público siempre crea el perfil. Propuesta: crearlo también desde el admin, o responder un error claro. **Resuelto en el Paso 29**: `UserAdmin.save_model` llama a `ensure_patient_profile`, que crea el `Patient` cuando el usuario se agrega como paciente o pasa a ese rol.
 - **"Dr." para todas las médicas** (detectado en el Paso 27): `Doctor.__str__` antepone "Dr." siempre, así que la web muestra "Dr. Carla Soto"; los correos hacen lo mismo. El modelo no guarda cómo tratar a cada médico. Propuesta: un campo de tratamiento (Dr./Dra.) traducible, o mostrar solo el nombre. Sin paso asignado.
 - **Cancelar una cita que ya pasó** (detectado en el Paso 28): `cancel_appointment` solo revisa el estado, así que la API (y la URL de cancelar de la web) dejan cancelar una cita `pending` o `confirmed` que ya ocurrió, y liberan un slot del pasado. La web oculta el botón en las citas que ya empezaron. Propuesta: que el paciente solo pueda cancelar antes de la hora, y el médico siempre. Sin paso asignado.
-- **Foco después de cancelar** (detectado en el Paso 28): al cerrarse el modal, el link que lo abrió ya no existe y el foco queda en `<body>`. El mensaje se anuncia (región `role="status"`), pero conviene mover el foco al estado de la cita. Va en el Paso 29 (accesibilidad).
+- **Foco después de cancelar** (detectado en el Paso 28): al cerrarse el modal, el link que lo abrió ya no existe y el foco queda en `<body>`. El mensaje se anuncia (región `role="status"`), pero conviene mover el foco al estado de la cita. **Resuelto en el Paso 29**: el bloque de estado tiene `tabindex="-1"` y `dialog.js` le pasa el foco al cerrar el modal.

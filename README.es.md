@@ -3,8 +3,8 @@
 > API REST para reservas médicas — Django 5.2 LTS + DRF 3.18  
 > Proyecto de portafolio hecho con TDD: máquina de estados de citas, RBAC a nivel de objeto y reservas sin race conditions.
 
-[![Tests](https://img.shields.io/badge/tests-430%20passing-brightgreen)](./tests)
-[![Coverage](https://img.shields.io/badge/branch%20coverage-99.4%25-brightgreen)](./tests)
+[![Tests](https://img.shields.io/badge/tests-660%20passing-brightgreen)](./tests)
+[![Coverage](https://img.shields.io/badge/branch%20coverage-99.6%25-brightgreen)](./tests)
 [![Python](https://img.shields.io/badge/python-3.12-blue)](https://python.org)
 [![Django](https://img.shields.io/badge/django-5.2%20LTS-green)](https://djangoproject.com)
 
@@ -18,7 +18,19 @@ MedBook es una API REST para gestionar reservas médicas. Cubre el ciclo complet
 
 El objetivo es demostrar competencia real con Django: queries ORM complejas, permisos RBAC, transacciones atómicas, TDD, admin personalizado y arquitectura limpia — exactamente lo que aparece en entrevistas técnicas senior.
 
-Sobre la misma capa de servicios se está construyendo una web server-rendered (templates de Django + HTMX, en español e inglés), según el [ADR 0002](./docs/adr/0002-server-rendered-web-frontend.md). Ya tiene la home en `/`, login con sesión, registro de pacientes y el catálogo de doctores con sus slots disponibles; la reserva y "mis citas" llegan en los pasos siguientes de [`SPRINT.md`](./SPRINT.md).
+Los pacientes también tienen una web server-rendered (templates de Django + HTMX, en español e inglés) sobre la misma capa de servicios, según el [ADR 0002](./docs/adr/0002-server-rendered-web-frontend.md). Pueden registrarse, buscar un médico por especialidad, reservar una hora y administrar sus citas. La demo, con seis doctores ficticios, está en **https://medbook-oiio.onrender.com**. Corre en el plan gratuito de Render, así que la primera visita después de un rato sin uso puede tardar cerca de un minuto.
+
+### Capturas
+
+La web está en español, su idioma por defecto; el inglés está a un clic en el menú.
+
+| Catálogo de médicos | Reservar una hora |
+|---|---|
+| ![Catálogo con seis médicos y el filtro por especialidad](./docs/screenshots/doctors.jpg) | ![Modal de reserva sobre la semana de horas de un médico](./docs/screenshots/booking.jpg) |
+| **Mis citas** | **Cancelar una cita** |
+| ![Mis citas con tres citas próximas](./docs/screenshots/appointments.jpg) | ![Modal que confirma la cancelación de una cita](./docs/screenshots/cancel.jpg) |
+
+<img src="./docs/screenshots/mobile.jpg" alt="La semana de horas de un médico en una pantalla de teléfono de 375 px" width="250">
 
 ---
 
@@ -198,6 +210,15 @@ Server-rendered con sesión de Django (la API sigue con JWT). En español por de
 | GET, POST | `/appointments/<id>/cancel/` | Confirmar y cancelar: libera el slot y avisa por correo. Con HTMX es un modal y el estado se actualiza en su lugar; sin JS, una página completa que después lleva a la cita | Paciente |
 | POST | `/i18n/setlang/` | Selector de idioma (guarda una cookie) | Público |
 
+**Páginas de error.** Las páginas 403, 404 y 500 usan el layout del sitio y el idioma del visitante. La 500 se arma sin el request ni la base de datos, porque cualquiera de los dos puede ser lo que falló, así que su menú no tiene links de cuenta. Si la sesión expira mientras el visitante está en un modal, la página completa va al login, que después lo devuelve a la misma página (`HX-Redirect`).
+
+**Accesibilidad.**
+- Un skip link salta el menú y lleva al `<main>` de la página.
+- Todo funciona con teclado. Los modales son `<dialog>` nativos: Esc los cierra y el foco vuelve al link que los abrió. Después de cancelar, el foco pasa al nuevo estado de la cita. Los links de semana, pestaña y página mantienen el foco cuando HTMX reemplaza el contenido que los rodea.
+- Cada actualización con HTMX anuncia un resumen corto a los lectores de pantalla en una región viva "polite", por ejemplo "Se encontraron 6 médicos." o "2 de noviembre – 8 de noviembre: 16 horas disponibles.". Los mensajes van en una región `role="status"`.
+- Los links que se repiten llevan contexto oculto, como "Ver horas disponibles: Dr. Carla Soto" o "lunes 26 de octubre, 10:00".
+- Los botones principales usan texto blanco sobre teal-700 (contraste 5,4:1, WCAG AA). El diseño funciona desde 375 px de ancho.
+
 ---
 
 ## RBAC — Matriz de permisos
@@ -275,7 +296,8 @@ Abrir **http://localhost:8000/** para la web y **http://localhost:8000/api/docs/
 
 ### Web: CSS y traducciones
 
-- **Tailwind**: mientras se editan templates, correr `python manage.py tailwind watch` en otra terminal. La fuente es `apps/web/styles/tailwind.css`; la salida `static/css/tailwind.css` se genera y no se versiona. Render, CI y el Dockerfile la compilan en el build.
+- **Tailwind**: mientras se editan templates, correr `python manage.py tailwind watch` en otra terminal, o `python manage.py tailwind runserver` para tener el watcher y el servidor en una sola. La fuente es `apps/web/styles/tailwind.css` y solo escanea `apps/web`, así que las clases tienen que aparecer ahí de forma literal (nunca armadas con strings). La salida `static/css/tailwind.css` se genera y no se versiona. Render, CI y el Dockerfile la compilan en el build.
+- **Idioma**: el español es el idioma por defecto. El selector del menú hace POST a `/i18n/setlang/`, que guarda la elección en una cookie; sin cookie decide el `Accept-Language` del navegador. Las fechas usan el formato del idioma activo y la hora de Chile. Toda ruta `/api/` vuelve al inglés, así que la API JSON no cambia con el idioma del visitante.
 - **Traducciones**: los textos de la web se escriben en inglés y se traducen al español (idioma por defecto) en `locale/es/LC_MESSAGES/django.po`. Se versionan el `.po` y el `.mo` compilado, porque producción no tiene gettext; CI falla si quedan desactualizados. La API JSON responde siempre en inglés. Para actualizarlos hace falta GNU gettext:
   - Windows: `winget install mlocati.GetText` (y abrir una terminal nueva)
   - macOS: `brew install gettext` · Debian/Ubuntu: `sudo apt install gettext`
@@ -363,6 +385,7 @@ Resumen rápido:
 - **Backend locmem de email** en tests — assertions con `mail.outbox`, sin SMTP real
 - **`AnonRateThrottle`** en login — protección brute-force sin throttlear toda la API
 - **WhiteNoise** para static files en producción — sirve CSS/JS desde Gunicorn sin Nginx, con compresión Brotli y cache-busting automático
+- **Web server-rendered** — templates de Django + HTMX y Tailwind sin Node, que llaman a los mismos servicios que la API; un único script pequeño para los modales ([ADR 0002](./docs/adr/0002-server-rendered-web-frontend.md))
 
 ---
 
