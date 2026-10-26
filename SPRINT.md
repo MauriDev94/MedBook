@@ -149,7 +149,7 @@
 | 33 | Datos demo: comando `seed_demo` idempotente (doctores y horarios), activado en Render con `MEDBOOK_DEMO_DATA`. Va antes del 29 | #147 | #155 | ✅ |
 | 27 | Reservar cita (services de booking, manejo de conflictos) | #137 | #153 | ✅ |
 | 28 | Mis citas y cancelación; selector de visibilidad compartido con la API | #138 | #154 | ✅ |
-| 29 | Páginas de error, accesibilidad, docs y verificación en Render | #139 | — | ⏳ |
+| 29 | Páginas de error, accesibilidad, docs y verificación en Render | #139 | #156 | ⏳ |
 | 34 | **Bug**: email sin distinguir mayúsculas en el login (API y web) y unicidad case-insensitive en la DB. Independiente | #151 | — | ⬜ |
 
 ---
