@@ -97,6 +97,17 @@ class TestLogin:
 
         assert response["Location"] == "/"
 
+    def test_email_in_another_case_logs_in(self, client):
+        """An account registered as ana@… logs in as Ana@… (Paso 34)."""
+        user = UserFactory(email="ana@example.com", role=Role.PATIENT)
+
+        response = client.post(
+            LOGIN_URL, {"username": "Ana@Example.com", "password": user.raw_password}
+        )
+
+        assert response.status_code == 302
+        assert logged_in_user_id(client) == str(user.pk)
+
     def test_wrong_password_shows_generic_error(self, client):
         user = UserFactory()
 

@@ -6,9 +6,11 @@ Not an exhaustive UI test — just confirms nothing is broken.
 
 import pytest
 from django.urls import reverse
+from django.utils import translation
 
 from apps.patients.models import Patient
 from apps.users.models import Role, User
+from apps.users.services import DUPLICATE_EMAIL_MESSAGE
 from tests.factories import (
     AppointmentFactory,
     DoctorFactory,
@@ -130,3 +132,27 @@ class TestUserAdminPatientProfile:
 
         assert response.status_code == 302
         assert Patient.objects.filter(user=user).exists()
+
+
+@pytest.mark.django_db
+class TestUserAdminEmailCase:
+    """One account per email, whatever its case (Paso 34)."""
+
+    def test_adding_an_email_taken_in_another_case_shows_an_error(self, admin_client):
+        UserFactory(email="ana@example.com")
+        password = random_password()
+
+        response = admin_client.post(
+            reverse("admin:users_user_add"),
+            {
+                "email": "ANA@example.com",
+                "password1": password,
+                "password2": password,
+                "role": Role.PATIENT,
+            },
+        )
+
+        assert response.status_code == 200
+        with translation.override("es"):
+            assert str(DUPLICATE_EMAIL_MESSAGE) in response.content.decode()
+        assert User.objects.filter(email__iexact="ana@example.com").count() == 1
