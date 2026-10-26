@@ -450,7 +450,8 @@ class TestCancel:
         assert f'id="{status_id(upcoming)}"' in html
         assert "Cancelada" in html
         assert cancel_url(upcoming) not in html
-        assert 'id="messages" hx-swap-oob="true"' in html
+        # innerHTML keeps the role="status" node, so screen readers announce it
+        assert 'id="messages" hx-swap-oob="innerHTML"' in html
         assert "Cancelaste tu cita" in html
 
     def test_pages_always_have_the_messages_region(self, patient_client, upcoming):

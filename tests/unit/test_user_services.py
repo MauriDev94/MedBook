@@ -18,7 +18,12 @@ from django.db import IntegrityError
 from apps.patients.models import Patient
 from apps.users import services
 from apps.users.models import Role, User
-from tests.factories import UserFactory, random_password, short_password
+from tests.factories import (
+    PatientFactory,
+    UserFactory,
+    random_password,
+    short_password,
+)
 
 # Generated per run: passes every AUTH_PASSWORD_VALIDATORS check.
 REGISTRATION_PHRASE = random_password()
@@ -161,3 +166,36 @@ class TestRegisterPatientAtomicity:
             _register()
 
         assert "email" in exc_info.value.message_dict
+
+
+@pytest.mark.django_db
+class TestEnsurePatientProfile:
+    """A patient created in the admin gets the profile sign-up would create.
+
+    Booking reads request.user.patient_profile; every Patient field is
+    optional, so an empty profile is valid.
+    """
+
+    def test_creates_an_empty_profile_for_a_patient(self):
+        user = UserFactory(role=Role.PATIENT)
+
+        profile = services.ensure_patient_profile(user)
+
+        assert profile.user == user
+        assert Patient.objects.filter(user=user).count() == 1
+
+    def test_keeps_an_existing_profile(self):
+        patient = PatientFactory(phone="+56912345678")
+
+        profile = services.ensure_patient_profile(patient.user)
+
+        assert profile == patient
+        assert profile.phone == "+56912345678"
+        assert Patient.objects.count() == 1
+
+    @pytest.mark.parametrize("role", [Role.DOCTOR, Role.ADMIN])
+    def test_other_roles_get_none(self, role):
+        user = UserFactory(role=role)
+
+        assert services.ensure_patient_profile(user) is None
+        assert not Patient.objects.filter(user=user).exists()

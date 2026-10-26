@@ -163,6 +163,15 @@ class TestGetAvailableSlotsWeek:
             (days_after_today(3), [monday]),
         ]
 
+    def test_counts_the_slots_of_the_week(self, schedule):
+        slot_at(schedule, days_after_today(1), 10)
+        slot_at(schedule, days_after_today(1), 11)
+        slot_at(schedule, days_after_today(3), 9)
+
+        week = services.get_available_slots_week(schedule.doctor)
+
+        assert week.slot_count == 3
+
     def test_late_evening_slot_keeps_its_chilean_date(self, schedule):
         """22:30 in Chile is 01:30 UTC of the next day."""
         late = slot_at(schedule, days_after_today(1), 22, 30)

@@ -103,6 +103,21 @@ class TestBookingAccess:
         assert response.status_code == 302
         assert response["Location"] == f"/login/?next={book_url(slot)}"
 
+    def test_expired_session_in_the_dialog_reloads_the_page_to_login(
+        self, client, slot
+    ):
+        """HTMX would follow the 302 and show the login page inside the dialog."""
+        current = f"http://testserver{doctor_url(slot)}"
+
+        response = client.get(
+            book_url(slot), headers={**HTMX, "HX-Current-URL": current}
+        )
+
+        assert response.status_code == 200
+        assert response["HX-Redirect"] == (
+            f"/login/?next=/doctors/{slot.schedule.doctor.pk}/%3Fweek%3D0"
+        )
+
     def test_anonymous_post_books_nothing(self, client, slot):
         response = client.post(book_url(slot))
 
