@@ -150,8 +150,8 @@
 | 27 | Reservar cita (services de booking, manejo de conflictos) | #137 | #153 | ✅ |
 | 28 | Mis citas y cancelación; selector de visibilidad compartido con la API | #138 | #154 | ✅ |
 | 29 | Páginas de error, accesibilidad, docs y verificación en Render | #139 | #156 | ✅ |
-| 34 | **Bug**: email sin distinguir mayúsculas en el login (API y web) y unicidad case-insensitive en la DB. Independiente | #151 | #160 | ⏳ |
-| 35 | **Bug**: el paciente no puede cancelar una cita que ya empezó (API y web). Independiente | #157 | — | ⬜ |
+| 34 | **Bug**: email sin distinguir mayúsculas en el login (API y web) y unicidad case-insensitive en la DB. Independiente | #151 | #160 | ✅ |
+| 35 | **Bug**: el paciente no puede cancelar una cita que ya empezó (API y web). Independiente | #157 | — | ⏳ |
 | 36 | Trato Dr./Dra. según el médico (campo traducible; las tres doctoras demo). Va antes del 37 | #158 | — | ⬜ |
 | 37 | **Bug**: correos en español y con la hora de Chile (hoy en inglés y en UTC). Va después del 36 | #159 | — | ⬜ |
 
@@ -206,6 +206,8 @@
 - `DUPLICATE_EMAIL_MESSAGE` pasó de `users/services.py` a `users/models.py`, porque la restricción lo usa como `violation_error_message`. Sin eso, el admin mostraría el mensaje genérico de Django, "Constraint “unique_user_email_ci” is violated.". `services` lo reexporta (Paso 34).
 - `test_auth_api.py` no limpiaba la caché del throttle de login (5/minuto por IP). Con los tests nuevos superaba el límite y `test_token_refresh` recibía 429. Ahora tiene el mismo fixture `clear_throttle_cache` que `test_web_auth.py` (Paso 34).
 - `test_returns_available_slots_for_doctor` fallaba los lunes después de las 16:30. `ScheduleFactory` es de lunes y la señal genera 7 días desde hoy, así que un lunes en la tarde todos sus slots ya habían empezado y la API los omite (Paso 30). `test_reserved_slots_are_excluded` tenía el mismo problema, pero lo ocultaba con un `if slot:`. Los dos usan ahora un horario del día de mañana (Paso 34).
+- `can_be_cancelled()` ahora lee `self.slot`. La API y la web ya traen el slot en la misma consulta (`appointments_visible_to` hace `select_related("slot__schedule")`), así que el `can_cancel` de la lista no agrega consultas (Paso 35).
+- El `InvalidTransition` de una cita que ya empezó dice "Cannot cancel an appointment that has already started.", en inglés como los demás mensajes del modelo. El issue pedía `gettext_lazy`, pero la API siempre responde en inglés y la web muestra su propio `CANNOT_CANCEL_MESSAGE` traducido, así que una traducción del modelo no la vería nadie (Paso 35).
 
 ### Pendientes por decidir
 
@@ -215,5 +217,5 @@
 - **Sesión expirada con el modal de reserva abierto** (detectado en el Paso 27): HTMX sigue el redirect al login y metería la página de login dentro del modal. Propuesta: que `RoleRequiredMixin` responda `HX-Redirect` al login cuando el request es HTMX. **Resuelto en el Paso 29**: un request HTMX anónimo recibe `HX-Redirect` a `/login/?next=<página donde estaba>`. La página sale de `HX-Current-URL`, y se ignora si es de otro origen.
 - **Paciente sin perfil** (detectado en el Paso 27): un usuario con rol paciente creado desde el admin sin su `Patient` da 500 al reservar, en la web y en la API (`request.user.patient_profile`). El registro público siempre crea el perfil. Propuesta: crearlo también desde el admin, o responder un error claro. **Resuelto en el Paso 29**: `UserAdmin.save_model` llama a `ensure_patient_profile`, que crea el `Patient` cuando el usuario se agrega como paciente o pasa a ese rol.
 - **"Dr." para todas las médicas** (detectado en el Paso 27): `Doctor.__str__` antepone "Dr." siempre, así que la web muestra "Dr. Carla Soto"; los correos hacen lo mismo. El modelo no guarda cómo tratar a cada médico. Propuesta: un campo de tratamiento (Dr./Dra.) traducible, o mostrar solo el nombre. Va en el Paso 36 (#158).
-- **Cancelar una cita que ya pasó** (detectado en el Paso 28): `cancel_appointment` solo revisa el estado, así que la API (y la URL de cancelar de la web) dejan cancelar una cita `pending` o `confirmed` que ya ocurrió, y liberan un slot del pasado. La web oculta el botón en las citas que ya empezaron. Propuesta: que el paciente solo pueda cancelar antes de la hora, y el médico siempre. Va en el Paso 35 (#157).
+- **Cancelar una cita que ya pasó** (detectado en el Paso 28): `cancel_appointment` solo revisa el estado, así que la API (y la URL de cancelar de la web) dejan cancelar una cita `pending` o `confirmed` que ya ocurrió, y liberan un slot del pasado. La web oculta el botón en las citas que ya empezaron. Propuesta: que el paciente solo pueda cancelar antes de la hora, y el médico siempre. Va en el Paso 35 (#157). Decidido: nadie cancela una cita que ya empezó, ni el paciente ni el médico, que la cierra como completada o inasistencia. **Resuelto en el Paso 35**: `can_be_cancelled()` exige que el slot no haya empezado, así que la API responde 400 y la URL de la web muestra el mensaje, en el modal y sin JS.
 - **Foco después de cancelar** (detectado en el Paso 28): al cerrarse el modal, el link que lo abrió ya no existe y el foco queda en `<body>`. El mensaje se anuncia (región `role="status"`), pero conviene mover el foco al estado de la cita. **Resuelto en el Paso 29**: el bloque de estado tiene `tabindex="-1"` y `dialog.js` le pasa el foco al cerrar el modal.
