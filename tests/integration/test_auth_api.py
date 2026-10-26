@@ -1,7 +1,17 @@
 import jwt
+import pytest
+from django.core.cache import cache
 from rest_framework import status
 
 from tests.factories import UserFactory, random_password
+
+
+@pytest.fixture(autouse=True)
+def clear_throttle_cache():
+    """The token endpoint allows 5 logins a minute per IP ("login" scope)."""
+    cache.clear()
+    yield
+    cache.clear()
 
 
 class TestAuthAPI:
@@ -54,6 +64,37 @@ class TestAuthAPI:
         )
 
         assert response.status_code == status.HTTP_401_UNAUTHORIZED
+
+    def test_token_obtain_ignores_email_case(self, api_client, db):
+        """An account registered as ana@… logs in as ANA@… (Paso 34)."""
+        user = UserFactory(email="ana@example.com")
+
+        response = api_client.post(
+            "/api/v1/token/",
+            {"email": "ANA@Example.com", "password": user.raw_password},
+            format="json",
+        )
+
+        assert response.status_code == status.HTTP_200_OK
+        assert "access" in response.data
+
+    def test_wrong_password_and_unknown_email_get_the_same_error(self, api_client, db):
+        """The 401 must not reveal whether the email is registered."""
+        UserFactory(email="ana@example.com")
+
+        wrong_password = api_client.post(
+            "/api/v1/token/",
+            {"email": "ANA@example.com", "password": random_password()},
+            format="json",
+        )
+        unknown_email = api_client.post(
+            "/api/v1/token/",
+            {"email": "nadie@example.com", "password": random_password()},
+            format="json",
+        )
+
+        assert wrong_password.status_code == status.HTTP_401_UNAUTHORIZED
+        assert wrong_password.data == unknown_email.data
 
     def test_token_refresh(self, api_client, db):
         """Test POST /api/token/refresh/ returns a new access token."""

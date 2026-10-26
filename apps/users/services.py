@@ -15,15 +15,10 @@ import datetime
 from django.contrib.auth.password_validation import validate_password
 from django.core.exceptions import ValidationError
 from django.db import IntegrityError, transaction
-from django.utils.translation import gettext_lazy as _
 
 from apps.core.roles import is_patient
 from apps.patients.models import Patient
-from apps.users.models import Role, User
-
-# Lazy: the web form shows it in the visitor's language; the API resolves
-# it while English is active (apps.core.middleware.EnglishApiMiddleware).
-DUPLICATE_EMAIL_MESSAGE = _("A user with this email already exists.")
+from apps.users.models import DUPLICATE_EMAIL_MESSAGE, Role, User
 
 
 def validate_patient_registration(

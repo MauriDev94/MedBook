@@ -101,6 +101,33 @@ class TestUserModel:
             )
 
 
+@pytest.mark.django_db
+class TestUserEmailCase:
+    """An email is one account whatever its case (Paso 34).
+
+    The login looks the user up with get_by_natural_key, and the database
+    enforces one user per lower-cased email. The email is stored as typed.
+    """
+
+    def test_natural_key_lookup_ignores_case(self):
+        user = UserFactory(email="ana@example.com")
+
+        assert User.objects.get_by_natural_key("ANA@Example.com") == user
+
+    def test_email_is_stored_as_typed_with_a_lowercase_domain(self):
+        user = User.objects.create_user(
+            email="Ana.Perez@Example.COM", password=random_password()
+        )
+
+        assert user.email == "Ana.Perez@example.com"
+
+    def test_database_rejects_the_same_email_in_another_case(self):
+        UserFactory(email="ana@example.com")
+
+        with pytest.raises(IntegrityError), transaction.atomic():
+            UserFactory(email="ANA@example.com")
+
+
 class TestDoctorModel:
     """Test Doctor model."""
 

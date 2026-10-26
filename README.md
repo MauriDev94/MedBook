@@ -3,7 +3,7 @@
 > REST API for medical appointment booking — Django 5.2 LTS + DRF 3.18  
 > Portfolio project built with TDD: appointment state machine, object-level RBAC and race-safe booking.
 
-[![Tests](https://img.shields.io/badge/tests-660%20passing-brightgreen)](./tests)
+[![Tests](https://img.shields.io/badge/tests-668%20passing-brightgreen)](./tests)
 [![Coverage](https://img.shields.io/badge/branch%20coverage-99.6%25-brightgreen)](./tests)
 [![Python](https://img.shields.io/badge/python-3.12-blue)](https://python.org)
 [![Django](https://img.shields.io/badge/django-5.2%20LTS-green)](https://djangoproject.com)
@@ -135,7 +135,7 @@ Datetimes: ISO 8601 in Chilean time with its offset, e.g. `2026-01-14T09:00:00-0
 ### Auth
 | Method | Endpoint | Description |
 |---|---|---|
-| POST | `/api/v1/token/` | Login → `{access, refresh}` |
+| POST | `/api/v1/token/` | Login → `{access, refresh}`. The email is case-insensitive: `Ana@example.com` and `ana@example.com` are the same account |
 | POST | `/api/v1/token/refresh/` | Refresh access token |
 | POST | `/api/v1/token/blacklist/` | Logout (invalidate refresh token) |
 
@@ -144,7 +144,7 @@ Datetimes: ISO 8601 in Chilean time with its offset, e.g. `2026-01-14T09:00:00-0
 |---|---|---|---|
 | GET | `/api/v1/users/me/` | Authenticated user profile | Any |
 | PATCH | `/api/v1/users/me/` | Update first_name, last_name | Any |
-| POST | `/api/v1/users/register/` | Patient self-registration → 201 with the profile (no tokens; log in via `/api/v1/token/`). Rate limited to 10/hour per IP | Public |
+| POST | `/api/v1/users/register/` | Patient self-registration → 201 with the profile (no tokens; log in via `/api/v1/token/`). An email already taken in any case → 400. Rate limited to 10/hour per IP | Public |
 
 ### Doctors
 | Method | Endpoint | Description | Auth |
@@ -199,7 +199,7 @@ Server-rendered with session auth (the API keeps JWT). Spanish by default, Engli
 |---|---|---|---|
 | GET | `/` | Home | Public |
 | GET, POST | `/signup/` | Patient sign-up; logs the new patient in. Shares the API's `register` rate limit (10/hour per IP) | Anonymous |
-| GET, POST | `/login/` | Email + password. Shares the API's `login` rate limit (5/minute per IP) | Anonymous |
+| GET, POST | `/login/` | Email (in any case) + password. Shares the API's `login` rate limit (5/minute per IP) | Anonymous |
 | POST | `/logout/` | Log out | Signed in |
 | GET | `/panel/` | Notice for doctors and admins until their panel ships | Doctor, admin |
 | GET | `/doctors/` | Doctor catalog, `?specialty=<slug>` filter (HTMX swaps only the list), 10 per page | Patient |

@@ -40,6 +40,10 @@ def _register(**overrides):
     return services.register_patient(**data)
 
 
+def _skip_checks(**kwargs):
+    """Stands in for validate_patient_registration, so the INSERT runs."""
+
+
 @pytest.mark.django_db
 class TestRegisterPatient:
     def test_creates_user_with_patient_role(self):
@@ -166,6 +170,25 @@ class TestRegisterPatientAtomicity:
             _register()
 
         assert "email" in exc_info.value.message_dict
+
+    def test_email_taken_in_another_case_after_the_check_maps_to_email_error(
+        self, monkeypatch
+    ):
+        """The same race, with the database's case-insensitive constraint.
+
+        No mock of the INSERT: the pre-check is skipped, so the real
+        unique_user_email_ci constraint must reject "ANA.PEREZ@…".
+        """
+        UserFactory(email="ana.perez@example.com")
+        monkeypatch.setattr(services, "validate_patient_registration", _skip_checks)
+
+        with pytest.raises(ValidationError) as exc_info:
+            _register(email="ANA.PEREZ@example.com")
+
+        assert exc_info.value.message_dict["email"] == [
+            str(services.DUPLICATE_EMAIL_MESSAGE)
+        ]
+        assert User.objects.filter(email__iexact="ana.perez@example.com").count() == 1
 
 
 @pytest.mark.django_db

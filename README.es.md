@@ -3,7 +3,7 @@
 > API REST para reservas médicas — Django 5.2 LTS + DRF 3.18  
 > Proyecto de portafolio hecho con TDD: máquina de estados de citas, RBAC a nivel de objeto y reservas sin race conditions.
 
-[![Tests](https://img.shields.io/badge/tests-660%20passing-brightgreen)](./tests)
+[![Tests](https://img.shields.io/badge/tests-668%20passing-brightgreen)](./tests)
 [![Coverage](https://img.shields.io/badge/branch%20coverage-99.6%25-brightgreen)](./tests)
 [![Python](https://img.shields.io/badge/python-3.12-blue)](https://python.org)
 [![Django](https://img.shields.io/badge/django-5.2%20LTS-green)](https://djangoproject.com)
@@ -135,7 +135,7 @@ Fechas: ISO 8601 en hora de Chile con su desfase, por ejemplo `2026-01-14T09:00:
 ### Auth
 | Método | Endpoint | Descripción |
 |---|---|---|
-| POST | `/api/v1/token/` | Login → `{access, refresh}` |
+| POST | `/api/v1/token/` | Login → `{access, refresh}`. El email no distingue mayúsculas: `Ana@example.com` y `ana@example.com` son la misma cuenta |
 | POST | `/api/v1/token/refresh/` | Refrescar access token |
 | POST | `/api/v1/token/blacklist/` | Logout (invalida refresh token) |
 
@@ -144,7 +144,7 @@ Fechas: ISO 8601 en hora de Chile con su desfase, por ejemplo `2026-01-14T09:00:
 |---|---|---|---|
 | GET | `/api/v1/users/me/` | Perfil del usuario autenticado | Cualquiera |
 | PATCH | `/api/v1/users/me/` | Actualizar first_name, last_name | Cualquiera |
-| POST | `/api/v1/users/register/` | Registro de paciente → 201 con el perfil (sin tokens; el login va por `/api/v1/token/`). Límite de 10/hora por IP | Público |
+| POST | `/api/v1/users/register/` | Registro de paciente → 201 con el perfil (sin tokens; el login va por `/api/v1/token/`). Un email ya usado, con cualquier combinación de mayúsculas → 400. Límite de 10/hora por IP | Público |
 
 ### Doctores
 | Método | Endpoint | Descripción | Auth |
@@ -199,7 +199,7 @@ Server-rendered con sesión de Django (la API sigue con JWT). En español por de
 |---|---|---|---|
 | GET | `/` | Home | Público |
 | GET, POST | `/signup/` | Registro de pacientes; deja la sesión iniciada. Comparte el límite `register` de la API (10/hora por IP) | Anónimo |
-| GET, POST | `/login/` | Correo + contraseña. Comparte el límite `login` de la API (5/minuto por IP) | Anónimo |
+| GET, POST | `/login/` | Correo (con cualquier combinación de mayúsculas) + contraseña. Comparte el límite `login` de la API (5/minuto por IP) | Anónimo |
 | POST | `/logout/` | Cerrar sesión | Con sesión |
 | GET | `/panel/` | Aviso para doctores y admins hasta que llegue su panel | Doctor, admin |
 | GET | `/doctors/` | Catálogo de doctores, filtro `?specialty=<slug>` (HTMX cambia solo la lista), 10 por página | Paciente |
