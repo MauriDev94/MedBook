@@ -1,0 +1,12 @@
+{% extends "web/base.html" %}
+{% load i18n %}
+{# Shared by the root 403.html, 404.html and 500.html, which Django looks up by name. #}
+
+{% block content %}
+  <section class="mx-auto max-w-2xl px-4 py-16 text-center">
+    <p class="text-sm font-semibold text-teal-700">{% block code %}{% endblock %}</p>
+    <h1 class="mt-2 text-2xl font-bold tracking-tight text-slate-900">{% block heading %}{% endblock %}</h1>
+    <p class="mt-4 text-slate-600">{% block message %}{% endblock %}</p>
+    <a href="{% url 'web:home' %}" class="mt-8 inline-flex min-h-11 items-center rounded-md bg-teal-700 px-5 text-sm font-semibold text-white hover:bg-teal-800">{% translate "Go to the home page" %}</a>
+  </section>
+{% endblock %}

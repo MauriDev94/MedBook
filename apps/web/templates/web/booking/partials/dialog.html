@@ -17,7 +17,7 @@
 {% if error %}
   <p class="mt-5 rounded-md border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800" role="alert">{{ error }}</p>
   <form method="dialog" class="mt-6 flex justify-end">
-    <button type="submit" class="min-h-11 rounded-md bg-teal-600 px-5 text-sm font-semibold text-white hover:bg-teal-700">{% translate "Choose another time" %}</button>
+    <button type="submit" class="min-h-11 rounded-md bg-teal-700 px-5 text-sm font-semibold text-white hover:bg-teal-800">{% translate "Choose another time" %}</button>
   </form>
   {# The slot is gone or taken: refresh the week behind the dialog #}
   {% include "web/doctors/partials/week_slots.html" with oob=True %}
@@ -27,7 +27,7 @@
     {% include "web/includes/field.html" with field=form.reason %}
     <div class="flex flex-wrap justify-end gap-3">
       <button type="submit" form="booking-dialog-cancel" class="min-h-11 rounded-md border border-slate-300 bg-white px-4 text-sm font-semibold text-slate-700 hover:bg-slate-50">{% translate "Cancel" %}</button>
-      <button type="submit" class="min-h-11 rounded-md bg-teal-600 px-5 text-sm font-semibold text-white hover:bg-teal-700">{% translate "Confirm booking" %}</button>
+      <button type="submit" class="min-h-11 rounded-md bg-teal-700 px-5 text-sm font-semibold text-white hover:bg-teal-800">{% translate "Confirm booking" %}</button>
     </div>
   </form>
   <form id="booking-dialog-cancel" method="dialog"></form>

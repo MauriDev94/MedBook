@@ -3,8 +3,8 @@
 > REST API for medical appointment booking — Django 5.2 LTS + DRF 3.18  
 > Portfolio project built with TDD: appointment state machine, object-level RBAC and race-safe booking.
 
-[![Tests](https://img.shields.io/badge/tests-430%20passing-brightgreen)](./tests)
-[![Coverage](https://img.shields.io/badge/branch%20coverage-99.4%25-brightgreen)](./tests)
+[![Tests](https://img.shields.io/badge/tests-660%20passing-brightgreen)](./tests)
+[![Coverage](https://img.shields.io/badge/branch%20coverage-99.6%25-brightgreen)](./tests)
 [![Python](https://img.shields.io/badge/python-3.12-blue)](https://python.org)
 [![Django](https://img.shields.io/badge/django-5.2%20LTS-green)](https://djangoproject.com)
 
@@ -18,7 +18,19 @@ MedBook is a REST API for managing medical appointments. It covers the full book
 
 The goal is to demonstrate real-world Django competency: complex ORM queries, RBAC permissions, atomic transactions, TDD, custom admin, and clean architecture — the kind of things that come up in senior backend interviews.
 
-A server-rendered web UI (Django templates + HTMX, Spanish/English) is being built on top of the same service layer ([ADR 0002](./docs/adr/0002-server-rendered-web-frontend.md)). It already has the home page at `/`, session login, patient sign-up and the doctor catalog with available slots; booking and "my appointments" arrive in the following steps of [`SPRINT.md`](./SPRINT.md).
+Patients also get a server-rendered web UI (Django templates + HTMX, Spanish and English) built on the same service layer ([ADR 0002](./docs/adr/0002-server-rendered-web-frontend.md)). They can sign up, find a doctor by specialty, book a slot and manage their appointments. The live demo, with six fictional doctors, runs at **https://medbook-oiio.onrender.com**. It is on Render's free plan, so the first request after a quiet spell can take about a minute.
+
+### Screenshots
+
+The UI is in Spanish, its default language; English is one click away in the menu.
+
+| Doctor catalog | Booking a slot |
+|---|---|
+| ![Doctor catalog with six doctors and a specialty filter](./docs/screenshots/doctors.jpg) | ![Booking dialog over a doctor's week of available times](./docs/screenshots/booking.jpg) |
+| **My appointments** | **Cancelling an appointment** |
+| ![My appointments with three upcoming appointments](./docs/screenshots/appointments.jpg) | ![Dialog that confirms cancelling an appointment](./docs/screenshots/cancel.jpg) |
+
+<img src="./docs/screenshots/mobile.jpg" alt="A doctor's week of available times on a 375 px wide phone screen" width="250">
 
 ---
 
@@ -198,6 +210,15 @@ Server-rendered with session auth (the API keeps JWT). Spanish by default, Engli
 | GET, POST | `/appointments/<id>/cancel/` | Confirm and cancel: frees the slot and emails the patient. HTMX: a modal dialog, then the status updates in place; without JS: a full page, then the appointment's page | Patient |
 | POST | `/i18n/setlang/` | Language switcher (sets a cookie) | Public |
 
+**Error pages.** The 403, 404 and 500 pages use the site layout and the visitor's language. The 500 page is rendered without the request or the database, since either may be what failed, so its menu has no account links. If the session expires while the visitor is inside a dialog, the whole page goes to the login, which brings them back to the same page afterwards (`HX-Redirect`).
+
+**Accessibility.**
+- A skip link jumps over the menu to the page's `<main>`.
+- Everything works with the keyboard. Dialogs are native `<dialog>` modals: Esc closes them and the focus goes back to the link that opened them. After cancelling, the focus moves to the appointment's new status. Week, tab and page links keep the focus when HTMX replaces the content around them.
+- Each HTMX update announces a short summary to screen readers in a polite live region, for example "6 doctors found." or "November 2 – November 8: 16 available times.". Flash messages live in a `role="status"` region.
+- Repeated links carry hidden context, such as "See available times: Dr. Carla Soto" or "Monday October 26, 10:00".
+- Primary buttons use white text on teal-700 (contrast 5.4:1, WCAG AA). The layout works down to 375 px wide.
+
 ---
 
 ## RBAC — Permission matrix
@@ -275,7 +296,8 @@ Open **http://localhost:8000/** for the web UI and **http://localhost:8000/api/d
 
 ### Web UI: CSS and translations
 
-- **Tailwind**: while editing templates, run `python manage.py tailwind watch` in a second terminal. The source is `apps/web/styles/tailwind.css`; the output `static/css/tailwind.css` is generated and not committed. Render, CI and the Dockerfile compile it at build time.
+- **Tailwind**: while editing templates, run `python manage.py tailwind watch` in a second terminal, or `python manage.py tailwind runserver` to run the watcher and the server in one. The source is `apps/web/styles/tailwind.css` and only scans `apps/web`, so class names must appear there literally (never built from strings). The output `static/css/tailwind.css` is generated and not committed. Render, CI and the Dockerfile compile it at build time.
+- **Language**: Spanish is the default. The menu's switcher posts to `/i18n/setlang/`, which stores the choice in a cookie; without the cookie, the browser's `Accept-Language` decides. Dates use the active language's formats and Chilean time. Any `/api/` path is switched back to English, so the JSON API never changes with the visitor's language.
 - **Translations**: UI strings are written in English and translated to Spanish (the default language) in `locale/es/LC_MESSAGES/django.po`. Both the `.po` and the compiled `.mo` are committed, because production has no gettext; CI fails if they are out of date. The JSON API always answers in English. Updating them needs GNU gettext:
   - Windows: `winget install mlocati.GetText` (then open a new terminal)
   - macOS: `brew install gettext` · Debian/Ubuntu: `sudo apt install gettext`
@@ -418,6 +440,7 @@ Quick summary:
 - **locmem email backend** in tests — `mail.outbox` assertions, no real SMTP needed
 - **`AnonRateThrottle`** on login endpoint — brute-force protection without throttling the entire API
 - **WhiteNoise** for production static files — serves CSS/JS from Gunicorn without Nginx, with Brotli compression and cache-busting hashes
+- **Server-rendered web UI** — Django templates + HTMX and Tailwind without Node, calling the same services as the API; one small script for the dialogs ([ADR 0002](./docs/adr/0002-server-rendered-web-frontend.md))
 
 ---
 

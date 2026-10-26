@@ -19,7 +19,7 @@
         {% csrf_token %}
         {% include "web/includes/field.html" with field=form.reason %}
         <div class="flex flex-wrap items-center gap-4">
-          <button type="submit" class="min-h-11 rounded-md bg-teal-600 px-5 text-sm font-semibold text-white hover:bg-teal-700">{% translate "Confirm booking" %}</button>
+          <button type="submit" class="min-h-11 rounded-md bg-teal-700 px-5 text-sm font-semibold text-white hover:bg-teal-800">{% translate "Confirm booking" %}</button>
           <a href="{% url 'web:doctor_detail' doctor.pk %}" class="text-sm font-semibold text-teal-700 hover:underline">{% translate "Cancel" %}</a>
         </div>
       </form>

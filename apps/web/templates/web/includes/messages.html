@@ -1,6 +1,7 @@
 {# django.contrib.messages, one box per message coloured by level. The region is #}
-{# always on the page, so an HTMX response can swap a message into it (oob=True). #}
-<div id="messages"{% if oob %} hx-swap-oob="true"{% endif %} role="status">
+{# always on the page, so an HTMX response can swap a message into it (oob=True); #}
+{# innerHTML keeps the role="status" node, which screen readers only watch while it stays. #}
+<div id="messages"{% if oob %} hx-swap-oob="innerHTML"{% endif %} role="status">
   {% if messages %}
     <div class="mx-auto max-w-5xl space-y-2 px-4 pt-4">
       {% for message in messages %}

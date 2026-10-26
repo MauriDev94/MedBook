@@ -9,7 +9,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: MedBook\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2026-10-25 02:28-0300\n"
+"POT-Creation-Date: 2026-10-25 20:47-0300\n"
 "PO-Revision-Date: 2026-10-23 02:20-0300\n"
 "Last-Translator: \n"
 "Language-Team: Spanish\n"
@@ -89,6 +89,26 @@ msgstr "Motivo de la consulta (opcional)"
 msgid "For example: a yearly check-up or a symptom you want to discuss."
 msgstr "Por ejemplo: un control anual o un síntoma que quieras comentar."
 
+msgid "Access denied"
+msgstr "Acceso denegado"
+
+msgid ""
+"You don't have access to this page. It is meant for another type of account."
+msgstr "No tienes acceso a esta página. Es para otro tipo de cuenta."
+
+msgid "Page not found"
+msgstr "Página no encontrada"
+
+msgid "The page you are looking for does not exist or has moved."
+msgstr "La página que buscas no existe o cambió de dirección."
+
+msgid "Something went wrong"
+msgstr "Algo salió mal"
+
+msgid "We could not complete your request. Please try again in a few minutes."
+msgstr ""
+"No pudimos completar tu solicitud. Vuelve a intentarlo en unos minutos."
+
 msgid "Cancel this appointment?"
 msgstr "¿Cancelar esta cita?"
 
@@ -159,6 +179,20 @@ msgstr "No tienes citas próximas."
 msgid "Find a doctor"
 msgstr "Busca un médico"
 
+#, python-format
+msgid "%(counter)s past appointment."
+msgid_plural "%(counter)s past appointments."
+msgstr[0] "%(counter)s cita pasada."
+msgstr[1] "%(counter)s de citas pasadas."
+msgstr[2] "%(counter)s citas pasadas."
+
+#, python-format
+msgid "%(counter)s upcoming appointment."
+msgid_plural "%(counter)s upcoming appointments."
+msgstr[0] "%(counter)s cita próxima."
+msgstr[1] "%(counter)s de citas próximas."
+msgstr[2] "%(counter)s citas próximas."
+
 msgid "Cancel"
 msgstr "Cancelar"
 
@@ -182,6 +216,9 @@ msgstr "Solo cuentas de paciente. A los médicos los registra la clínica."
 
 msgid "Already have an account?"
 msgstr "¿Ya tienes cuenta?"
+
+msgid "Skip to main content"
+msgstr "Saltar al contenido"
 
 msgid "Main"
 msgstr "Principal"
@@ -261,6 +298,13 @@ msgstr "No hay médicos para esta especialidad."
 msgid "There are no doctors yet."
 msgstr "Todavía no hay médicos."
 
+#, python-format
+msgid "%(counter)s doctor found."
+msgid_plural "%(counter)s doctors found."
+msgstr[0] "Se encontró %(counter)s médico."
+msgstr[1] "Se encontraron %(counter)s de médicos."
+msgstr[2] "Se encontraron %(counter)s médicos."
+
 msgid "Weeks"
 msgstr "Semanas"
 
@@ -272,6 +316,16 @@ msgstr "Semana siguiente"
 
 msgid "No available times this week."
 msgstr "No hay horas disponibles esta semana."
+
+#, python-format
+msgid "%(counter)s available time."
+msgid_plural "%(counter)s available times."
+msgstr[0] "%(counter)s hora disponible."
+msgstr[1] "%(counter)s de horas disponibles."
+msgstr[2] "%(counter)s horas disponibles."
+
+msgid "Go to the home page"
+msgstr "Ir al inicio"
 
 msgid "Book your medical appointment"
 msgstr "Reserva tu hora médica"

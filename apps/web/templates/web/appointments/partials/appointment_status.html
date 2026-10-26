@@ -2,7 +2,8 @@
 {# Status badge and, while the appointment can be cancelled and has not started, #}
 {# the cancel link. Shown in the list row and on the detail page; cancelling     #}
 {# replaces it in place (HTMX), or out of band from the dialog (oob=True).        #}
-<div id="appointment-{{ appointment.pk }}-status"{% if oob %} hx-swap-oob="true"{% endif %} class="flex flex-wrap items-center gap-3">
+{# Focusable from script only: dialog.js moves the focus here after cancelling.  #}
+<div id="appointment-{{ appointment.pk }}-status"{% if oob %} hx-swap-oob="true"{% endif %} tabindex="-1" class="flex flex-wrap items-center gap-3 rounded-md">
   <span class="rounded-full px-3 py-1 text-xs font-semibold {% if appointment.status == 'pending' %}bg-amber-50 text-amber-800{% elif appointment.status == 'confirmed' %}bg-emerald-50 text-emerald-800{% elif appointment.status == 'completed' %}bg-sky-50 text-sky-800{% elif appointment.status == 'no_show' %}bg-red-50 text-red-800{% else %}bg-slate-100 text-slate-600{% endif %}">{{ appointment.get_status_display }}</span>
   {% if appointment.can_be_cancelled and not appointment.slot.has_started %}
     <a href="{% url 'web:cancel_appointment' appointment.pk %}" hx-get="{% url 'web:cancel_appointment' appointment.pk %}" hx-target="#cancel-dialog"
