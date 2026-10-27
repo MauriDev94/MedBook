@@ -9,7 +9,7 @@ web's default language.
 import datetime
 from dataclasses import dataclass
 
-from apps.doctors.models import Schedule
+from apps.doctors.models import Doctor, Schedule
 
 Day = Schedule.DayOfWeek
 
@@ -25,6 +25,8 @@ class DemoDoctor:
     bio: str
     # (day_of_week, start_time, end_time), one Schedule each
     hours: tuple[tuple[int, datetime.time, datetime.time], ...]
+    # 0006_demo_doctors_title gives the same title to the rows that exist
+    title: str = Doctor.Title.DR
 
 
 def weekly(days, start: str, end: str) -> tuple:
@@ -40,6 +42,7 @@ DEMO_DOCTORS = (
         last_name="Soto",
         email="carla.soto@medbook.example",
         license_number="DEMO-001",
+        title=Doctor.Title.DRA,
         specialty_slugs=("cardiology",),
         consultation_duration=30,
         bio="Cardióloga. Controles preventivos y seguimiento de hipertensión.",
@@ -60,6 +63,7 @@ DEMO_DOCTORS = (
         last_name="Rojas",
         email="valentina.rojas@medbook.example",
         license_number="DEMO-003",
+        title=Doctor.Title.DRA,
         specialty_slugs=("pediatrics",),
         consultation_duration=30,
         bio="Pediatra. Control sano del niño y vacunas.",
@@ -80,6 +84,7 @@ DEMO_DOCTORS = (
         last_name="Herrera",
         email="camila.herrera@medbook.example",
         license_number="DEMO-005",
+        title=Doctor.Title.DRA,
         specialty_slugs=("general-practice",),
         consultation_duration=20,
         bio="Medicina general. Consultas de morbilidad y chequeos anuales.",

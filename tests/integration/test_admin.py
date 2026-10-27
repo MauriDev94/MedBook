@@ -8,6 +8,7 @@ import pytest
 from django.urls import reverse
 from django.utils import translation
 
+from apps.doctors.models import Doctor
 from apps.patients.models import Patient
 from apps.users.models import Role, User
 from apps.users.services import DUPLICATE_EMAIL_MESSAGE
@@ -75,6 +76,17 @@ class TestDoctorAdmin:
         DoctorFactory()
         response = admin_client.get(reverse("admin:doctors_doctor_changelist"))
         assert response.status_code == 200
+
+    def test_title_is_in_the_list_and_the_form(self, admin_client):
+        doctor = DoctorFactory(title=Doctor.Title.DRA)
+
+        changelist = admin_client.get(reverse("admin:doctors_doctor_changelist"))
+        change = admin_client.get(
+            reverse("admin:doctors_doctor_change", args=[doctor.pk])
+        )
+
+        assert 'class="field-title">Dra.<' in changelist.content.decode()
+        assert 'name="title"' in change.content.decode()
 
     def test_detail_page_loads_with_schedule_inline(self, admin_client):
         doctor = DoctorFactory()

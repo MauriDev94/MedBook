@@ -6,7 +6,7 @@ from django.db import IntegrityError, transaction
 from django.utils import timezone, translation
 
 from apps.appointments.models import Appointment, InvalidTransition, TimeSlot
-from apps.doctors.models import Specialty
+from apps.doctors.models import Doctor, Specialty
 from apps.users.models import Role
 from tests.factories import (
     AppointmentFactory,
@@ -153,6 +153,29 @@ class TestDoctorModel:
         )
         expected = f"Dr. {doctor.user.email}"
         assert str(doctor) == expected
+
+    def test_title_defaults_to_dr(self, db):
+        """Existing doctors keep the "Dr." they always had (Paso 36)."""
+        assert DoctorFactory().title == Doctor.Title.DR
+
+    @pytest.mark.parametrize(
+        ("title", "spanish", "english"),
+        [
+            ("dr", "Dr. Carla Soto", "Dr. Carla Soto"),
+            ("dra", "Dra. Carla Soto", "Dr. Carla Soto"),
+        ],
+    )
+    def test_str_uses_the_title_in_the_active_language(
+        self, db, title, spanish, english
+    ):
+        """Spanish tells Dr. from Dra.; English says Dr. for both."""
+        doctor = DoctorFactory(
+            title=title, user__first_name="Carla", user__last_name="Soto"
+        )
+
+        assert str(doctor) == spanish
+        with translation.override("en"):
+            assert str(doctor) == english
 
     def test_doctor_with_specialties(self, db):
         """Test doctor can have multiple specialties."""
