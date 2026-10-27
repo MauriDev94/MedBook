@@ -3,7 +3,7 @@
 > API REST para reservas médicas — Django 5.2 LTS + DRF 3.18  
 > Proyecto de portafolio hecho con TDD: máquina de estados de citas, RBAC a nivel de objeto y reservas sin race conditions.
 
-[![Tests](https://img.shields.io/badge/tests-707%20passing-brightgreen)](./tests)
+[![Tests](https://img.shields.io/badge/tests-718%20passing-brightgreen)](./tests)
 [![Coverage](https://img.shields.io/badge/branch%20coverage-99.6%25-brightgreen)](./tests)
 [![Python](https://img.shields.io/badge/python-3.12-blue)](https://python.org)
 [![Django](https://img.shields.io/badge/django-5.2%20LTS-green)](https://djangoproject.com)
@@ -327,21 +327,37 @@ python manage.py generate_slots --days=28           # las cuatro semanas que mue
 
 ## Deploy
 
-Producción corre en **Render** y se gestiona como infraestructura como código: [`render.yaml`](./render.yaml) es un **Blueprint** de Render con auto-sync, así que cualquier cambio que llegue a `master` se aplica solo al servicio (comandos de build y arranque, health check en `/health/`, variables no secretas). Los secretos (`SECRET_KEY`, `DATABASE_URL`, credenciales del superusuario) quedan fuera del archivo y viven solo en el dashboard de Render. La versión de Python sale de [`.python-version`](./.python-version).
+Producción corre en **Render** y se gestiona como infraestructura como código: [`render.yaml`](./render.yaml) es un **Blueprint** de Render con auto-sync, así que cualquier cambio que llegue a `master` se aplica solo a los servicios (build y arranque, health check en `/health/`, variables no secretas). Los secretos (`SECRET_KEY`, `DATABASE_URL`, credenciales del superusuario) quedan fuera del archivo y viven solo en el dashboard de Render.
 
-El build corre `tailwind build` antes de `collectstatic`, porque el storage con manifest necesita el CSS compilado. Las traducciones no se compilan ahí: los `.mo` están versionados.
+Producción está pasando al [`Dockerfile`](./Dockerfile) multi-stage sobre **Alpine** (Paso 32, [#145](https://github.com/MauriDev94/MedBook/issues/145)). Render no cambia el runtime de un servicio existente, así que la imagen corre en uno nuevo, `medbook-demo`, junto al servicio nativo de Python (`MedBook`, que sigue sirviendo el link de la demo de arriba y toma la versión de Python de [`.python-version`](./.python-version)). Cuando `medbook-demo` quede verificado, `MedBook` sale de `render.yaml` y se borra a mano, porque un Blueprint nunca borra servicios.
 
-El [`Dockerfile`](./Dockerfile) multi-stage sobre **Alpine** es una alternativa portable al deploy nativo de Render (producción pasa a esa imagen en el Paso 32, [#145](https://github.com/MauriDev94/MedBook/issues/145)). El builder instala las dependencias (todas tienen wheels musllinux), baja la build musl del CLI de Tailwind (verificada con el sha256 del release, porque django-tailwind-cli no detecta musl), compila el CSS y corre `collectstatic`. La etapa final no lleva herramientas de build y corre con un usuario sin privilegios.
+- **Build.** El builder instala las dependencias (todas tienen wheels musllinux), baja la build musl del CLI de Tailwind (verificada con el sha256 del release, porque django-tailwind-cli no detecta musl), compila el CSS y corre `collectstatic`, cuyo storage con manifest necesita ese CSS. Las traducciones no se compilan: los `.mo` están versionados. La etapa final no lleva herramientas de build y corre con un usuario sin privilegios.
+- **Arranque.** El CMD de la imagen, [`scripts/start-production.sh`](./scripts/start-production.sh), corre `migrate` y `ensure_superuser`, luego `seed_demo` y `generate_slots`, y al final le entrega el proceso a gunicorn en `$PORT` (Render usa 10000; en otro lado, 8000). El servicio no define `dockerCommand`, así que `render.yaml` y la imagen no pueden contradecirse. El servicio nativo corre la misma secuencia desde su `startCommand`.
+- **Secretos en un servicio nuevo.** Render pide las variables `sync: false` solo al crear un Blueprint, no al agregarle un servicio. En `medbook-demo` se ingresan a mano en el dashboard, y su primer deploy falla hasta que estén.
+- **CI.** El job "Docker image" construye la imagen en cada PR sin publicarla, así que un `Dockerfile` roto hace fallar el PR y no el build de Render.
 
 ### Generación de slots en producción
 
-El plan free de Render no tiene cron jobs, así que el `startCommand` corre `python manage.py generate_slots --days=28` en cada arranque. La instancia free duerme tras 15 minutos sin tráfico y vuelve a arrancar con el siguiente request y en cada deploy, así que los slots se completan mientras la API se esté usando.
+El plan free de Render no tiene cron jobs, así que cada arranque corre `python manage.py generate_slots --days=28`. La instancia free duerme tras 15 minutos sin tráfico y vuelve a arrancar con el siguiente request y en cada deploy, así que los slots se completan mientras la API se esté usando.
 
 - El comando es idempotente: solo inserta los slots que faltan y en una segunda corrida reporta `0 new slots`.
-- Corre en un subshell. Si falla, deja una línea `WARNING` en el log y gunicorn arranca igual; en cambio, si falla `migrate` o `ensure_superuser`, el arranque se detiene.
-- En un plan pago, reemplazarlo por un cron job de Render (`type: cron`, diario, `python manage.py generate_slots --days=28`; mínimo USD 1/mes) y sacarlo del `startCommand`.
+- Si falla, deja una línea `WARNING` en el log y gunicorn arranca igual; en cambio, si falla `migrate` o `ensure_superuser`, el arranque se detiene.
+- En un plan pago, reemplazarlo por un cron job de Render (`type: cron`, diario, `python manage.py generate_slots --days=28`; mínimo USD 1/mes) y sacarlo del arranque.
 
-Producción es también la demo del portfolio: `render.yaml` define `MEDBOOK_DEMO_DATA=true`, así que el `startCommand` corre `seed_demo` justo antes de `generate_slots`, en su propio subshell. El primer arranque crea los [doctores demo](#datos-demo) y los siguientes reportan `Done. 0 demo doctor(s) created.`
+Producción es también la demo del portfolio: `render.yaml` define `MEDBOOK_DEMO_DATA=true`, así que el arranque corre `seed_demo` justo antes de `generate_slots`, y si falla también deja solo un aviso. El primer arranque crea los [doctores demo](#datos-demo) y los siguientes reportan `Done. 0 demo doctor(s) created.`
+
+### Correr la imagen en otro lado
+
+```bash
+docker build -t medbook:latest .
+docker run --rm -p 8000:8000 \
+  -e SECRET_KEY="<your-secret-key>" \
+  -e ALLOWED_HOSTS=localhost,127.0.0.1 \
+  -e DATABASE_URL="postgres://<user>:<password>@<host>:5432/medbook" \
+  medbook:latest
+```
+
+El arranque migra la base de `DATABASE_URL`. Los settings de producción redirigen HTTP a HTTPS salvo que el header `X-Forwarded-Proto` del proxy diga `https`, así que sin un proxy delante hay que mandarlo a mano: `curl -H "X-Forwarded-Proto: https" localhost:8000/health/`.
 
 ---
 

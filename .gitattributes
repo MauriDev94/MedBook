@@ -1,0 +1,3 @@
+# Shell scripts run in the Alpine image: a CRLF checkout on Windows would
+# break them in sh, and the local docker build copies the working tree.
+*.sh text eol=lf
