@@ -32,7 +32,7 @@ Settings modules: `config.settings.local` (dev), `config.settings.test` (pytest,
 
 Databases (Docker):
 - Both compose files need `SECRET_KEY` / `POSTGRES_PASSWORD` / `POSTGRES_TEST_PASSWORD` in `.env` (no defaults; compose stops naming the missing one). Existing volumes keep the password they were created with.
-- Dev: `docker compose up` starts Postgres on host port **5435** plus the app on 8000 (runs `migrate` then gunicorn with local settings). `docker compose up db` for just the DB.
+- Dev: `docker compose up` (or `up -d db`) starts only Postgres, on host port **5435**; the app runs with `runserver`. The `web` service is the production image behind the `image` profile (see Deploy), and `tests/unit/test_compose.py` keeps it in step with `render.yaml`.
 - Tests: `docker compose -f docker-compose.test.yml up -d` starts Postgres on host port **5436**, which is the default `DATABASE_URL` in `config/settings/test.py`. An optional `.env.test` overrides it (loaded in `test.py`, not `conftest.py`, because pytest-django imports settings first).
 
 ## Commands
@@ -78,9 +78,10 @@ Deploy: production is the Render service `medbook-demo` (https://medbook-demo.on
 - The service builds the `Dockerfile` (`python:3.12-alpine` sets the Python version; Render no longer reads `.python-version`) and boots with its CMD, `scripts/start-production.sh`: `set -e`, `migrate`, `ensure_superuser`, then `seed_demo` and `generate_slots --days=28` with `|| echo WARNING`, then `exec gunicorn` on `${PORT:-8000}` (Render sets 10000). It has no `dockerCommand`, so `render.yaml` and the image cannot drift. `.gitattributes` keeps `*.sh` LF, since Alpine's `sh` rejects CRLF.
 - The image's builder runs `tailwind build` before `collectstatic` (the manifest storage fails without the CSS). It fetches the musl Tailwind CLI (pinned sha256; django-tailwind-cli does not detect musl) and sets `TAILWIND_CLI_PATH`; keep its `TAILWIND_VERSION` in sync with `TAILWIND_CLI_VERSION` in `base.py`.
 - `ALLOWED_HOSTS` is only `medbook-demo.onrender.com`, which is also the Host Render's health checks send. A verified custom domain would become their Host and has to be added.
+- `SECURE_REDIRECT_EXEMPT` keeps `/health/` out of the HTTPS redirect (Paso 39): Render counts any 3xx as healthy, so a redirected check would pass without querying the DB. Every other path still answers plain HTTP with a 301.
 - Confirm a deploy by searching its log for `migrations`, `created` and `Listening at`: the unfiltered view of a Docker deploy can skip the first lines of the boot.
 
-To try the image's boot against the dev DB: `MSYS_NO_PATHCONV=1 docker compose run --rm -p 8001:10000 -e DJANGO_SETTINGS_MODULE=config.settings.production -e PORT=10000 web /bin/sh scripts/start-production.sh` (without `MSYS_NO_PATHCONV`, Git Bash turns `/bin/sh` into a Windows path), then `curl -H "X-Forwarded-Proto: https" localhost:8001/health/`, since production settings redirect plain HTTP.
+To try the image's boot against the dev DB: `docker compose up --build web` (naming the service enables its profile; it boots with the image's CMD, production settings, `PORT=10000` published on 8001 and render.yaml's non-secret values), then `curl localhost:8001/health/`. Any other path needs `-H "X-Forwarded-Proto: https"`, since production settings redirect plain HTTP. The boot migrates the dev DB and seeds the demo doctors there.
 
 ## Architecture
 

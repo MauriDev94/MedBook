@@ -3,7 +3,7 @@
 > REST API for medical appointment booking — Django 5.2 LTS + DRF 3.18  
 > Portfolio project built with TDD: appointment state machine, object-level RBAC and race-safe booking.
 
-[![Tests](https://img.shields.io/badge/tests-715%20passing-brightgreen)](./tests)
+[![Tests](https://img.shields.io/badge/tests-722%20passing-brightgreen)](./tests)
 [![Coverage](https://img.shields.io/badge/branch%20coverage-99.6%25-brightgreen)](./tests)
 [![Python](https://img.shields.io/badge/python-3.12-blue)](https://python.org)
 [![Django](https://img.shields.io/badge/django-5.2%20LTS-green)](https://djangoproject.com)
@@ -285,6 +285,8 @@ DJANGO_SETTINGS_MODULE=config.settings.local python manage.py migrate
 DJANGO_SETTINGS_MODULE=config.settings.local python manage.py createsuperuser
 ```
 
+`docker compose up` starts only this database. The `web` service in the same file is the production image, for trying it before a deploy (see [Trying the image locally](#trying-the-image-locally)). The data lives in the `medbook_pgdata` volume; `docker compose down -v` drops it for a clean database.
+
 ### 5. Start the server
 ```bash
 # Compile the CSS once (the first run downloads the pinned Tailwind CLI)
@@ -323,36 +325,6 @@ python manage.py generate_slots --days=28           # the four weeks the web sho
 - It is idempotent. A demo doctor counts as existing when its email (in any case) or its license number is taken, and existing rows are never changed, so edits made in the admin stay.
 - Three of them are women, addressed as Dra. on the Spanish site (`Doctor.title`; English says Dr. for every doctor). Demo doctors created before the field existed get it from the data migration `doctors.0006_demo_doctors_title`, since the seed never changes them.
 
-### Alternative: one-command dev stack with `docker compose up`
-
-`docker-compose.yml` now unifies **app + DB** in a single stack — no manual
-`pip install` / `createdb` / `runserver` steps required:
-
-```bash
-docker compose up
-```
-
-This builds the `web` service from the root [`Dockerfile`](./Dockerfile) and
-starts it alongside the `db` (Postgres 16) service. Notes:
-
-- `web` waits for `db`'s healthcheck (`pg_isready`) before starting.
-- `web` runs with `DJANGO_SETTINGS_MODULE=config.settings.local` (**not**
-  `production` — the production settings force `SECURE_SSL_REDIRECT=True`,
-  which would break plain HTTP on `localhost`).
-- On every start, `web` runs `python manage.py migrate --noinput` before
-  launching `gunicorn`, so the schema is always up to date.
-- The API is available at **http://localhost:8000/api/docs/**.
-- Static files (admin and web UI CSS) are not served in this stack: it runs
-  `gunicorn` with local settings, which have no WhiteNoise. Use `runserver`
-  for UI work.
-- Secrets (`SECRET_KEY`, `POSTGRES_PASSWORD`) come from your `.env`;
-  nothing secret is written in `docker-compose.yml`, and `up` stops with a
-  clear message if one is missing. `DATABASE_URL` for `web` is built from
-  the same variables.
-- `medbook_pgdata` is a regular (non-`external`) named volume, so
-  `docker compose up` works out of the box without pre-creating it by hand.
-  Run `docker compose down -v` to drop it if you want a clean database.
-
 ---
 
 ## Deploy
@@ -363,6 +335,7 @@ Production runs the multi-stage [`Dockerfile`](./Dockerfile), on **Alpine**, as 
 
 - **Build.** The builder stage installs the dependencies (all of them ship musllinux wheels), fetches the musl build of the Tailwind CLI (checked against the release sha256, because django-tailwind-cli does not detect musl), compiles the CSS and runs `collectstatic`, whose manifest storage needs that CSS. Translations are not compiled: the `.mo` files are committed. The runtime stage has no build tools and runs as a non-root user.
 - **Boot.** The image's CMD, [`scripts/start-production.sh`](./scripts/start-production.sh), runs `migrate` and `ensure_superuser`, then `seed_demo` and `generate_slots`, and finally hands the process to gunicorn on `$PORT` (Render sets 10000; elsewhere it falls back to 8000). The service defines no `dockerCommand`, so `render.yaml` and the image cannot disagree.
+- **Health check.** `/health/` queries the database and answers 200 or 503. It is the one path exempt from the HTTPS redirect (`SECURE_REDIRECT_EXEMPT`): Render counts any 3xx as healthy, so a check that arrived over plain HTTP would pass on the redirect without touching the database (Paso 39).
 - **Host.** `ALLOWED_HOSTS` is only `medbook-demo.onrender.com`, which is also the Host Render's health checks send. A verified custom domain would replace it in the health checks, so it has to be added.
 - **Secrets on a new service.** Render asks for the `sync: false` variables only when a Blueprint is first created, not when a service is added to an existing one, so `medbook-demo` got them by hand in the dashboard (its first deploy failed until they were there).
 - **CI.** The "Docker image" job builds the image on every PR without pushing it, so a broken `Dockerfile` fails the PR instead of Render's build.
@@ -377,6 +350,19 @@ The Render free plan has no cron jobs, so every boot runs `python manage.py gene
 
 Production doubles as the portfolio demo: `render.yaml` sets `MEDBOOK_DEMO_DATA=true`, so the boot runs `seed_demo` right before `generate_slots`, and a failure there only logs a warning too. The first boot creates the [demo doctors](#demo-data) and every later one reports `Done. 0 demo doctor(s) created.`
 
+### Trying the image locally
+
+The `web` service in `docker-compose.yml` is the production image, booted the way Render boots it: the image's CMD, the production settings, `PORT=10000` (published on 8001) and the same non-secret values as `render.yaml`, with local hosts. It sits behind the `image` profile, so a plain `docker compose up` starts only the database, and naming the service starts it:
+
+```bash
+docker compose up --build web      # starts db too and waits for its healthcheck
+curl localhost:8001/health/        # {"status": "ok", "database": "ok"}
+```
+
+- The boot migrates the dev database and, since `MEDBOOK_DEMO_DATA` is `true`, adds the demo doctors and their slots to it. The service gets no superuser credentials, so `ensure_superuser` skips.
+- Every other path redirects plain HTTP to HTTPS, so send the header Render's proxy adds: `curl -H "X-Forwarded-Proto: https" localhost:8001/`. A browser would follow the redirect to an `https://` URL that nothing serves; use `runserver` for UI work.
+- Secrets come from your `.env`: nothing secret is written in `docker-compose.yml`, and compose stops naming any missing one. `DATABASE_URL` carries no password, which libpq reads from `PGPASSWORD`.
+
 ### Running the image elsewhere
 
 ```bash
@@ -388,9 +374,7 @@ docker run --rm -p 8000:8000 \
   medbook:latest
 ```
 
-The boot migrates the database at `DATABASE_URL`. The production settings redirect plain HTTP to HTTPS unless the proxy's `X-Forwarded-Proto` header says `https`, so with no proxy in front, send it yourself: `curl -H "X-Forwarded-Proto: https" localhost:8000/health/`.
-
-`docker-compose.yml` (see [Local setup](#alternative-one-command-dev-stack-with-docker-compose-up)) builds this same `Dockerfile` for **local development only**: it reads its credentials from your `.env`, runs the local settings with `DEBUG=True` and its own command (`migrate` + gunicorn), and is not used for the Render deploy.
+The boot migrates the database at `DATABASE_URL`. The production settings redirect plain HTTP to HTTPS, except `/health/`, unless the proxy's `X-Forwarded-Proto` header says `https`, so with no proxy in front, send it yourself: `curl -H "X-Forwarded-Proto: https" localhost:8000/api/docs/`.
 
 ---
 
