@@ -52,8 +52,7 @@ class Command(BaseCommand):
             total_slots += count
             total_schedules += 1
             self.stdout.write(
-                f"  Schedule {schedule.pk} "
-                f"(Dr. {schedule.doctor.user.email}): {count} new slots"
+                f"  Schedule {schedule.pk} ({schedule.doctor}): {count} new slots"
             )
 
         self.stdout.write(
