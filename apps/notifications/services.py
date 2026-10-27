@@ -8,18 +8,27 @@ Backends per environment:
   - test:   django.core.mail.backends.locmem.EmailBackend   (mail.outbox)
   - prod:   anymail.backends.resend.EmailBackend            (Resend API)
 
-Note on transactions: these functions are called inside @transaction.atomic
-service wrappers. If email sending raises, the transaction rolls back. In
-practice the locmem/console backends never raise, and in production
-fail_silently=True is the recommended default for non-critical notifications.
-A production-hardened approach would use transaction.on_commit() to defer
-the send until the DB transaction commits.
+appointments.services calls them through transaction.on_commit(), so an
+email failure never rolls back the booking, confirmation or cancellation.
+
+Language and time (Paso 37): every email is in the clinic's language
+(LANGUAGE_CODE, Spanish), whatever language the request that triggered it
+had. The API always runs in English (EnglishApiMiddleware), and the doctor
+confirms through it. The time is Chilean (TIME_ZONE, ADR 0003). The text
+lives in templates/notifications/*.txt.
 """
 
 from django.conf import settings
 from django.core.mail import send_mail
+from django.template.loader import render_to_string
+from django.utils import translation
+from django.utils.translation import gettext_lazy as _
 
-from apps.core.utils import get_display_name
+from apps.core.utils import moment_of
+
+CREATED_SUBJECT = _("Booking received — MedBook")
+CONFIRMED_SUBJECT = _("Appointment confirmed — MedBook")
+CANCELLED_SUBJECT = _("Appointment cancelled — MedBook")
 
 
 def send_appointment_created(appointment) -> None:
@@ -27,23 +36,8 @@ def send_appointment_created(appointment) -> None:
 
     Triggered by: appointments.services.create_appointment()
     """
-    patient_email = appointment.patient.user.email
-    patient_name = appointment.patient.user.first_name or "there"
-    doctor_name = get_display_name(appointment.doctor.user)
-    slot_dt = appointment.slot.start_datetime.strftime("%Y-%m-%d %H:%M UTC")
-
-    send_mail(
-        subject="Appointment booking received — MedBook",
-        message=(
-            f"Hi {patient_name},\n\n"
-            f"Your appointment booking with Dr. {doctor_name} has been received.\n"
-            f"Date and time: {slot_dt}\n\n"
-            f"We will notify you once your appointment is confirmed.\n\n"
-            f"— MedBook"
-        ),
-        from_email=settings.DEFAULT_FROM_EMAIL,
-        recipient_list=[patient_email],
-        fail_silently=False,
+    _send_to_patient(
+        appointment, CREATED_SUBJECT, "notifications/appointment_created.txt"
     )
 
 
@@ -52,23 +46,8 @@ def send_appointment_confirmed(appointment) -> None:
 
     Triggered by: appointments.services.confirm_appointment()
     """
-    patient_email = appointment.patient.user.email
-    patient_name = appointment.patient.user.first_name or "there"
-    doctor_name = get_display_name(appointment.doctor.user)
-    slot_dt = appointment.slot.start_datetime.strftime("%Y-%m-%d %H:%M UTC")
-
-    send_mail(
-        subject="Appointment confirmed — MedBook",
-        message=(
-            f"Hi {patient_name},\n\n"
-            f"Your appointment with Dr. {doctor_name} has been confirmed.\n"
-            f"Date and time: {slot_dt}\n\n"
-            f"Please arrive 10 minutes early.\n\n"
-            f"— MedBook"
-        ),
-        from_email=settings.DEFAULT_FROM_EMAIL,
-        recipient_list=[patient_email],
-        fail_silently=False,
+    _send_to_patient(
+        appointment, CONFIRMED_SUBJECT, "notifications/appointment_confirmed.txt"
     )
 
 
@@ -77,20 +56,24 @@ def send_appointment_cancelled(appointment) -> None:
 
     Triggered by: appointments.services.cancel_appointment()
     """
-    patient_email = appointment.patient.user.email
-    patient_name = appointment.patient.user.first_name or "there"
-    doctor_name = get_display_name(appointment.doctor.user)
-    slot_dt = appointment.slot.start_datetime.strftime("%Y-%m-%d %H:%M UTC")
-
-    send_mail(
-        subject="Appointment cancelled — MedBook",
-        message=(
-            f"Hi {patient_name},\n\n"
-            f"Your appointment with Dr. {doctor_name} on {slot_dt} has been cancelled.\n\n"
-            f"You can book a new appointment at any time through MedBook.\n\n"
-            f"— MedBook"
-        ),
-        from_email=settings.DEFAULT_FROM_EMAIL,
-        recipient_list=[patient_email],
-        fail_silently=False,
+    _send_to_patient(
+        appointment, CANCELLED_SUBJECT, "notifications/appointment_cancelled.txt"
     )
+
+
+def _send_to_patient(appointment, subject, template_name) -> None:
+    """Render one email in the clinic's language and send it to the patient."""
+    user = appointment.patient.user
+    with translation.override(settings.LANGUAGE_CODE):
+        context = {
+            "patient_name": user.first_name,
+            "doctor": str(appointment.doctor),
+            "moment": moment_of(appointment.slot),
+        }
+        send_mail(
+            subject=str(subject),
+            message=render_to_string(template_name, context),
+            from_email=settings.DEFAULT_FROM_EMAIL,
+            recipient_list=[user.email],
+            fail_silently=False,
+        )

@@ -1,0 +1,2 @@
+{% extends "notifications/email.txt" %}{% load i18n %}
+{% block message %}{% translate "We received your booking. We will let you know when the appointment is confirmed." %}{% endblock %}

@@ -6,7 +6,7 @@ from django.contrib.auth.views import LoginView, LogoutView
 from django.core.exceptions import ValidationError
 from django.shortcuts import redirect, render
 from django.urls import reverse
-from django.utils import formats, timezone
+from django.utils import timezone
 from django.utils.cache import patch_vary_headers
 from django.utils.decorators import method_decorator
 from django.utils.translation import gettext as _
@@ -29,6 +29,7 @@ from apps.appointments.services import (
 from apps.core.exceptions import SlotConflict
 from apps.core.roles import is_admin, is_doctor
 from apps.core.throttling import LoginRateThrottle, RegisterRateThrottle
+from apps.core.utils import moment_of
 from apps.doctors.services import (
     get_available_slots_week,
     list_doctors,
@@ -165,16 +166,6 @@ class DoctorDetailView(PatientRequiredMixin, HtmxPartialMixin, DetailView):
 
 # The API answers SlotConflict with its own detail; the web says what happened
 SLOT_TAKEN_MESSAGE = gettext_lazy("Another patient just booked this time.")
-
-
-def moment_of(slot) -> dict:
-    """Weekday, date and time of a slot in Chilean time, for messages."""
-    start = timezone.localtime(slot.start_datetime)
-    return {
-        "weekday": formats.date_format(start, "l"),
-        "date": formats.date_format(start, "MONTH_DAY_FORMAT"),
-        "time": formats.time_format(start, "H:i"),
-    }
 
 
 def booked_message(slot) -> str:
