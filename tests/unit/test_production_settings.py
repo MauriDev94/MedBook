@@ -1,8 +1,12 @@
-"""Production middleware stays in sync with base (Paso 24).
+"""Production settings that are easy to break without noticing.
 
-production.py used to redefine MIDDLEWARE from scratch, so any middleware
-added to base.py (LocaleMiddleware, HtmxMiddleware) silently went missing in
-production. It now inserts WhiteNoise into base's list instead.
+Middleware stays in sync with base (Paso 24): production.py used to redefine
+MIDDLEWARE from scratch, so any middleware added to base.py (LocaleMiddleware,
+HtmxMiddleware) silently went missing in production. It now inserts
+WhiteNoise into base's list instead.
+
+The health check answers itself (Paso 39): Render counts any 3xx as healthy,
+so a redirect to HTTPS would pass without /health/ ever querying the DB.
 """
 
 import importlib
@@ -33,3 +37,12 @@ def test_whitenoise_comes_right_after_security_middleware(production_settings):
     security = middleware.index("django.middleware.security.SecurityMiddleware")
 
     assert middleware[security + 1] == "whitenoise.middleware.WhiteNoiseMiddleware"
+
+
+@pytest.mark.django_db
+def test_health_check_is_not_redirected_to_https(production_settings, client, settings):
+    settings.SECURE_SSL_REDIRECT = production_settings.SECURE_SSL_REDIRECT
+    settings.SECURE_REDIRECT_EXEMPT = production_settings.SECURE_REDIRECT_EXEMPT
+
+    assert client.get("/health/").json() == {"status": "ok", "database": "ok"}
+    assert client.get("/").status_code == 301
