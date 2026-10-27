@@ -1,0 +1,9 @@
+{% load i18n %}{% autoescape off %}{% if patient_name %}{% blocktranslate %}Hi {{ patient_name }},{% endblocktranslate %}{% else %}{% translate "Hi," %}{% endif %}
+
+{% block message %}{% endblock %}
+
+{% translate "Doctor:" %} {{ doctor }}
+{% translate "Date and time:" %} {% blocktranslate with weekday=moment.weekday date=moment.date time=moment.time %}{{ weekday }} {{ date }}, {{ time }} (Chile time){% endblocktranslate %}
+
+— MedBook
+{% endautoescape %}

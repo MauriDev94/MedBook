@@ -9,7 +9,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: MedBook\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2026-10-26 22:44-0300\n"
+"POT-Creation-Date: 2026-10-27 02:40-0300\n"
 "PO-Revision-Date: 2026-10-23 02:20-0300\n"
 "Last-Translator: \n"
 "Language-Team: Spanish\n"
@@ -66,6 +66,46 @@ msgstr "Dr."
 msgctxt "female doctor title"
 msgid "Dr."
 msgstr "Dra."
+
+msgid "Booking received — MedBook"
+msgstr "Recibimos tu reserva — MedBook"
+
+msgid "Appointment confirmed — MedBook"
+msgstr "Cita confirmada — MedBook"
+
+msgid "Appointment cancelled — MedBook"
+msgstr "Cita cancelada — MedBook"
+
+msgid ""
+"Your appointment has been cancelled. You can book another time on MedBook "
+"whenever you like."
+msgstr ""
+"Tu cita fue cancelada. Puedes reservar otra hora en MedBook cuando quieras."
+
+msgid "Your appointment is confirmed. Please arrive 10 minutes early."
+msgstr "Tu cita está confirmada. Te recomendamos llegar 10 minutos antes."
+
+msgid ""
+"We received your booking. We will let you know when the appointment is "
+"confirmed."
+msgstr "Recibimos tu reserva. Te avisaremos cuando la cita esté confirmada."
+
+#, python-format
+msgid "Hi %(patient_name)s,"
+msgstr "Hola, %(patient_name)s:"
+
+msgid "Hi,"
+msgstr "Hola:"
+
+msgid "Doctor:"
+msgstr "Profesional:"
+
+msgid "Date and time:"
+msgstr "Fecha y hora:"
+
+#, python-format
+msgid "%(weekday)s %(date)s, %(time)s (Chile time)"
+msgstr "%(weekday)s %(date)s, %(time)s (hora de Chile)"
 
 msgid "A user with this email already exists."
 msgstr "Ya existe un usuario con este correo."

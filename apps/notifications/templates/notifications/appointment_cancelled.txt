@@ -1,0 +1,2 @@
+{% extends "notifications/email.txt" %}{% load i18n %}
+{% block message %}{% translate "Your appointment has been cancelled. You can book another time on MedBook whenever you like." %}{% endblock %}
