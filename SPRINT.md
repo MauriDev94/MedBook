@@ -155,7 +155,7 @@
 | 36 | Trato Dr./Dra. según el médico (campo traducible; las tres doctoras demo). Va antes del 37 | #158 | #162 | ✅ |
 | 37 | **Bug**: correos en español y con la hora de Chile (hoy en inglés y en UTC). Va después del 36 | #159 | #163 | ✅ |
 | 38 | Envío real de correos con Resend (dominio propio, `RESEND_API_KEY` y un `on_commit` que no convierta en 500 una reserva guardada). Para más adelante | #164 | — | ⬜ |
-| 39 | Limpieza corta: `/health/` sin redirección a HTTPS, trato del médico en el log de `generate_slots`, el `web` de compose como la imagen de producción y sin `version` en los compose | #167 | — | 🔄 |
+| 39 | Limpieza corta: `/health/` sin redirección a HTTPS, trato del médico en el log de `generate_slots`, el `web` de compose como la imagen de producción y sin `version` en los compose | #167 | #168 | 🔄 |
 
 ---
 
