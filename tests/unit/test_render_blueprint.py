@@ -42,10 +42,16 @@ def service_named(name: str) -> dict:
     return next(s for s in web_services() if s["name"] == name)
 
 
+def script_commands() -> str:
+    """scripts/start-production.sh without its comments."""
+    lines = START_SCRIPT.read_text(encoding="utf-8").splitlines()
+    return "\n".join(line for line in lines if not line.lstrip().startswith("#"))
+
+
 def boot_command(service: dict) -> str:
     """What a service runs on every boot: the image's script, or startCommand."""
     if service["runtime"] == "docker":
-        return START_SCRIPT.read_text(encoding="utf-8")
+        return script_commands()
     return service["startCommand"]
 
 
@@ -126,7 +132,7 @@ class TestStartScript:
     """scripts/start-production.sh, the image's CMD."""
 
     def test_stops_if_migrate_or_the_superuser_fails(self):
-        script = START_SCRIPT.read_text(encoding="utf-8")
+        script = script_commands()
 
         assert re.search(r"^set -e$", script, re.MULTILINE)
         assert script.index("migrate --noinput") < script.index("ensure_superuser")
@@ -134,7 +140,7 @@ class TestStartScript:
 
     def test_gunicorn_replaces_the_shell_and_binds_the_platform_port(self):
         """exec: gunicorn gets the stop signal; Render sets PORT (10000)."""
-        last = START_SCRIPT.read_text(encoding="utf-8").strip().splitlines()[-1]
+        last = script_commands().strip().splitlines()[-1]
 
         assert last.startswith("exec gunicorn config.wsgi:application")
         assert '--bind "0.0.0.0:${PORT:-8000}"' in last

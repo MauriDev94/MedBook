@@ -1,15 +1,15 @@
 # syntax=docker/dockerfile:1
 #
-# Portable Dockerfile for MedBook — alternative to the Render-native deploy
-# defined in render.yaml (buildCommand/startCommand + gunicorn). This image
-# is NOT used by Render yet (production moves to it in Paso 32, #145); it
-# exists for portability and to demonstrate multi-stage, non-root, Alpine
-# Docker practices.
+# MedBook's production image: Render's `medbook-demo` service (render.yaml)
+# builds it from this file since Paso 32 (#145). Multi-stage, non-root,
+# Alpine. Its CMD, scripts/start-production.sh, migrates, seeds the demo
+# doctors, generates slots and starts gunicorn.
 #
 # Build:
 #   docker build -t medbook:latest .
 #
-# Run (env vars must be supplied at runtime — never baked into the image):
+# Run (env vars must be supplied at runtime — never baked into the image;
+# the boot runs migrate against DATABASE_URL):
 #   docker run --rm -p 8000:8000 \
 #     -e SECRET_KEY="<your-secret-key>" \
 #     -e ALLOWED_HOSTS=localhost,127.0.0.1 \
@@ -101,7 +101,6 @@ USER appuser
 
 EXPOSE 8000
 
-# $PORT mirrors render.yaml's startCommand so the same image works on Render
-# or any platform that injects PORT; defaults to 8000 for plain `docker run`.
-ENV PORT=8000
-CMD ["sh", "-c", "gunicorn config.wsgi:application --bind 0.0.0.0:${PORT} --workers 2 --timeout 120"]
+# Binds $PORT when the platform sets it (Render: 10000), else 8000. Render
+# uses this CMD because the service defines no dockerCommand.
+CMD ["/bin/sh", "scripts/start-production.sh"]

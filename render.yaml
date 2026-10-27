@@ -1,12 +1,17 @@
-# Render Blueprint de MedBook: fuente de verdad del servicio de producción.
+# Render Blueprint de MedBook: fuente de verdad de los servicios de producción.
 #
-# El servicio está gestionado por un Blueprint con auto-sync: todo cambio a
-# este archivo que llega a `master` se aplica solo en Render. No editar estos
-# campos en el dashboard; cambiarlos aquí con un PR.
+# Los servicios están gestionados por un Blueprint con auto-sync: todo cambio
+# a este archivo que llega a `master` se aplica solo en Render. No editar
+# estos campos en el dashboard; cambiarlos aquí con un PR.
 #
-# Secretos: NO se declaran aquí, así el Blueprint nunca los sobrescribe. Viven
-# solo en el dashboard (Environment): SECRET_KEY, DATABASE_URL,
+# Secretos: nunca llevan valor aquí, así el Blueprint nunca los sobrescribe.
+# Viven solo en el dashboard (Environment): SECRET_KEY, DATABASE_URL,
 # DJANGO_SUPERUSER_EMAIL, DJANGO_SUPERUSER_PASSWORD.
+#
+# Paso 32 (#145): producción pasa a la imagen Docker Alpine (servicio
+# `medbook-demo`). Render no cambia el runtime de un servicio existente, así
+# que es un servicio nuevo; el nativo (`MedBook`) se retira cuando el nuevo
+# quede verificado, y hay que borrarlo a mano: un Blueprint nunca borra.
 #
 # Python: lo define `.python-version` (major.minor → Render usa el último
 # parche). No usar la variable PYTHON_VERSION, que exige versión completa y
@@ -71,3 +76,50 @@ services:
       # (apps/doctors/demo.py, sin contraseña utilizable). No es secreta.
       - key: MEDBOOK_DEMO_DATA
         value: "true"
+
+  # La imagen del Dockerfile (Alpine, Tailwind y collectstatic en el build).
+  - type: web
+    name: medbook-demo
+    runtime: docker
+    plan: free
+    region: oregon
+    branch: master
+    autoDeployTrigger: commit
+    healthCheckPath: /health/
+    dockerfilePath: ./Dockerfile
+    dockerContext: .
+    # Sin dockerCommand: arranca con el CMD de la imagen,
+    # scripts/start-production.sh (migrate, ensure_superuser, seed_demo,
+    # generate_slots --days=28 y gunicorn en $PORT). Así render.yaml y la
+    # imagen no pueden contradecirse.
+
+    envVars:
+      - key: DJANGO_SETTINGS_MODULE
+        value: config.settings.production
+
+      # Se ajusta al host exacto cuando Render asigne la URL del servicio.
+      - key: ALLOWED_HOSTS
+        value: ".onrender.com"
+
+      - key: DEFAULT_FROM_EMAIL
+        value: "MedBook <noreply@medbook.com>"
+
+      # Emails van a los logs de Render — sin envío real (Paso 38, #164)
+      - key: EMAIL_BACKEND
+        value: django.core.mail.backends.console.EmailBackend
+
+      - key: MEDBOOK_DEMO_DATA
+        value: "true"
+
+      # Secretos sin valor. Render solo pide los `sync: false` al crear un
+      # Blueprint, no al agregar un servicio a uno existente: en este
+      # servicio se ingresan a mano en el dashboard, con los mismos valores
+      # que tiene `MedBook`.
+      - key: SECRET_KEY
+        sync: false
+      - key: DATABASE_URL
+        sync: false
+      - key: DJANGO_SUPERUSER_EMAIL
+        sync: false
+      - key: DJANGO_SUPERUSER_PASSWORD
+        sync: false
