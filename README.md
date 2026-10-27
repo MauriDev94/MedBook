@@ -3,7 +3,7 @@
 > REST API for medical appointment booking — Django 5.2 LTS + DRF 3.18  
 > Portfolio project built with TDD: appointment state machine, object-level RBAC and race-safe booking.
 
-[![Tests](https://img.shields.io/badge/tests-718%20passing-brightgreen)](./tests)
+[![Tests](https://img.shields.io/badge/tests-715%20passing-brightgreen)](./tests)
 [![Coverage](https://img.shields.io/badge/branch%20coverage-99.6%25-brightgreen)](./tests)
 [![Python](https://img.shields.io/badge/python-3.12-blue)](https://python.org)
 [![Django](https://img.shields.io/badge/django-5.2%20LTS-green)](https://djangoproject.com)
@@ -18,7 +18,7 @@ MedBook is a REST API for managing medical appointments. It covers the full book
 
 The goal is to demonstrate real-world Django competency: complex ORM queries, RBAC permissions, atomic transactions, TDD, custom admin, and clean architecture — the kind of things that come up in senior backend interviews.
 
-Patients also get a server-rendered web UI (Django templates + HTMX, Spanish and English) built on the same service layer ([ADR 0002](./docs/adr/0002-server-rendered-web-frontend.md)). They can sign up, find a doctor by specialty, book a slot and manage their appointments. The live demo, with six fictional doctors, runs at **https://medbook-oiio.onrender.com**. It is on Render's free plan, so the first request after a quiet spell can take about a minute.
+Patients also get a server-rendered web UI (Django templates + HTMX, Spanish and English) built on the same service layer ([ADR 0002](./docs/adr/0002-server-rendered-web-frontend.md)). They can sign up, find a doctor by specialty, book a slot and manage their appointments. The live demo, with six fictional doctors, runs at **https://medbook-demo.onrender.com**. It is on Render's free plan, so the first request after a quiet spell can take about a minute.
 
 ### Screenshots
 
@@ -359,11 +359,12 @@ starts it alongside the `db` (Postgres 16) service. Notes:
 
 Production runs on **Render**, managed as infrastructure as code: [`render.yaml`](./render.yaml) is a Render **Blueprint** with auto-sync, so any change to it merged into `master` is applied to the services automatically (build and boot, health check on `/health/`, non-secret env vars). Secrets (`SECRET_KEY`, `DATABASE_URL`, superuser credentials) are kept out of the file and live only in the Render dashboard.
 
-Production is moving to the multi-stage [`Dockerfile`](./Dockerfile), on **Alpine** (Paso 32, [#145](https://github.com/MauriDev94/MedBook/issues/145)). Render cannot switch the runtime of an existing service, so the image runs in a new one, `medbook-demo`, next to the native Python service (`MedBook`, which still serves the demo link above and takes its Python version from [`.python-version`](./.python-version)). Once `medbook-demo` is verified, `MedBook` leaves `render.yaml` and is deleted by hand, since a Blueprint never deletes a service.
+Production runs the multi-stage [`Dockerfile`](./Dockerfile), on **Alpine**, as the `medbook-demo` service (Paso 32, [#145](https://github.com/MauriDev94/MedBook/issues/145)). Render cannot switch the runtime of an existing service, so the image arrived in a new service, and the native Python one (`MedBook`) was retired: it left `render.yaml` and was deleted by hand, since a Blueprint never deletes a service.
 
 - **Build.** The builder stage installs the dependencies (all of them ship musllinux wheels), fetches the musl build of the Tailwind CLI (checked against the release sha256, because django-tailwind-cli does not detect musl), compiles the CSS and runs `collectstatic`, whose manifest storage needs that CSS. Translations are not compiled: the `.mo` files are committed. The runtime stage has no build tools and runs as a non-root user.
-- **Boot.** The image's CMD, [`scripts/start-production.sh`](./scripts/start-production.sh), runs `migrate` and `ensure_superuser`, then `seed_demo` and `generate_slots`, and finally hands the process to gunicorn on `$PORT` (Render sets 10000; elsewhere it falls back to 8000). The service defines no `dockerCommand`, so `render.yaml` and the image cannot disagree. The native service runs the same sequence from its `startCommand`.
-- **Secrets on a new service.** Render asks for the `sync: false` variables only when a Blueprint is first created, not when a service is added to an existing one. `medbook-demo` gets them by hand in the dashboard, and its first deploy fails until they are there.
+- **Boot.** The image's CMD, [`scripts/start-production.sh`](./scripts/start-production.sh), runs `migrate` and `ensure_superuser`, then `seed_demo` and `generate_slots`, and finally hands the process to gunicorn on `$PORT` (Render sets 10000; elsewhere it falls back to 8000). The service defines no `dockerCommand`, so `render.yaml` and the image cannot disagree.
+- **Host.** `ALLOWED_HOSTS` is only `medbook-demo.onrender.com`, which is also the Host Render's health checks send. A verified custom domain would replace it in the health checks, so it has to be added.
+- **Secrets on a new service.** Render asks for the `sync: false` variables only when a Blueprint is first created, not when a service is added to an existing one, so `medbook-demo` got them by hand in the dashboard (its first deploy failed until they were there).
 - **CI.** The "Docker image" job builds the image on every PR without pushing it, so a broken `Dockerfile` fails the PR instead of Render's build.
 
 ### Slot generation in production
