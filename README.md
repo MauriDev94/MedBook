@@ -3,7 +3,7 @@
 > REST API for medical appointment booking — Django 5.2 LTS + DRF 3.18  
 > Portfolio project built with TDD: appointment state machine, object-level RBAC and race-safe booking.
 
-[![Tests](https://img.shields.io/badge/tests-707%20passing-brightgreen)](./tests)
+[![Tests](https://img.shields.io/badge/tests-718%20passing-brightgreen)](./tests)
 [![Coverage](https://img.shields.io/badge/branch%20coverage-99.6%25-brightgreen)](./tests)
 [![Python](https://img.shields.io/badge/python-3.12-blue)](https://python.org)
 [![Django](https://img.shields.io/badge/django-5.2%20LTS-green)](https://djangoproject.com)
@@ -357,21 +357,26 @@ starts it alongside the `db` (Postgres 16) service. Notes:
 
 ## Deploy
 
-Production runs on **Render**, managed as infrastructure as code: [`render.yaml`](./render.yaml) is a Render **Blueprint** with auto-sync, so any change to it merged into `master` is applied to the service automatically (build/start commands, health check on `/health/`, non-secret env vars). Secrets (`SECRET_KEY`, `DATABASE_URL`, superuser credentials) are kept out of the file and live only in the Render dashboard. The Python version comes from [`.python-version`](./.python-version).
+Production runs on **Render**, managed as infrastructure as code: [`render.yaml`](./render.yaml) is a Render **Blueprint** with auto-sync, so any change to it merged into `master` is applied to the services automatically (build and boot, health check on `/health/`, non-secret env vars). Secrets (`SECRET_KEY`, `DATABASE_URL`, superuser credentials) are kept out of the file and live only in the Render dashboard.
 
-The build runs `tailwind build` before `collectstatic`, because the manifest storage needs the compiled CSS. Translations are not compiled there: the `.mo` files are committed.
+Production is moving to the multi-stage [`Dockerfile`](./Dockerfile), on **Alpine** (Paso 32, [#145](https://github.com/MauriDev94/MedBook/issues/145)). Render cannot switch the runtime of an existing service, so the image runs in a new one, `medbook-demo`, next to the native Python service (`MedBook`, which still serves the demo link above and takes its Python version from [`.python-version`](./.python-version)). Once `medbook-demo` is verified, `MedBook` leaves `render.yaml` and is deleted by hand, since a Blueprint never deletes a service.
+
+- **Build.** The builder stage installs the dependencies (all of them ship musllinux wheels), fetches the musl build of the Tailwind CLI (checked against the release sha256, because django-tailwind-cli does not detect musl), compiles the CSS and runs `collectstatic`, whose manifest storage needs that CSS. Translations are not compiled: the `.mo` files are committed. The runtime stage has no build tools and runs as a non-root user.
+- **Boot.** The image's CMD, [`scripts/start-production.sh`](./scripts/start-production.sh), runs `migrate` and `ensure_superuser`, then `seed_demo` and `generate_slots`, and finally hands the process to gunicorn on `$PORT` (Render sets 10000; elsewhere it falls back to 8000). The service defines no `dockerCommand`, so `render.yaml` and the image cannot disagree. The native service runs the same sequence from its `startCommand`.
+- **Secrets on a new service.** Render asks for the `sync: false` variables only when a Blueprint is first created, not when a service is added to an existing one. `medbook-demo` gets them by hand in the dashboard, and its first deploy fails until they are there.
+- **CI.** The "Docker image" job builds the image on every PR without pushing it, so a broken `Dockerfile` fails the PR instead of Render's build.
 
 ### Slot generation in production
 
-The Render free plan has no cron jobs, so `startCommand` runs `python manage.py generate_slots --days=28` on every boot. Free instances sleep after 15 minutes without traffic and boot again on the next request and on every deploy, so slots get topped up whenever the API is in use.
+The Render free plan has no cron jobs, so every boot runs `python manage.py generate_slots --days=28`. Free instances sleep after 15 minutes without traffic and boot again on the next request and on every deploy, so slots get topped up whenever the API is in use.
 
 - The command is idempotent: it only inserts missing slots and reports `0 new slots` on a rerun.
-- It runs in a subshell. If it fails, a `WARNING` line is logged and gunicorn starts anyway, while a failing `migrate` or `ensure_superuser` still blocks the boot.
-- On a paid plan, replace it with a Render cron job (`type: cron`, daily `python manage.py generate_slots --days=28`; minimum USD 1/month) and remove it from `startCommand`.
+- If it fails, a `WARNING` line is logged and gunicorn starts anyway, while a failing `migrate` or `ensure_superuser` still blocks the boot.
+- On a paid plan, replace it with a Render cron job (`type: cron`, daily `python manage.py generate_slots --days=28`; minimum USD 1/month) and remove it from the boot.
 
-Production doubles as the portfolio demo: `render.yaml` sets `MEDBOOK_DEMO_DATA=true`, so `startCommand` runs `seed_demo` right before `generate_slots`, in its own subshell. The first boot creates the [demo doctors](#demo-data) and every later one reports `Done. 0 demo doctor(s) created.`
+Production doubles as the portfolio demo: `render.yaml` sets `MEDBOOK_DEMO_DATA=true`, so the boot runs `seed_demo` right before `generate_slots`, and a failure there only logs a warning too. The first boot creates the [demo doctors](#demo-data) and every later one reports `Done. 0 demo doctor(s) created.`
 
-A multi-stage [`Dockerfile`](./Dockerfile) is also included as a **portable alternative** to run the same app anywhere Docker runs (it does not replace the Render deploy):
+### Running the image elsewhere
 
 ```bash
 docker build -t medbook:latest .
@@ -382,9 +387,9 @@ docker run --rm -p 8000:8000 \
   medbook:latest
 ```
 
-The image is built on **Alpine** in two stages. The builder installs the dependencies (all of them ship musllinux wheels), fetches the musl build of the Tailwind CLI (checked against the release sha256, because django-tailwind-cli does not detect musl), compiles the CSS and runs `collectstatic`. The runtime stage has no build tools and serves the app as a non-root user. Production moves to this image in Paso 32 ([#145](https://github.com/MauriDev94/MedBook/issues/145)).
+The boot migrates the database at `DATABASE_URL`. The production settings redirect plain HTTP to HTTPS unless the proxy's `X-Forwarded-Proto` header says `https`, so with no proxy in front, send it yourself: `curl -H "X-Forwarded-Proto: https" localhost:8000/health/`.
 
-`docker-compose.yml` (see [Local setup](#alternative-one-command-dev-stack-with-docker-compose-up)) wraps this same `Dockerfile` for **local development only** — it reads its credentials from your `.env`, runs with `DEBUG=True`, and is not used for the Render deploy.
+`docker-compose.yml` (see [Local setup](#alternative-one-command-dev-stack-with-docker-compose-up)) builds this same `Dockerfile` for **local development only**: it reads its credentials from your `.env`, runs the local settings with `DEBUG=True` and its own command (`migrate` + gunicorn), and is not used for the Render deploy.
 
 ---
 
