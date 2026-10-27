@@ -3,7 +3,7 @@
 > API REST para reservas médicas — Django 5.2 LTS + DRF 3.18  
 > Proyecto de portafolio hecho con TDD: máquina de estados de citas, RBAC a nivel de objeto y reservas sin race conditions.
 
-[![Tests](https://img.shields.io/badge/tests-715%20passing-brightgreen)](./tests)
+[![Tests](https://img.shields.io/badge/tests-722%20passing-brightgreen)](./tests)
 [![Coverage](https://img.shields.io/badge/branch%20coverage-99.6%25-brightgreen)](./tests)
 [![Python](https://img.shields.io/badge/python-3.12-blue)](https://python.org)
 [![Django](https://img.shields.io/badge/django-5.2%20LTS-green)](https://djangoproject.com)
@@ -285,6 +285,8 @@ DJANGO_SETTINGS_MODULE=config.settings.local python manage.py migrate
 DJANGO_SETTINGS_MODULE=config.settings.local python manage.py createsuperuser
 ```
 
+`docker compose up` levanta solo esta base. El servicio `web` del mismo archivo es la imagen de producción, para probarla antes de un deploy (ver [Probar la imagen en local](#probar-la-imagen-en-local)). Los datos viven en el volumen `medbook_pgdata`; `docker compose down -v` lo borra para partir con una base limpia.
+
 ### 5. Levantar el servidor
 ```bash
 # Compilar el CSS una vez (la primera corrida descarga el CLI de Tailwind fijado)
@@ -333,6 +335,7 @@ Producción corre el [`Dockerfile`](./Dockerfile) multi-stage sobre **Alpine**, 
 
 - **Build.** El builder instala las dependencias (todas tienen wheels musllinux), baja la build musl del CLI de Tailwind (verificada con el sha256 del release, porque django-tailwind-cli no detecta musl), compila el CSS y corre `collectstatic`, cuyo storage con manifest necesita ese CSS. Las traducciones no se compilan: los `.mo` están versionados. La etapa final no lleva herramientas de build y corre con un usuario sin privilegios.
 - **Arranque.** El CMD de la imagen, [`scripts/start-production.sh`](./scripts/start-production.sh), corre `migrate` y `ensure_superuser`, luego `seed_demo` y `generate_slots`, y al final le entrega el proceso a gunicorn en `$PORT` (Render usa 10000; en otro lado, 8000). El servicio no define `dockerCommand`, así que `render.yaml` y la imagen no pueden contradecirse.
+- **Health check.** `/health/` consulta la base y responde 200 o 503. Es la única ruta exenta de la redirección a HTTPS (`SECURE_REDIRECT_EXEMPT`): Render da por sano cualquier 3xx, así que un check que llegara por HTTP pasaría con la redirección sin tocar la base (Paso 39).
 - **Host.** `ALLOWED_HOSTS` es solo `medbook-demo.onrender.com`, que también es el Host que mandan los health checks de Render. Con un dominio propio verificado, los health checks mandarían ese dominio, así que habría que agregarlo.
 - **Secretos en un servicio nuevo.** Render pide las variables `sync: false` solo al crear un Blueprint, no al agregarle un servicio, así que en `medbook-demo` se ingresaron a mano en el dashboard (su primer deploy falló hasta que estuvieron).
 - **CI.** El job "Docker image" construye la imagen en cada PR sin publicarla, así que un `Dockerfile` roto hace fallar el PR y no el build de Render.
@@ -347,6 +350,19 @@ El plan free de Render no tiene cron jobs, así que cada arranque corre `python 
 
 Producción es también la demo del portfolio: `render.yaml` define `MEDBOOK_DEMO_DATA=true`, así que el arranque corre `seed_demo` justo antes de `generate_slots`, y si falla también deja solo un aviso. El primer arranque crea los [doctores demo](#datos-demo) y los siguientes reportan `Done. 0 demo doctor(s) created.`
 
+### Probar la imagen en local
+
+El servicio `web` de `docker-compose.yml` es la imagen de producción, arrancada como la arranca Render: el CMD de la imagen, los settings de producción, `PORT=10000` (publicado en el 8001) y los mismos valores no secretos de `render.yaml`, con hosts locales. Está detrás del perfil `image`, así que un `docker compose up` a secas levanta solo la base, y nombrar el servicio lo arranca:
+
+```bash
+docker compose up --build web      # levanta también db y espera su healthcheck
+curl localhost:8001/health/        # {"status": "ok", "database": "ok"}
+```
+
+- El arranque migra la base de dev y, como `MEDBOOK_DEMO_DATA` es `true`, le agrega los doctores demo y sus slots. El servicio no recibe credenciales de superusuario, así que `ensure_superuser` se lo salta.
+- Todas las demás rutas redirigen HTTP a HTTPS, así que hay que mandar el header que agrega el proxy de Render: `curl -H "X-Forwarded-Proto: https" localhost:8001/`. Un navegador seguiría la redirección a una URL `https://` que nadie sirve; para trabajar en la web se usa `runserver`.
+- Los secretos salen de tu `.env`: `docker-compose.yml` no tiene nada secreto escrito y compose se detiene nombrando el que falte. `DATABASE_URL` no lleva password; libpq lo lee de `PGPASSWORD`.
+
 ### Correr la imagen en otro lado
 
 ```bash
@@ -358,7 +374,7 @@ docker run --rm -p 8000:8000 \
   medbook:latest
 ```
 
-El arranque migra la base de `DATABASE_URL`. Los settings de producción redirigen HTTP a HTTPS salvo que el header `X-Forwarded-Proto` del proxy diga `https`, así que sin un proxy delante hay que mandarlo a mano: `curl -H "X-Forwarded-Proto: https" localhost:8000/health/`.
+El arranque migra la base de `DATABASE_URL`. Los settings de producción redirigen HTTP a HTTPS, salvo `/health/`, cuando el header `X-Forwarded-Proto` del proxy no dice `https`, así que sin un proxy delante hay que mandarlo a mano: `curl -H "X-Forwarded-Proto: https" localhost:8000/api/docs/`.
 
 ---
 

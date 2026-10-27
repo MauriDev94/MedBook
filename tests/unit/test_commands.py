@@ -13,6 +13,7 @@ calling the command, to cleanly measure what the command itself produces.
 from django.core.management import call_command
 
 from apps.appointments.models import TimeSlot
+from apps.doctors.models import Doctor
 from tests.factories import ScheduleFactory
 
 
@@ -111,6 +112,20 @@ class TestGenerateSlotsCommand:
             "Done. 0 new slots generated across 1 schedule(s)."
             in capsys.readouterr().out
         )
+
+    def test_command_names_the_doctor_with_their_title(self, db, capsys):
+        """Each schedule line shows str(doctor) ("Dra. …"), not "Dr." + email."""
+        schedule = ScheduleFactory(
+            doctor__title=Doctor.Title.DRA,
+            doctor__user__first_name="Camila",
+            doctor__user__last_name="Herrera",
+        )
+
+        call_command("generate_slots", days=7)
+
+        out = capsys.readouterr().out
+        assert f"Schedule {schedule.pk} (Dra. Camila Herrera):" in out
+        assert schedule.doctor.user.email not in out
 
     def test_command_queries_scale_with_schedules_not_slots(
         self, db, django_assert_max_num_queries

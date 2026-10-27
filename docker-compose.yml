@@ -1,5 +1,3 @@
-version: "3.9"
-
 services:
   db:
     image: postgres:16-alpine
@@ -19,31 +17,36 @@ services:
       timeout: 5s
       retries: 10
 
+  # The production image, booted the way Render boots it: the image's CMD
+  # (scripts/start-production.sh) with production settings and PORT=10000.
+  # Behind a profile, so `docker compose up` starts only the database; try the
+  # image with `docker compose up --build web`. Development uses runserver.
   web:
+    profiles: ["image"]
     build: .
     container_name: medbook-api
     depends_on:
       db:
         condition: service_healthy
     ports:
-      - "8000:8000"
+      - "8001:10000"
     environment:
-      # Local dev settings — NOT production. Production settings enforce
-      # SECURE_SSL_REDIRECT=True, which would break plain HTTP on localhost.
-      DJANGO_SETTINGS_MODULE: config.settings.local
+      # Same non-secret values as render.yaml; only the hosts are local.
+      # Production settings redirect plain HTTP to HTTPS (except /health/),
+      # so send `X-Forwarded-Proto: https` like Render's proxy does.
+      DJANGO_SETTINGS_MODULE: config.settings.production
+      PORT: "10000"
+      ALLOWED_HOSTS: localhost,127.0.0.1
+      EMAIL_BACKEND: django.core.mail.backends.console.EmailBackend
+      MEDBOOK_DEMO_DATA: "true"
       # Secrets come from your untracked .env (see .env.example); `:?` makes
       # compose stop and name any missing one. Nothing secret is written here.
       SECRET_KEY: ${SECRET_KEY:?}
-      DEBUG: "True"
-      ALLOWED_HOSTS: localhost,127.0.0.1
       # host = "db" (the compose service name), port = 5432 (Postgres'
       # container-internal port, not the 5435 host-mapped port above).
       # No password in the URL: libpq (psycopg2) reads it from PGPASSWORD.
       DATABASE_URL: postgres://${POSTGRES_USER:-postgres}@db:5432/${POSTGRES_DB:-medbook}
       PGPASSWORD: ${POSTGRES_PASSWORD:?}
-    command: >
-      sh -c "python manage.py migrate --noinput &&
-             gunicorn config.wsgi:application --bind 0.0.0.0:8000"
 
 volumes:
   medbook_pgdata:
