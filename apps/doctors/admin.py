@@ -21,7 +21,13 @@ class SpecialtyAdmin(admin.ModelAdmin):
 
 @admin.register(Doctor)
 class DoctorAdmin(admin.ModelAdmin):
-    list_display = ["full_name", "email", "license_number", "consultation_duration"]
+    list_display = [
+        "full_name",
+        "title",
+        "email",
+        "license_number",
+        "consultation_duration",
+    ]
     search_fields = [
         "user__email",
         "user__first_name",

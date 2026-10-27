@@ -1,6 +1,6 @@
 from django.conf import settings
 from django.db import models
-from django.utils.translation import gettext, gettext_noop
+from django.utils.translation import gettext, gettext_noop, pgettext_lazy
 
 from apps.core.models import BaseModel
 from apps.core.utils import get_display_name
@@ -42,12 +42,23 @@ class Specialty(BaseModel):
 class Doctor(BaseModel):
     """Medical doctor linked to a User with role='doctor'."""
 
+    # Spanish tells Dr. from Dra.; English says Dr. for both
+    class Title(models.TextChoices):
+        DR = "dr", pgettext_lazy("doctor title", "Dr.")
+        DRA = "dra", pgettext_lazy("female doctor title", "Dr.")
+
     user = models.OneToOneField(
         settings.AUTH_USER_MODEL,
         on_delete=models.CASCADE,
         related_name="doctor_profile",
     )
     license_number = models.CharField(max_length=50, unique=True)
+    title = models.CharField(
+        max_length=3,
+        choices=Title.choices,
+        default=Title.DR,
+        help_text="Dr. or Dra. on the Spanish site; English shows Dr. for both.",
+    )
     bio = models.TextField(blank=True)
     consultation_duration = models.IntegerField(
         help_text="Duration in minutes", default=30
@@ -59,7 +70,7 @@ class Doctor(BaseModel):
         verbose_name_plural = "Doctors"
 
     def __str__(self) -> str:
-        return f"Dr. {get_display_name(self.user)}"
+        return f"{self.get_title_display()} {get_display_name(self.user)}"
 
 
 class Schedule(BaseModel):

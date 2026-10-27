@@ -173,6 +173,7 @@ def create_demo_doctor(demo: DemoDoctor) -> Doctor:
     doctor = Doctor.objects.create(
         user=user,
         license_number=demo.license_number,
+        title=demo.title,
         bio=demo.bio,
         consultation_duration=demo.consultation_duration,
     )
