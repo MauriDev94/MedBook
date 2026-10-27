@@ -15,6 +15,9 @@ callbacks don't fire on their own — tests must use the
 django_capture_on_commit_callbacks fixture (execute=True) to run them.
 """
 
+import datetime
+from zoneinfo import ZoneInfo
+
 import pytest
 from django.core import mail
 from django.db import transaction
@@ -29,6 +32,9 @@ from tests.factories import (
     TimeSlotFactory,
     UserFactory,
 )
+
+
+CHILE = ZoneInfo("America/Santiago")
 
 
 # ---------------------------------------------------------------------------
@@ -98,6 +104,25 @@ class TestAppointmentCreatedEmail:
         assert len(mail.outbox) == 1
         assert patient.user.email in mail.outbox[0].to
 
+    def test_booked_through_the_api_the_email_is_in_spanish_and_chilean_time(
+        self, django_capture_on_commit_callbacks, auth_client_patient, patient, doctor
+    ):
+        """The API runs in English; the email still follows the clinic (Paso 37)."""
+        start = datetime.datetime(2027, 7, 19, 10, 0, tzinfo=CHILE)
+        slot = TimeSlotFactory(schedule__doctor=doctor, start_datetime=start)
+
+        with django_capture_on_commit_callbacks(execute=True):
+            response = auth_client_patient.post(
+                "/api/v1/appointments/", {"slot": str(slot.id)}
+            )
+
+        assert response.status_code == 201
+        assert mail.outbox[0].subject == "Recibimos tu reserva — MedBook"
+        assert (
+            "Fecha y hora: lunes 19 de julio, 10:00 (hora de Chile)"
+            in mail.outbox[0].body
+        )
+
     def test_no_email_sent_when_booking_fails(
         self,
         django_capture_on_commit_callbacks,
@@ -131,7 +156,7 @@ class TestAppointmentConfirmedEmail:
 
         assert len(mail.outbox) == 1
         assert patient.user.email in mail.outbox[0].to
-        assert "confirmed" in mail.outbox[0].subject.lower()
+        assert mail.outbox[0].subject == "Cita confirmada — MedBook"
 
 
 @pytest.mark.django_db
@@ -147,7 +172,7 @@ class TestAppointmentCancelledEmail:
 
         assert len(mail.outbox) == 1
         assert patient.user.email in mail.outbox[0].to
-        assert "cancel" in mail.outbox[0].subject.lower()
+        assert mail.outbox[0].subject == "Cita cancelada — MedBook"
 
 
 @pytest.mark.django_db(transaction=True)
