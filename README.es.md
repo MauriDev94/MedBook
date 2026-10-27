@@ -3,7 +3,7 @@
 > API REST para reservas médicas — Django 5.2 LTS + DRF 3.18  
 > Proyecto de portafolio hecho con TDD: máquina de estados de citas, RBAC a nivel de objeto y reservas sin race conditions.
 
-[![Tests](https://img.shields.io/badge/tests-682%20passing-brightgreen)](./tests)
+[![Tests](https://img.shields.io/badge/tests-695%20passing-brightgreen)](./tests)
 [![Coverage](https://img.shields.io/badge/branch%20coverage-99.6%25-brightgreen)](./tests)
 [![Python](https://img.shields.io/badge/python-3.12-blue)](https://python.org)
 [![Django](https://img.shields.io/badge/django-5.2%20LTS-green)](https://djangoproject.com)
@@ -216,7 +216,7 @@ Server-rendered con sesión de Django (la API sigue con JWT). En español por de
 - Un skip link salta el menú y lleva al `<main>` de la página.
 - Todo funciona con teclado. Los modales son `<dialog>` nativos: Esc los cierra y el foco vuelve al link que los abrió. Después de cancelar, el foco pasa al nuevo estado de la cita. Los links de semana, pestaña y página mantienen el foco cuando HTMX reemplaza el contenido que los rodea.
 - Cada actualización con HTMX anuncia un resumen corto a los lectores de pantalla en una región viva "polite", por ejemplo "Se encontraron 6 médicos." o "2 de noviembre – 8 de noviembre: 16 horas disponibles.". Los mensajes van en una región `role="status"`.
-- Los links que se repiten llevan contexto oculto, como "Ver horas disponibles: Dr. Carla Soto" o "lunes 26 de octubre, 10:00".
+- Los links que se repiten llevan contexto oculto, como "Ver horas disponibles: Dra. Carla Soto" o "lunes 26 de octubre, 10:00".
 - Los botones principales usan texto blanco sobre teal-700 (contraste 5,4:1, WCAG AA). El diseño funciona desde 375 px de ancho.
 
 ---
@@ -321,6 +321,7 @@ python manage.py generate_slots --days=28           # las cuatro semanas que mue
 - Los doctores demo no tienen contraseña utilizable, así que no pueden iniciar sesión (el panel del doctor llega en un sprint posterior). No se crea ni se versiona ninguna credencial.
 - No crea pacientes: quien prueba la demo se registra en la web, que es justo el flujo a mostrar.
 - Es idempotente. Un doctor demo ya existe si su email (sin importar mayúsculas) o su licencia están usados, y las filas que ya existen nunca se modifican, así que lo editado en el admin se mantiene.
+- Tres son doctoras y la web en español las trata de Dra. (`Doctor.title`; en inglés todos son Dr.). Las doctoras demo creadas antes de que existiera el campo lo reciben de la data migration `doctors.0006_demo_doctors_title`, porque el seed nunca las modifica.
 
 ---
 

@@ -3,7 +3,7 @@
 > REST API for medical appointment booking — Django 5.2 LTS + DRF 3.18  
 > Portfolio project built with TDD: appointment state machine, object-level RBAC and race-safe booking.
 
-[![Tests](https://img.shields.io/badge/tests-682%20passing-brightgreen)](./tests)
+[![Tests](https://img.shields.io/badge/tests-695%20passing-brightgreen)](./tests)
 [![Coverage](https://img.shields.io/badge/branch%20coverage-99.6%25-brightgreen)](./tests)
 [![Python](https://img.shields.io/badge/python-3.12-blue)](https://python.org)
 [![Django](https://img.shields.io/badge/django-5.2%20LTS-green)](https://djangoproject.com)
@@ -321,6 +321,7 @@ python manage.py generate_slots --days=28           # the four weeks the web sho
 - Demo doctors have no usable password, so they cannot log in (the doctor panel comes in a later sprint). No credential is created or committed.
 - It creates no patients: sign up on the web, which is the flow the demo shows.
 - It is idempotent. A demo doctor counts as existing when its email (in any case) or its license number is taken, and existing rows are never changed, so edits made in the admin stay.
+- Three of them are women, addressed as Dra. on the Spanish site (`Doctor.title`; English says Dr. for every doctor). Demo doctors created before the field existed get it from the data migration `doctors.0006_demo_doctors_title`, since the seed never changes them.
 
 ### Alternative: one-command dev stack with `docker compose up`
 
