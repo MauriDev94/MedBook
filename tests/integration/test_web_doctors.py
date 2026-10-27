@@ -16,6 +16,7 @@ from django.utils import timezone
 from pytest_django.asserts import assertTemplateNotUsed, assertTemplateUsed
 
 from apps.appointments.models import TimeSlot
+from apps.doctors.models import Doctor
 from apps.users.models import Role
 from apps.web.views import DoctorListView
 from tests.factories import (
@@ -117,6 +118,21 @@ class TestDoctorList:
         assert "Araya" in html
         assert "Cardiología" in html
         assert detail_url(doctor) in html
+
+    def test_dra_title_only_in_spanish(self, patient_client):
+        """Spanish says Dra.; English has one title for both (Paso 36)."""
+        DoctorFactory(
+            title=Doctor.Title.DRA, user__first_name="Carla", user__last_name="Soto"
+        )
+
+        spanish = patient_client.get(LIST_URL).content.decode()
+        english = patient_client.get(
+            LIST_URL, headers={"Accept-Language": "en"}
+        ).content.decode()
+
+        assert "Dra. Carla Soto" in spanish
+        assert "Dr. Carla Soto" in english
+        assert "Dra." not in english
 
     def test_filter_offers_every_specialty(self, patient_client):
         slugs = ("cardiology", "dermatology", "pediatrics")

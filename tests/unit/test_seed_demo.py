@@ -51,6 +51,13 @@ class TestDemoDoctors:
 
         assert len(DEMO_EMAILS) == len(licenses) == len(DEMO_DOCTORS)
 
+    def test_carla_valentina_and_camila_are_dra(self):
+        dra = {
+            demo.first_name for demo in DEMO_DOCTORS if demo.title == Doctor.Title.DRA
+        }
+
+        assert dra == {"Carla", "Valentina", "Camila"}
+
     def test_every_doctor_has_weekday_hours(self):
         for demo in DEMO_DOCTORS:
             assert demo.hours
@@ -77,6 +84,7 @@ class TestSeedDemoDoctors:
             assert doctor.license_number == demo.license_number
             assert doctor.bio == demo.bio
             assert doctor.consultation_duration == demo.consultation_duration
+            assert doctor.title == demo.title
             assert set(doctor.specialties.values_list("slug", flat=True)) == set(
                 demo.specialty_slugs
             )
