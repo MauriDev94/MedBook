@@ -23,6 +23,10 @@ if not ALLOWED_HOSTS:
 
 # HTTPS enforcement
 SECURE_SSL_REDIRECT = True
+# Render counts any 3xx as healthy: a health check that arrived over plain
+# HTTP would get the redirect and pass without /health/ querying the DB.
+# SecurityMiddleware matches these against the path without its leading "/".
+SECURE_REDIRECT_EXEMPT = [r"^health/$"]
 SESSION_COOKIE_SECURE = True
 CSRF_COOKIE_SECURE = True
 SECURE_HSTS_SECONDS = 31_536_000  # 1 year
