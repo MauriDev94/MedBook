@@ -3,7 +3,7 @@
 > REST API for medical appointment booking — Django 5.2 LTS + DRF 3.18  
 > Portfolio project built with TDD: appointment state machine, object-level RBAC and race-safe booking.
 
-[![Tests](https://img.shields.io/badge/tests-668%20passing-brightgreen)](./tests)
+[![Tests](https://img.shields.io/badge/tests-682%20passing-brightgreen)](./tests)
 [![Coverage](https://img.shields.io/badge/branch%20coverage-99.6%25-brightgreen)](./tests)
 [![Python](https://img.shields.io/badge/python-3.12-blue)](https://python.org)
 [![Django](https://img.shields.io/badge/django-5.2%20LTS-green)](https://djangoproject.com)
@@ -116,12 +116,12 @@ pending ──────────► confirmed ─────────�
 
 Valid transitions:
 - `pending → confirmed` (doctor confirms)
-- `pending → cancelled` (patient or doctor cancels)
+- `pending → cancelled` (patient or doctor cancels, before the slot starts)
 - `confirmed → completed` (doctor marks complete)
-- `confirmed → cancelled` (patient or doctor cancels)
+- `confirmed → cancelled` (patient or doctor cancels, before the slot starts)
 - `confirmed → no_show` (doctor marks no-show)
 
-Any other transition raises `ValueError`.
+Any other transition raises `InvalidTransition` (a `ValueError`), which the API answers with 400. Once its slot has started, nobody can cancel an appointment: the doctor closes it as completed or no-show.
 
 ---
 
@@ -171,7 +171,7 @@ Datetimes: ISO 8601 in Chilean time with its offset, e.g. `2026-01-14T09:00:00-0
 | PATCH | `/api/v1/appointments/{id}/` | Update reason | Owner/Admin |
 | DELETE | `/api/v1/appointments/{id}/` | Hard delete | Admin |
 | POST | `/api/v1/appointments/{id}/confirm/` | Confirm (pending → confirmed) | Doctor (owner) |
-| POST | `/api/v1/appointments/{id}/cancel/` | Cancel | Patient or Doctor (owner) |
+| POST | `/api/v1/appointments/{id}/cancel/` | Cancel, until the slot starts (afterwards 400) | Patient or Doctor (owner) |
 | POST | `/api/v1/appointments/{id}/complete/` | Complete (confirmed → completed) | Doctor (owner) |
 | POST | `/api/v1/appointments/{id}/no_show/` | Mark no-show (confirmed → no_show) | Doctor (owner) |
 
@@ -207,7 +207,7 @@ Server-rendered with session auth (the API keeps JWT). Spanish by default, Engli
 | GET, POST | `/slots/<id>/book/` | Confirm and book a slot with an optional reason. HTMX loads it into a modal dialog; without JS it is a full page. Success goes to My appointments; a slot that can no longer be booked goes back to the doctor's page on the slot's week | Patient |
 | GET | `/appointments/` | My appointments: `?tab=upcoming` (default: not started yet, any status) or `?tab=past`, 10 per page, translated status badges (HTMX swaps only the list) | Patient |
 | GET | `/appointments/<id>/` | One of the patient's appointments: doctor, date, time, status, reason. Another patient's is a 404 | Patient |
-| GET, POST | `/appointments/<id>/cancel/` | Confirm and cancel: frees the slot and emails the patient. HTMX: a modal dialog, then the status updates in place; without JS: a full page, then the appointment's page | Patient |
+| GET, POST | `/appointments/<id>/cancel/` | Confirm and cancel, until the appointment starts: frees the slot and emails the patient. HTMX: a modal dialog, then the status updates in place; without JS: a full page, then the appointment's page | Patient |
 | POST | `/i18n/setlang/` | Language switcher (sets a cookie) | Public |
 
 **Error pages.** The 403, 404 and 500 pages use the site layout and the visitor's language. The 500 page is rendered without the request or the database, since either may be what failed, so its menu has no account links. If the session expires while the visitor is inside a dialog, the whole page goes to the login, which brings them back to the same page afterwards (`HX-Redirect`).

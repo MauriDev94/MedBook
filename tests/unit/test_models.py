@@ -5,7 +5,7 @@ from django.contrib.auth import get_user_model
 from django.db import IntegrityError, transaction
 from django.utils import timezone, translation
 
-from apps.appointments.models import Appointment, TimeSlot
+from apps.appointments.models import Appointment, InvalidTransition, TimeSlot
 from apps.doctors.models import Specialty
 from apps.users.models import Role
 from tests.factories import (
@@ -255,6 +255,13 @@ class TestTimeSlotModel:
         assert slot.has_started is started
 
 
+def started_slot():
+    """A slot that started a minute ago."""
+    return TimeSlotFactory(
+        start_datetime=timezone.now() - datetime.timedelta(minutes=1)
+    )
+
+
 class TestAppointmentModel:
     """Test Appointment model and state machine."""
 
@@ -339,6 +346,14 @@ class TestAppointmentModel:
         appt = AppointmentFactory(status=Appointment.Status.COMPLETED)
         assert appt.can_be_cancelled() is False
 
+    @pytest.mark.parametrize(
+        "status", [Appointment.Status.PENDING, Appointment.Status.CONFIRMED]
+    )
+    def test_cannot_be_cancelled_once_its_slot_started(self, db, status):
+        """It ends with complete() or mark_no_show() instead (Paso 35)."""
+        appt = AppointmentFactory(slot=started_slot(), status=status)
+        assert appt.can_be_cancelled() is False
+
     def test_can_be_completed_when_confirmed(self, db):
         appt = AppointmentFactory(status=Appointment.Status.CONFIRMED)
         assert appt.can_be_completed() is True
@@ -380,6 +395,23 @@ class TestAppointmentModel:
     def test_cancel_raises_if_completed(self, db):
         appt = AppointmentFactory(status=Appointment.Status.COMPLETED)
         with pytest.raises(ValueError):
+            appt.cancel()
+
+    def test_cancel_raises_once_its_slot_started(self, db):
+        appt = AppointmentFactory(
+            slot=started_slot(), status=Appointment.Status.CONFIRMED
+        )
+        with pytest.raises(InvalidTransition, match="already started"):
+            appt.cancel()
+        appt.refresh_from_db()
+        assert appt.status == Appointment.Status.CONFIRMED
+
+    def test_cancel_of_a_closed_appointment_names_its_status(self, db):
+        """Completed after it started: the status is the reason, not the time."""
+        appt = AppointmentFactory(
+            slot=started_slot(), status=Appointment.Status.COMPLETED
+        )
+        with pytest.raises(InvalidTransition, match="status 'completed'"):
             appt.cancel()
 
     def test_complete_confirmed_appointment(self, db):

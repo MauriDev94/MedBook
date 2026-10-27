@@ -3,7 +3,7 @@
 > API REST para reservas médicas — Django 5.2 LTS + DRF 3.18  
 > Proyecto de portafolio hecho con TDD: máquina de estados de citas, RBAC a nivel de objeto y reservas sin race conditions.
 
-[![Tests](https://img.shields.io/badge/tests-668%20passing-brightgreen)](./tests)
+[![Tests](https://img.shields.io/badge/tests-682%20passing-brightgreen)](./tests)
 [![Coverage](https://img.shields.io/badge/branch%20coverage-99.6%25-brightgreen)](./tests)
 [![Python](https://img.shields.io/badge/python-3.12-blue)](https://python.org)
 [![Django](https://img.shields.io/badge/django-5.2%20LTS-green)](https://djangoproject.com)
@@ -116,12 +116,12 @@ pending ──────────► confirmed ─────────�
 
 Transiciones válidas:
 - `pending → confirmed` (el médico confirma)
-- `pending → cancelled` (el paciente o médico cancela)
+- `pending → cancelled` (el paciente o médico cancela, antes de que empiece el slot)
 - `confirmed → completed` (el médico marca completada)
-- `confirmed → cancelled` (el paciente o médico cancela)
+- `confirmed → cancelled` (el paciente o médico cancela, antes de que empiece el slot)
 - `confirmed → no_show` (el médico marca inasistencia)
 
-Cualquier otra transición lanza `ValueError`.
+Cualquier otra transición lanza `InvalidTransition` (un `ValueError`), que la API responde con 400. Cuando su slot ya empezó, nadie puede cancelar la cita: el médico la cierra como completada o inasistencia.
 
 ---
 
@@ -171,7 +171,7 @@ Fechas: ISO 8601 en hora de Chile con su desfase, por ejemplo `2026-01-14T09:00:
 | PATCH | `/api/v1/appointments/{id}/` | Actualizar motivo | Dueño/Admin |
 | DELETE | `/api/v1/appointments/{id}/` | Eliminar | Solo Admin |
 | POST | `/api/v1/appointments/{id}/confirm/` | Confirmar (pending → confirmed) | Médico (dueño) |
-| POST | `/api/v1/appointments/{id}/cancel/` | Cancelar | Paciente o Médico (dueño) |
+| POST | `/api/v1/appointments/{id}/cancel/` | Cancelar, hasta que empiece el slot (después, 400) | Paciente o Médico (dueño) |
 | POST | `/api/v1/appointments/{id}/complete/` | Completar (confirmed → completed) | Médico (dueño) |
 | POST | `/api/v1/appointments/{id}/no_show/` | Marcar inasistencia | Médico (dueño) |
 
@@ -207,7 +207,7 @@ Server-rendered con sesión de Django (la API sigue con JWT). En español por de
 | GET, POST | `/slots/<id>/book/` | Confirmar y reservar un slot con un motivo opcional. HTMX lo carga en un modal; sin JS es una página completa. Al reservar lleva a Mis citas; si el slot ya no se puede reservar, vuelve al perfil del doctor, en la semana del slot | Paciente |
 | GET | `/appointments/` | Mis citas: `?tab=upcoming` (por defecto: las que no han empezado, en cualquier estado) o `?tab=past`, 10 por página, badge de estado traducido (HTMX cambia solo la lista) | Paciente |
 | GET | `/appointments/<id>/` | Una cita del paciente: doctor, fecha, hora, estado y motivo. La de otro paciente da 404 | Paciente |
-| GET, POST | `/appointments/<id>/cancel/` | Confirmar y cancelar: libera el slot y avisa por correo. Con HTMX es un modal y el estado se actualiza en su lugar; sin JS, una página completa que después lleva a la cita | Paciente |
+| GET, POST | `/appointments/<id>/cancel/` | Confirmar y cancelar, hasta que empiece la cita: libera el slot y avisa por correo. Con HTMX es un modal y el estado se actualiza en su lugar; sin JS, una página completa que después lleva a la cita | Paciente |
 | POST | `/i18n/setlang/` | Selector de idioma (guarda una cookie) | Público |
 
 **Páginas de error.** Las páginas 403, 404 y 500 usan el layout del sitio y el idioma del visitante. La 500 se arma sin el request ni la base de datos, porque cualquiera de los dos puede ser lo que falló, así que su menú no tiene links de cuenta. Si la sesión expira mientras el visitante está en un modal, la página completa va al login, que después lo devuelve a la misma página (`HX-Redirect`).

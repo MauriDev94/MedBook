@@ -125,8 +125,15 @@ class Appointment(BaseModel):
     def can_be_confirmed(self) -> bool:
         return self.status == self.Status.PENDING
 
-    def can_be_cancelled(self) -> bool:
+    def _is_active(self) -> bool:
         return self.status in (self.Status.PENDING, self.Status.CONFIRMED)
+
+    def can_be_cancelled(self) -> bool:
+        """Active and its slot has not started yet, for patients and doctors.
+
+        A started appointment ends with complete() or mark_no_show() instead.
+        """
+        return self._is_active() and not self.slot.has_started
 
     def can_be_completed(self) -> bool:
         return self.status == self.Status.CONFIRMED
@@ -148,10 +155,15 @@ class Appointment(BaseModel):
         self.save(update_fields=["status", "updated_at"])
 
     def cancel(self) -> None:
-        """pending|confirmed → cancelled. Raises InvalidTransition if invalid."""
+        """pending|confirmed → cancelled, before the slot starts.
+
+        Raises InvalidTransition if invalid.
+        """
         if not self.can_be_cancelled():
             raise InvalidTransition(
-                f"Cannot cancel appointment with status '{self.status}'."
+                "Cannot cancel an appointment that has already started."
+                if self._is_active()
+                else f"Cannot cancel appointment with status '{self.status}'."
             )
         self.status = self.Status.CANCELLED
         self.save(update_fields=["status", "updated_at"])

@@ -97,6 +97,16 @@ def auth_client_admin(admin_user):
     return client
 
 
+def started_appointment(patient, doctor, **kwargs):
+    """An appointment whose slot started five minutes ago (Paso 35)."""
+    slot = TimeSlotFactory(
+        schedule=ScheduleFactory(doctor=doctor),
+        start_datetime=timezone.now() - datetime.timedelta(minutes=5),
+        status=TimeSlot.Status.RESERVED,
+    )
+    return AppointmentFactory(patient=patient, doctor=doctor, slot=slot, **kwargs)
+
+
 # ---------------------------------------------------------------------------
 # TestAppointmentCreate
 # ---------------------------------------------------------------------------
@@ -424,6 +434,39 @@ class TestAppointmentActions:
         appt.refresh_from_db()
         assert appt.status == Appointment.Status.CANCELLED
 
+    @pytest.mark.parametrize("client", ["auth_client_patient", "auth_client_doctor"])
+    def test_nobody_cancels_an_appointment_that_started(
+        self, request, client, patient, doctor
+    ):
+        """A started appointment ends with complete or no-show instead (Paso 35)."""
+        appt = started_appointment(patient, doctor, status=Appointment.Status.CONFIRMED)
+
+        response = request.getfixturevalue(client).post(
+            f"/api/v1/appointments/{appt.id}/cancel/"
+        )
+
+        assert response.status_code == status.HTTP_400_BAD_REQUEST
+        assert response.data == {
+            "detail": "Cannot cancel an appointment that has already started.",
+            "code": "validation_error",
+        }
+        appt.refresh_from_db()
+        appt.slot.refresh_from_db()
+        assert appt.status == Appointment.Status.CONFIRMED
+        assert appt.slot.status == TimeSlot.Status.RESERVED
+
+    def test_doctor_closes_a_started_appointment_with_no_show(
+        self, db, auth_client_doctor, patient, doctor
+    ):
+        """What the doctor does instead of cancelling a past appointment."""
+        appt = started_appointment(patient, doctor, status=Appointment.Status.CONFIRMED)
+
+        response = auth_client_doctor.post(f"/api/v1/appointments/{appt.id}/no-show/")
+
+        assert response.status_code == status.HTTP_200_OK
+        appt.refresh_from_db()
+        assert appt.status == Appointment.Status.NO_SHOW
+
     def test_doctor_can_complete_confirmed_appointment(
         self, db, auth_client_doctor, patient, doctor
     ):
@@ -627,6 +670,17 @@ class TestAppointmentRetrieve:
         assert response.data["id"] == str(appt.id)
         assert "can_cancel" in response.data
         assert "slot" in response.data
+
+    def test_can_cancel_is_false_once_the_appointment_started(
+        self, db, auth_client_patient, patient, doctor
+    ):
+        """The flag matches what the cancel action accepts (Paso 35)."""
+        appt = started_appointment(patient, doctor)
+
+        response = auth_client_patient.get(f"/api/v1/appointments/{appt.id}/")
+
+        assert response.data["status"] == Appointment.Status.PENDING
+        assert response.data["can_cancel"] is False
 
     def test_patient_cannot_retrieve_other_patients_appointment(
         self, db, auth_client_patient, doctor
