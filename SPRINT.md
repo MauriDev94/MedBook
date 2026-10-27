@@ -152,7 +152,7 @@
 | 29 | Páginas de error, accesibilidad, docs y verificación en Render | #139 | #156 | ✅ |
 | 34 | **Bug**: email sin distinguir mayúsculas en el login (API y web) y unicidad case-insensitive en la DB. Independiente | #151 | #160 | ✅ |
 | 35 | **Bug**: el paciente no puede cancelar una cita que ya empezó (API y web). Independiente | #157 | #161 | ✅ |
-| 36 | Trato Dr./Dra. según el médico (campo traducible; las tres doctoras demo). Va antes del 37 | #158 | — | ⏳ |
+| 36 | Trato Dr./Dra. según el médico (campo traducible; las tres doctoras demo). Va antes del 37 | #158 | #162 | ⏳ |
 | 37 | **Bug**: correos en español y con la hora de Chile (hoy en inglés y en UTC). Va después del 36 | #159 | — | ⬜ |
 
 ---
