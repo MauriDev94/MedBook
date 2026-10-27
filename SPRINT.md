@@ -145,7 +145,7 @@
 | 26 | Catálogo de doctores y slots disponibles (HTMX) | #136 | #150 | ✅ |
 | 30 | **Bug**: re-reservar un slot liberado por cancelación (`OneToOne` → FK + unique parcial) y rechazar slots que ya empezaron. Va antes del 27 | #142 | #152 | ✅ |
 | 31 | Render como Blueprint: `render.yaml` adopta el servicio `MedBook` (auto-sync). Va antes de mergear el 23 | #144 | #146 | ✅ |
-| 32 | Producción en Docker Alpine (servicio nuevo `medbook-demo` vía Blueprint, en dos PRs: el servicio y después el retiro del nativo). Va después del 24 | #145 | — | ⏳ |
+| 32 | Producción en Docker Alpine (servicio nuevo `medbook-demo` vía Blueprint, en dos PRs: el servicio y después el retiro del nativo). Va después del 24 | #145 | #165 | ⏳ |
 | 33 | Datos demo: comando `seed_demo` idempotente (doctores y horarios), activado en Render con `MEDBOOK_DEMO_DATA`. Va antes del 29 | #147 | #155 | ✅ |
 | 27 | Reservar cita (services de booking, manejo de conflictos) | #137 | #153 | ✅ |
 | 28 | Mis citas y cancelación; selector de visibilidad compartido con la API | #138 | #154 | ✅ |
