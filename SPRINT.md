@@ -155,7 +155,7 @@
 | 36 | Trato Dr./Dra. según el médico (campo traducible; las tres doctoras demo). Va antes del 37 | #158 | #162 | ✅ |
 | 37 | **Bug**: correos en español y con la hora de Chile (hoy en inglés y en UTC). Va después del 36 | #159 | #163 | ✅ |
 | 38 | Envío real de correos con Resend (dominio propio, `RESEND_API_KEY` y un `on_commit` que no convierta en 500 una reserva guardada). Para más adelante | #164 | — | ⬜ |
-| 39 | Limpieza corta: `/health/` sin redirección a HTTPS, trato del médico en el log de `generate_slots`, el `web` de compose como la imagen de producción y sin `version` en los compose | #167 | #168 | 🔄 |
+| 39 | Limpieza corta: `/health/` sin redirección a HTTPS, trato del médico en el log de `generate_slots`, el `web` de compose como la imagen de producción y sin `version` en los compose | #167 | #168 | ✅ |
 
 ---
 
@@ -243,3 +243,50 @@
 - **"Dr." fijo en el log de `generate_slots`** (detectado en el Paso 32): la línea de cada horario escribe `(Dr. <email>)`, así que en los logs de Render una doctora aparece como "Dr. camila.herrera@…". El Paso 36 no lo tocó porque no usa `str(doctor)`. Solo afecta los logs. Propuesta: escribir `str(schedule.doctor)` ("Dra. Camila Herrera"). **Resuelto en el Paso 39**: cada línea dice `Schedule <id> (Dra. Camila Herrera): N new slots`, sin el email.
 - **`docker compose up` sin estáticos** (detectado en el Paso 24): el servicio `web` de compose corre gunicorn con settings locales, que no traen WhiteNoise, así que la web sale sin CSS. El Paso 32 no lo cambia: la imagen sí sirve estáticos con settings de producción, pero esos exigen HTTPS. En dev se usa `runserver`, que sí los sirve. Propuesta: decidir si el servicio `web` sigue en compose. Decidido: se queda, pero como la imagen de producción. **Resuelto en el Paso 39**: `docker compose up` levanta solo Postgres, y `web`, detrás del perfil `image`, arranca con el CMD de la imagen, settings de producción, `PORT=10000` publicado en el 8001 y los valores no secretos de `render.yaml`. `test_compose.py` los mantiene alineados. En dev se sigue usando `runserver`.
 - **El health check podría no tocar la DB** (detectado en el Paso 32, sin verificar): Render da por sano cualquier 3xx. Si su health check llega por HTTP sin `X-Forwarded-Proto: https`, `SECURE_SSL_REDIRECT` responde 301 y el check pasa sin que `/health/` consulte la base. No se pudo comprobar porque gunicorn no escribe un log de accesos. Propuesta: verificarlo (por ejemplo, con un log temporal de los requests a `/health/`) y, si pasa, eximir `/health/` de la redirección con `SECURE_REDIRECT_EXEMPT`. **Resuelto en el Paso 39**: se eximió sin verificar antes, porque la exención sirve en los dos casos. `/health/` responde 200 o 503 según la DB, llegue el check por HTTP o por HTTPS.
+
+---
+
+# Sprint — Semana 6: Panel del doctor
+
+> **Objetivo:** Un doctor ve su agenda (hoy, próximas y pasadas), confirma, cancela, completa o marca la inasistencia de sus citas, escribe notas médicas y maneja sus horarios semanales desde la web. En la demo pública, cualquiera puede entrar como uno de los doctores demo.
+> Decisiones: [ADR 0005](./docs/adr/0005-doctor-panel-and-demo-access.md) (alcance del panel, horarios que solo se crean o desactivan, completar solo citas ya empezadas, admins al admin de Django y acceso demo como doctor).
+> Los bugs de horarios van primero, como el Paso 30 en la Semana 5.
+
+---
+
+## Estado
+
+| Paso | Descripción | Issue | PR | Estado |
+|------|-------------|-------|----|--------|
+| 40 | Plan de la Semana 6 y ADR 0005 | #169 | #178 | 🔄 |
+| 41 | **Bug**: un horario desactivado deja sus slots futuros reservables (bloquearlos al desactivar, no liberarlos al cancelar y no duplicar momentos al generar) | #170 | — | ⬜ |
+| 42 | **Bug**: horarios superpuestos; la API deja de editar horarios (PATCH → 405) y la señal genera 28 días | #171 | — | ⬜ |
+| 43 | Entrar como doctor demo desde el login (solo con `MEDBOOK_DEMO_DATA`) y aviso de demo pública | #172 | — | ⬜ |
+| 44 | Agenda del doctor en `/panel/` (hoy, próximas, pasadas); admins al admin de Django | #173 | — | ⬜ |
+| 45 | Ficha de la cita y acciones del doctor; completar e inasistencia solo con la cita ya empezada | #174 | — | ⬜ |
+| 46 | Notas médicas en la ficha (services compartidos con la API) | #175 | — | ⬜ |
+| 47 | Horarios del doctor: ver, agregar y desactivar | #176 | — | ⬜ |
+| 48 | Cierre: accesibilidad, docs y verificación en Render | #177 | — | ⬜ |
+
+---
+
+## Checklist acumulativo — Semana 6
+
+- [ ] Desactivar un horario bloquea sus slots libres y mantiene las citas reservadas, en la API y en la web
+- [ ] No se aceptan horarios superpuestos y un horario nuevo no abre un segundo slot donde el doctor ya tiene uno
+- [ ] Flujo completo en la web: registro como paciente → reserva con un doctor demo → entrar como ese doctor → confirmar → nota médica → desactivar un horario (local con Chrome, con teclado y a 375 px, y en Render)
+- [ ] El acceso demo solo existe con `MEDBOOK_DEMO_DATA=true` y solo para los doctores demo; ningún password creado ni publicado
+- [ ] El panel muestra el nombre del paciente y nunca su email
+- [ ] Ninguna view web accede al ORM: todo pasa por services
+- [ ] Gate de coverage ≥ 95% branch se mantiene
+
+---
+
+## Notas técnicas registradas — Semana 6
+
+- Al planificar (Paso 40) aparecieron tres huecos en los horarios que ya tiene la API: un `DELETE` desactiva el horario pero deja sus slots `available`, un `PATCH` de horas no toca los slots y solo la constraint (`doctor`, `day_of_week`, `start_time`) impide superposiciones. Se corrigen en los Pasos 41 y 42 (ADR 0005).
+- `TimeSlot.Status.BLOCKED` ya existía, pero ningún código lo asignaba: solo los tests revisan que un slot bloqueado no se liste ni se reserve. Desde el Paso 41 marca los slots libres de un horario desactivado.
+
+### Pendientes por decidir
+
+- (ninguno todavía)
