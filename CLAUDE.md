@@ -8,6 +8,8 @@ The JSON API is complete. Sprint "Semana 5" in `SPRINT.md` (Pasos 23–29, issue
 - `docs/adr/0002-server-rendered-web-frontend.md`: Django templates + HTMX in a new `apps/web` app, session auth reusing the service layer, Tailwind 4 via `django-tailwind-cli` (no Node), Spanish/English i18n with the JSON API kept in English, no Alpine.js.
 - `docs/adr/0003-clinic-time-zone.md`: schedules are interpreted in `America/Santiago` (`TIME_ZONE`), and slots are built with `make_aware` instead of hard-coded UTC. Implemented in Paso 23. The API serialises datetimes with the Chilean offset and `__date` filters use Chilean dates. Never hard-code UTC when combining dates with schedule times.
 
+Sprint "Semana 6" (Pasos 40–48, issues #169–#177) builds the doctor panel; `docs/adr/0005-doctor-panel-and-demo-access.md` holds its decisions, so read it before touching schedules, the panel or the demo access. Schedules are only created or deactivated (deactivating blocks their free future slots; the API drops PATCH), completing or marking a no-show needs a started appointment, admins land on the Django admin, and with `MEDBOOK_DEMO_DATA` the login offers a passwordless session as one of the demo doctors, never anyone else. Until each paso ships, the code still behaves as described below.
+
 Sources of truth: `README.md` (endpoints, RBAC matrix, setup), `docs/architecture.md` (decision log with trade-offs), `docs/adr/`, `SPRINT.md` (historical sprint plan), `docs/REMEDIATION-PLAN.md` (post-audit work). There is no `PRD.md` or `AGENT.md` in the repo.
 
 ## Environment
