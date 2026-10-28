@@ -258,7 +258,7 @@
 
 | Paso | Descripción | Issue | PR | Estado |
 |------|-------------|-------|----|--------|
-| 40 | Plan de la Semana 6 y ADR 0005 | #169 | — | 🔄 |
+| 40 | Plan de la Semana 6 y ADR 0005 | #169 | #178 | 🔄 |
 | 41 | **Bug**: un horario desactivado deja sus slots futuros reservables (bloquearlos al desactivar, no liberarlos al cancelar y no duplicar momentos al generar) | #170 | — | ⬜ |
 | 42 | **Bug**: horarios superpuestos; la API deja de editar horarios (PATCH → 405) y la señal genera 28 días | #171 | — | ⬜ |
 | 43 | Entrar como doctor demo desde el login (solo con `MEDBOOK_DEMO_DATA`) y aviso de demo pública | #172 | — | ⬜ |
