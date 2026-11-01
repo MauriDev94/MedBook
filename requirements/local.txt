@@ -8,4 +8,4 @@ Faker>=25,<26
 # Reads render.yaml in tests/unit/test_render_blueprint.py
 PyYAML>=6,<7
 ruff>=0.5,<0.6
-pre-commit>=3.7,<4
+pre-commit>=4.7.0,<5
