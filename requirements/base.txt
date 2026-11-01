@@ -10,6 +10,6 @@ django-tailwind-cli>=4.8,<5
 django-htmx>=1.29,<2
 psycopg2-binary>=2.9,<2.10
 python-decouple>=3,<4
-dj-database-url>=2,<3
+dj-database-url>=3.1.2,<4
 # IANA time-zone data for zoneinfo where the OS has none (Windows, Alpine)
 tzdata>=2026.1
